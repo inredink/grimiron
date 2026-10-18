@@ -1,0 +1,403 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
+import { THEME } from '../constants/theme';
+import { CombatAfterActionReport } from '../types/combat';
+import { Ionicons } from '@expo/vector-icons';
+import { TerminalButton } from './TerminalButton';
+import { ProgressBar } from './ProgressBar';
+
+interface AfterActionReportModalProps {
+  visible: boolean;
+  report: CombatAfterActionReport | null;
+  onClose: () => void;
+}
+
+export const AfterActionReportModal: React.FC<AfterActionReportModalProps> = ({
+  visible,
+  report,
+  onClose,
+}) => {
+  if (!report) return null;
+
+  const {
+    mission,
+    enemy,
+    isVictory,
+    totalDamage,
+    enemyRemainingHealth,
+    overkillDamage,
+    completedSetsCount,
+    totalVolumeKg,
+    baseXpEarned,
+    gloryBonusXp,
+    totalXpEarned,
+    newLevel,
+    newRank,
+    progressPercent,
+    achievementsUnlocked,
+  } = report;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Mission Outcome Banner */}
+            <View
+              style={[
+                styles.outcomeBanner,
+                {
+                  borderColor: isVictory ? THEME.colors.primary : THEME.colors.warning,
+                  backgroundColor: isVictory ? '#162214' : '#1C1912',
+                },
+              ]}
+            >
+              <Ionicons
+                name={isVictory ? 'trophy' : 'shield-half'}
+                size={38}
+                color={isVictory ? THEME.colors.primary : THEME.colors.warning}
+              />
+              <Text
+                style={[
+                  styles.outcomeTitle,
+                  { color: isVictory ? THEME.colors.primary : THEME.colors.warning },
+                ]}
+              >
+                {isVictory ? 'MISSION ACCOMPLISHED // PURGE VICTORY' : 'TACTICAL WITHDRAWAL // SECTOR HELD'}
+              </Text>
+              <Text style={styles.outcomeSubtitle}>
+                {isVictory
+                  ? `Hostile target ${enemy.name} has been eradicated. Glory to your Chapter!`
+                  : `Training objectives completed. Hostile survived with ${enemyRemainingHealth} HP, but all XP is preserved.`}
+              </Text>
+            </View>
+
+            {/* Target Assessment Card */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionHeader}>TARGET ENGAGEMENT DOSSIER</Text>
+              <View style={styles.enemyRow}>
+                <View
+                  style={[
+                    styles.enemyAvatar,
+                    { borderColor: enemy.visual.primaryColor },
+                  ]}
+                >
+                  <Ionicons
+                    name={enemy.visual.iconName as any}
+                    size={24}
+                    color={enemy.visual.primaryColor}
+                  />
+                </View>
+                <View style={styles.enemyDetails}>
+                  <Text style={styles.enemyName}>{enemy.name}</Text>
+                  <Text style={styles.enemyTitle}>{enemy.title} • {enemy.faction.toUpperCase()}</Text>
+                </View>
+                <View style={styles.statusBadge}>
+                  <Text
+                    style={[
+                      styles.statusBadgeText,
+                      { color: isVictory ? THEME.colors.success : THEME.colors.warning },
+                    ]}
+                  >
+                    {isVictory ? 'SLAIN' : 'SURVIVED'}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.enemyQuote}>
+                "{isVictory ? enemy.defeatQuote : enemy.tauntQuote}"
+              </Text>
+            </View>
+
+            {/* Combat & Munitions Metrics */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionHeader}>MUNITIONS & COMBAT TELEMETRY</Text>
+              <View style={styles.gridRow}>
+                <View style={styles.gridBox}>
+                  <Text style={styles.gridLabel}>SETS COMPLETED</Text>
+                  <Text style={styles.gridValue}>{completedSetsCount}</Text>
+                </View>
+                <View style={styles.gridBox}>
+                  <Text style={styles.gridLabel}>BATTLE TONNAGE</Text>
+                  <Text style={styles.gridValue}>{totalVolumeKg} kg</Text>
+                </View>
+              </View>
+              <View style={styles.gridRow}>
+                <View style={styles.gridBox}>
+                  <Text style={styles.gridLabel}>DAMAGE DEALT</Text>
+                  <Text style={[styles.gridValue, { color: THEME.colors.danger }]}>
+                    {totalDamage}
+                  </Text>
+                </View>
+                <View style={styles.gridBox}>
+                  <Text style={styles.gridLabel}>OVERKILL DAMAGE</Text>
+                  <Text style={[styles.gridValue, { color: THEME.colors.primary }]}>
+                    +{overkillDamage}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* XP Rewards Breakdown */}
+            <View style={[styles.sectionCard, styles.rewardCard]}>
+              <Text style={styles.sectionHeader}>REQUISITION & XP REWARDS</Text>
+              <Text style={styles.rewardTotal}>+{totalXpEarned} XP</Text>
+              <View style={styles.rewardDivider} />
+              <View style={styles.rewardRow}>
+                <Text style={styles.rewardLabel}>Base Mission Training:</Text>
+                <Text style={styles.rewardValue}>+{baseXpEarned} XP</Text>
+              </View>
+              {gloryBonusXp > 0 && (
+                <View style={styles.rewardRow}>
+                  <Text style={[styles.rewardLabel, { color: THEME.colors.primary }]}>
+                    Target Purge Glory Bonus:
+                  </Text>
+                  <Text style={[styles.rewardValue, { color: THEME.colors.primary }]}>
+                    +{gloryBonusXp} XP
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Rank & Promotion Progress */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionHeader}>PROMOTION STANDING</Text>
+              <View style={styles.rankRow}>
+                <Text style={styles.rankText}>Level {newLevel} • {newRank}</Text>
+                <Text style={styles.progressPercentText}>{progressPercent}%</Text>
+              </View>
+              <ProgressBar
+                progress={progressPercent}
+                color={THEME.colors.primary}
+                height={8}
+              />
+              <Text style={styles.nextPromotionNotice}>
+                Training progress recorded in the Chapter Annals.
+              </Text>
+            </View>
+
+            {/* Battle Honors & Achievements */}
+            {achievementsUnlocked.length > 0 && (
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionHeader}>BATTLE HONORS EARNED</Text>
+                {achievementsUnlocked.map((ach, idx) => (
+                  <View key={idx} style={styles.honorRow}>
+                    <Ionicons name="medal-outline" size={16} color={THEME.colors.primary} />
+                    <Text style={styles.honorText}>{ach}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Return Action Button */}
+            <TerminalButton
+              title="RETURN TO COMMAND TERMINAL"
+              onPress={onClose}
+              variant="primary"
+              size="lg"
+              style={{ marginTop: 12, marginBottom: 8 }}
+            />
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(5, 8, 15, 0.92)',
+    justifyContent: 'center',
+    padding: THEME.spacing.md,
+  },
+  modalContent: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+    padding: THEME.spacing.lg,
+    maxHeight: '90%',
+  },
+  outcomeBanner: {
+    borderRadius: THEME.borderRadius.md,
+    borderWidth: 1.5,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  outcomeTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  outcomeSubtitle: {
+    color: THEME.colors.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  sectionCard: {
+    backgroundColor: THEME.colors.surfaceRaised,
+    borderRadius: THEME.borderRadius.md,
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+    padding: 12,
+    marginBottom: 10,
+  },
+  sectionHeader: {
+    color: THEME.colors.primary,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  enemyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  enemyAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    backgroundColor: '#0E1724',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  enemyDetails: {
+    flex: 1,
+  },
+  enemyName: {
+    color: THEME.colors.textBright,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  enemyTitle: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    backgroundColor: '#121B28',
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  enemyQuote: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+    fontStyle: 'italic',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.surfaceBorder,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  gridBox: {
+    flex: 1,
+    backgroundColor: THEME.colors.surfaceHighlight,
+    borderRadius: THEME.borderRadius.sm,
+    padding: 8,
+    marginHorizontal: 3,
+  },
+  gridLabel: {
+    color: THEME.colors.textMuted,
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  gridValue: {
+    color: THEME.colors.textBright,
+    fontSize: 14,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  rewardCard: {
+    backgroundColor: '#101B1E',
+    borderColor: THEME.colors.successMuted,
+  },
+  rewardTotal: {
+    color: THEME.colors.success,
+    fontSize: 26,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  rewardDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.surfaceBorder,
+    marginVertical: 8,
+  },
+  rewardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 2,
+  },
+  rewardLabel: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+  },
+  rewardValue: {
+    color: THEME.colors.textBright,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  rankRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  rankText: {
+    color: THEME.colors.textBright,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  progressPercentText: {
+    color: THEME.colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  nextPromotionNotice: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  honorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 3,
+  },
+  honorText: {
+    color: THEME.colors.textBright,
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+});
