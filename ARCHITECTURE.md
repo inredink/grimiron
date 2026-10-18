@@ -128,3 +128,245 @@ This produces a gentle, rewarding polynomial curve:
 - Level 5: 2,000 XP
 - Level 10: 6,289 XP
 - Level 20: 18,018 XP
+
+---
+
+## 5. Battle History System & Immutable Snapshot Architecture
+
+To guarantee that combat encounters can be revisited with 100% fidelity even if future app updates modify enemy balance or faction catalogs, every completed or abandoned encounter stores an immutable snapshot in SQLite table `battle_history`:
+
+- **Immutable Snapshot (`snapshot_json`)**:
+  - Captures enemy attributes (name, glyph, faction, initial and final health).
+  - Captures the complete chronological combat timeline (`battle_started`, `strike_landed`, `critical_strike`, `phase_change`, `enemy_slain`, `tactical_retreat`) with ISO timestamps and individual attack names.
+  - Captures participant roster (`battle_participants`) with callsigns, faction snapshots, total attacks, damage dealt, and exact damage share %.
+  - Preserves privacy: raw workout weights, repetitions, and personal notes remain local. Only aggregate combat descriptors are stored.
+  - Links directly to local training session ID (`session_id`) to correlate physical effort with combat outcomes.
+- **Filtering & Career Telemetry**:
+  - `battleHistoryRepository.ts` provides multi-criterion querying: outcomes (`victory`, `defeat`, `abandoned`), encounter modes (`solo`, `coop`), and sorting (`recent`, `highest_damage`).
+
+---
+
+## 6. Multi-Scope Persistent Achievement Architecture
+
+The achievement system tracks real-life consistency, in-game character honors, and collaborative squad achievements across 11 thematic categories with 220 distinct definitions:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Achievement Scopes                     │
+├─────────────────┬──────────────────────────┬────────────────┤
+│   User Scope    │     Character Scope      │  Squad Scope   │
+│ (Account-wide   │ (Faction rank, level,    │ (Co-op raids,  │
+│  PRs, volume,   │  solo boss purges,       │  shared boss   │
+│  streak habits) │  customizations)         │  damage)       │
+└────────┬────────┴────────────┬─────────────┴────────┬───────┘
+         │                     │                      │
+         ▼                     ▼                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│           Pure Functional Evaluator & Metric Resolver       │
+│  src/services/progression/achievementEvaluator.ts           │
+│  - Evaluates AchievementEvaluationContext metrics           │
+│  - Decoupled from native SQLite for Node CLI verification   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│             Database Persistence & Idempotency              │
+│  src/services/database/achievementRepository.ts             │
+│  - UNIQUE(achievement_id, scope, target_id)                 │
+│  - Atomic award insertion (no duplicate XP or popups)       │
+│  - Live progress caching (achievement_progress)             │
+│  - Offline notification queue (pending_notifications)       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Safeguards
+1. **Strict Idempotency**:
+   - SQLite table `achievement_awards` enforces `CONSTRAINT uq_ach_award UNIQUE(achievement_id, scope, target_id)`.
+   - Re-running evaluation on app boot, workout completion, or screen refresh never grants duplicate XP or triggers duplicate banners.
+2. **Historical Backfill**:
+   - `backfillHistoricalAchievements()` evaluates career metrics against historical workout sessions, sets, and combat encounters, automatically conferring retroactive honors to existing users.
+3. **Decoupled Evaluator**:
+   - The evaluation engine is pure TypeScript and can run headlessly in test suites without mock SQLite drivers. Database persistence is handled via modular repository handlers.
+
+---
+
+## 7. Faction-Specific Mission System & Command Terminal Architecture
+
+The Mission System connects real-world workout effort directly to narrative Warhammer 40,000 faction operations, combat objectives, promotions, and rank titles.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Command Terminal UI                      │
+│  MissionCenterModal.tsx / MissionCard.tsx / DetailModal     │
+│  - Futuristic military sci-fi HUD                           │
+│  - Dynamic filters: ALL, AVAILABLE, ACTIVE, COMPLETED, LOCKED│
+│  - Category tabs: Assault, Defense, Patrol, Boss, Special   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Domain Progression Evaluator                │
+│  src/services/progression/missionEvaluator.ts               │
+│  - Evaluates eligibility (rank tier, subfaction, prereqs)   │
+│  - Tracks 10+ physical & combat metrics against targets     │
+│  - Pure TypeScript (zero native dependencies for test CLI)  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Engine & Repository Layer                   │
+│  src/services/database/missionEngine.ts                     │
+│  src/services/database/missionRepository.ts                 │
+│  - Evaluates active missions upon finishing workouts        │
+│  - Atomic reward claim & XP distribution                    │
+│  - SQLite Migration 6: table mission_progress               │
+│    UNIQUE(character_id, mission_id) ensures idempotency    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Tenets
+1. **Universal Faction Coverage & Multi-Tier Progression**:
+   - Comprehensive data catalog (`src/content/missions/catalog.ts`) featuring **63 lore-accurate missions** spanning all 20 Warhammer 40,000 factions and iconic subfactions (e.g. Space Wolves, Ultramarines, Farsight Enclaves).
+   - Multi-tier ladder per faction: Tier 1 (Initiate/Patrol) $\rightarrow$ Tier 2 (Veteran/Incursion/Skirmish) $\rightarrow$ Tier 3 (Master Rites/Decapitation/Boss purge).
+2. **Real-World Workout Metric Mapping**:
+   - Objective types cleanly map physical training to battlefield telemetry:
+     - `complete_workouts`: Deployments completed.
+     - `complete_sets`: Discipline and working set volume.
+     - `volume_kg`: Heavy ordnance and payload tonnage hauled.
+     - `target_reps`: Rapid weapon fire and relentless repetitions.
+     - `exercise_category_sets`: Targeted muscle training (e.g. chest, legs, back).
+     - `combat_damage`: Kinetic or psychic damage delivered to enemies.
+     - `combat_attacks`: Volleys fired during solo or co-op encounters.
+     - `defeat_enemy`: Warlords and strike leaders neutralized.
+     - `personal_records`: Feats of transhuman strength.
+3. **Faction Switching & Historical Allegiance Integrity**:
+   - `mission_progress` persists `faction_id` alongside the character record.
+   - If a player switches faction, all completed missions and unlocked titles for their previous faction remain permanently preserved in the database.
+4. **Strict Idempotency & Duplicate Prevention**:
+   - SQLite table `mission_progress` enforces `CONSTRAINT uq_char_mission UNIQUE (character_id, mission_id)`.
+   - Rewards and XP grants can only be claimed once (`is_claimed = 1`), preventing double-claiming on re-evaluation or network retries.
+
+---
+
+## 8. Structured Training Programs & Planetary Campaign Map Architecture
+
+The Training Programs and Campaign Map subsystem unifies structured real-world training regimens with overarching tactical sector conquest, multi-branch routes, and cooperative battle progression.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Training Program Center HUD                 │
+│  ProgramCenterModal.tsx / CampaignMapModal.tsx              │
+│  - Active program enrollment dashboard & schedule           │
+│  - 7 standard categories (GVT, PPL, Upper/Lower, 5×5, etc.) │
+│  - Planned Rest Day window ("Rest & Bio-Recovery")          │
+│  - Directed graph campaign theater map with branch routes   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Domain Engine & Evaluator                   │
+│  src/services/progression/programEngine.ts                  │
+│  src/services/progression/campaignEvaluator.ts              │
+│  - Prepopulates workout logger (planned sets NOT completed) │
+│  - Evaluates session adherence & records deviations         │
+│  - Evaluates topological unlock criteria and branch forks   │
+│  - Program-independent criteria enable multi-program squads │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                Database Persistence (Migration 7)           │
+│  src/services/database/programRepository.ts                 │
+│  src/services/database/campaignRepository.ts                │
+│  - user_programs: immutable program snapshot, current block │
+│  - program_session_records: actual vs prescribed volume     │
+│  - campaign_node_progress: UNIQUE(character_id, node_id)    │
+│  - custom_training_programs: user-defined splits            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Tenets
+1. **Planned vs Actual Workout Decoupling**:
+   - `populateWorkoutFromScheduledSession()` populates the workout logger with planned exercises, target sets, and prescribed repetitions or rest intervals.
+   - **Critical Rule**: All prepopulated sets have `isCompleted: false` and `weight: 0`. Planned sets are never presented as completed until logged by the user.
+2. **Responsible Recovery & Rest Day Dignity**:
+   - Scheduled rest days (`isRestDay: true`) have no lifting exercises and emphasize hydration, sleep, and central nervous system repair.
+   - Rest days do not deduct adherence or trigger missed-workout penalties.
+3. **Multi-Program Campaign Compatibility**:
+   - Campaign nodes use program-independent criteria (eligible completed workouts, volume tonnage, combat damage, enemy defeats).
+   - Player 1 (GVT), Player 2 (PPL), and Player 3 (5×5) can all participate in the same crusade campaign and contribute to shared encounters.
+4. **Graph Navigation & Branching Routes**:
+   - Represented as a directed acyclic graph (DAG) with prerequisites and successors.
+   - Branch points allow tactical choices (e.g., Subterranean Sabotage vs Orbital Uplink Spire), with either branch path satisfying convergence prerequisites to unlock fortress boss battles.
+
+---
+
+## 9. Warfront: Daily Engagements & Weekly Raid System
+
+The Warfront subsystem introduces dynamic, date-driven daily tactical engagements, procedural enemy commander generation, and recurring weekly raid boss encounters that link directly to workout sessions.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Warfront UI Layer                        │
+│  - WarfrontDailyBoardModal.tsx (3-card daily briefing board)│
+│  - WeeklyRaidModal.tsx (3-phase boss gauge, spawn schedule) │
+│  - app/(tabs)/index.tsx & workout.tsx (quick launches)      │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Warfront Domain Engine                     │
+│  src/services/progression/warfrontEngine.ts                 │
+│  - Date-based deterministic rotation (locked per date)      │
+│  - 14-day history buffer (prevents repetitive offerings)    │
+│  - Weekly cycle timing calculation (Friday vs Saturday)     │
+│  - Unresolved boss policy ('escaped' status, no false wins) │
+│  - Idempotent raid damage accumulation & reward claims      │
+└──────────────┬──────────────────────────────┬───────────────┘
+               │                              │
+               ▼                              ▼
+┌──────────────────────────────┐ ┌────────────────────────────┐
+│   Procedural Boss Generator  │ │  Encounter Catalog (110+)  │
+│  src/services/progression/   │ │  src/content/encounters/   │
+│  bossGenerator.ts            │ │  - recon (14 templates)    │
+│  - Seeded Mulberry32 PRNG    │ │  - assault (18 templates)  │
+│  - 20 faction naming pools   │ │  - defense (14 templates)  │
+│  - Signature wargear & traits│ │  - sabotage (14 templates) │
+│  - 3 dynamic combat phases   │ │  - hunting (14 templates)  │
+│    (100%, 66%, 33% HP tiers) │ │  - special_ops (12 templ.) │
+│                              │ │  - escalating (12 templ.)  │
+│                              │ │  - coop (12 templates)     │
+└──────────────┬───────────────┘ └────────────┬───────────────┘
+               │                              │
+               ▼                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Database & Storage Layer (Migration 8)         │
+│  src/services/database/warfrontRepository.ts                │
+│  - daily_rotations: rotation_date PRIMARY KEY, offered_ids  │
+│  - weekly_raids: cycle_id PRIMARY KEY, boss_data, status    │
+│  - recent_encounters_history: encounter_id, selected_date   │
+│  - warfront_settings: preferred_spawn_day ('friday'/'sat')  │
+│  - Pluggable WarfrontStorageAdapter: in-memory & SQLite     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Core Architectural Decisions:
+
+1. **Refresh-Proof Daily Rotation**:
+   - Daily offerings are generated using a deterministic date seed (`daily_YYYY-MM-DD`) and persisted in `daily_rotations`.
+   - Reloading the app, navigating between tabs, or restarting the client reads the persisted record, guaranteeing that today's 3 offered missions never reroll or alter during the day.
+2. **14-Day Anti-Repetition Buffer**:
+   - `recent_encounters_history` tracks templates selected in the last 14 days, filtering them out of future selection pools to ensure ongoing freshness and variety.
+3. **Deterministic Procedural Boss Generator**:
+   - Given a week cycle seed (e.g., `2026_W42`), a Mulberry32 PRNG deterministically selects commander names, honorific titles, signature weapons, combat traits, and lore from tailored pools covering all 20 Warhammer 40,000 factions without external API dependencies.
+   - Bosses possess 3 distinct combat phases (Phase 1 Frontline at 100%, Phase 2 Enraged at 66%, Phase 3 Overload at 33%), each featuring unique taunts and tactical status descriptors.
+4. **Weekly Raid Lifecycle & Unresolved Boss Policy**:
+   - Players can configure their preferred weekly raid spawn day (Friday vs. Saturday).
+   - Boss HP scales intelligently: 2,400 HP for individual solo operatives vs. 7,500 HP for cooperative squads.
+   - When a raid cycle expires, `reconcileExpiredRaids` automatically marks un-defeated bosses as `'escaped'` rather than `'defeated'`, preserving historical damage and participant logs without generating false victories.
+5. **Pluggable Storage Adapter**:
+   - `WarfrontStorageAdapter` provides complete separation between domain logic and SQLite. Node.js unit tests run against `inMemoryWarfrontStorage`, while the React Native application binds `sqliteWarfrontStorage` at startup.
+
+
+
+

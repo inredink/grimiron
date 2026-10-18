@@ -1,0 +1,199 @@
+import { getDatabase } from './db';
+import {
+  DailyRotationRecord,
+  WeeklyRaidCycle,
+  WarfrontSettings,
+  RaidSpawnDay,
+} from '../../types/warfront';
+
+/**
+ * Repository handling database operations for Warfront Daily Engagements,
+ * Weekly Raids, and User Settings.
+ */
+
+export function saveDailyRotationRecord(record: DailyRotationRecord): void {
+  const db = getDatabase();
+  db.runSync(
+    `INSERT OR REPLACE INTO daily_rotations (
+      rotation_date, offered_ids_json, completed_ids_json, active_encounter_id, updated_at
+    ) VALUES (?, ?, ?, ?, ?)`,
+    [
+      record.rotationDate,
+      JSON.stringify(record.offeredEncounterIds),
+      JSON.stringify(record.completedEncounterIds),
+      record.activeEncounterId || null,
+      record.updatedAt,
+    ]
+  );
+}
+
+export function getDailyRotationRecord(dateStr: string): DailyRotationRecord | null {
+  const db = getDatabase();
+  const row = db.getFirstSync<{
+    rotation_date: string;
+    offered_ids_json: string;
+    completed_ids_json: string;
+    active_encounter_id: string | null;
+    updated_at: string;
+  }>('SELECT * FROM daily_rotations WHERE rotation_date = ?', [dateStr]);
+
+  if (!row) return null;
+
+  return {
+    rotationDate: row.rotation_date,
+    offeredEncounterIds: JSON.parse(row.offered_ids_json || '[]'),
+    completedEncounterIds: JSON.parse(row.completed_ids_json || '[]'),
+    activeEncounterId: row.active_encounter_id || undefined,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function recordRecentEncounters(encounterIds: string[], dateStr: string): void {
+  const db = getDatabase();
+  for (const id of encounterIds) {
+    db.runSync(
+      'INSERT OR REPLACE INTO recent_encounters_history (encounter_id, selected_date) VALUES (?, ?)',
+      [id, dateStr]
+    );
+  }
+}
+
+export function getRecentEncounterIds(cutoffDateStr: string): string[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<{ encounter_id: string }>(
+    'SELECT encounter_id FROM recent_encounters_history WHERE selected_date >= ?',
+    [cutoffDateStr]
+  );
+  return rows.map((r) => r.encounter_id);
+}
+
+export function saveWeeklyRaidRecord(raid: WeeklyRaidCycle): void {
+  const db = getDatabase();
+  db.runSync(
+    `INSERT OR REPLACE INTO weekly_raids (
+      cycle_id, scope, squad_id, boss_data_json, max_hp, current_hp,
+      status, spawn_day, started_at, expires_at, rewards_claimed,
+      contributions_json, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      raid.cycleId,
+      raid.scope,
+      raid.squadId || null,
+      JSON.stringify(raid.boss),
+      raid.maxHp,
+      raid.currentHp,
+      raid.status,
+      raid.spawnDay,
+      raid.startedAt,
+      raid.expiresAt,
+      raid.isRewardClaimed ? 1 : 0,
+      JSON.stringify(raid.contributions),
+      raid.updatedAt,
+    ]
+  );
+}
+
+export function getWeeklyRaidRecord(cycleId: string): WeeklyRaidCycle | null {
+  const db = getDatabase();
+  const row = db.getFirstSync<{
+    cycle_id: string;
+    scope: 'squad' | 'individual';
+    squad_id: string | null;
+    boss_data_json: string;
+    max_hp: number;
+    current_hp: number;
+    status: 'active' | 'defeated' | 'escaped';
+    spawn_day: RaidSpawnDay;
+    started_at: string;
+    expires_at: string;
+    rewards_claimed: number;
+    contributions_json: string;
+    updated_at: string;
+  }>('SELECT * FROM weekly_raids WHERE cycle_id = ?', [cycleId]);
+
+  if (!row) return null;
+
+  return {
+    cycleId: row.cycle_id,
+    scope: row.scope,
+    squadId: row.squad_id || undefined,
+    boss: JSON.parse(row.boss_data_json),
+    maxHp: row.max_hp,
+    currentHp: row.current_hp,
+    status: row.status,
+    spawnDay: row.spawn_day,
+    startedAt: row.started_at,
+    expiresAt: row.expires_at,
+    isRewardClaimed: row.rewards_claimed === 1,
+    contributions: JSON.parse(row.contributions_json || '{}'),
+    updatedAt: row.updated_at,
+  };
+}
+
+export function getAllWeeklyRaids(): WeeklyRaidCycle[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<{
+    cycle_id: string;
+    scope: 'squad' | 'individual';
+    squad_id: string | null;
+    boss_data_json: string;
+    max_hp: number;
+    current_hp: number;
+    status: 'active' | 'defeated' | 'escaped';
+    spawn_day: RaidSpawnDay;
+    started_at: string;
+    expires_at: string;
+    rewards_claimed: number;
+    contributions_json: string;
+    updated_at: string;
+  }>('SELECT * FROM weekly_raids ORDER BY started_at DESC');
+
+  return rows.map((row) => ({
+    cycleId: row.cycle_id,
+    scope: row.scope,
+    squadId: row.squad_id || undefined,
+    boss: JSON.parse(row.boss_data_json),
+    maxHp: row.max_hp,
+    currentHp: row.current_hp,
+    status: row.status,
+    spawnDay: row.spawn_day,
+    startedAt: row.started_at,
+    expiresAt: row.expires_at,
+    isRewardClaimed: row.rewards_claimed === 1,
+    contributions: JSON.parse(row.contributions_json || '{}'),
+    updatedAt: row.updated_at,
+  }));
+}
+
+export function getWarfrontSettings(): WarfrontSettings {
+  const db = getDatabase();
+  const row = db.getFirstSync<{
+    preferred_spawn_day: RaidSpawnDay;
+  }>('SELECT preferred_spawn_day FROM warfront_settings WHERE id = 1');
+
+  return {
+    preferredSpawnDay: row?.preferred_spawn_day || 'friday',
+    categoryFilter: 'all',
+  };
+}
+
+export function updatePreferredSpawnDay(spawnDay: RaidSpawnDay): void {
+  const db = getDatabase();
+  db.runSync(
+    'UPDATE warfront_settings SET preferred_spawn_day = ?, updated_at = datetime("now") WHERE id = 1',
+    [spawnDay]
+  );
+}
+
+import { WarfrontStorageAdapter } from '../progression/warfrontEngine';
+
+export const sqliteWarfrontStorage: WarfrontStorageAdapter = {
+  getDailyRotation: getDailyRotationRecord,
+  saveDailyRotation: saveDailyRotationRecord,
+  getRecentEncounterIds: getRecentEncounterIds,
+  recordRecentEncounters: recordRecentEncounters,
+  getWeeklyRaid: getWeeklyRaidRecord,
+  saveWeeklyRaid: saveWeeklyRaidRecord,
+  getAllWeeklyRaids: getAllWeeklyRaids,
+  getPreferredSpawnDay: () => getWarfrontSettings().preferredSpawnDay,
+};

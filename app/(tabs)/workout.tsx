@@ -24,6 +24,14 @@ import { CombatLogModal } from '../../src/components/CombatLogModal';
 import { AfterActionReportModal } from '../../src/components/AfterActionReportModal';
 import { CoopBossCard } from '../../src/components/CoopBossCard';
 import { CoopRaidModal } from '../../src/components/CoopRaidModal';
+import { MissionCenterModal } from '../../src/components/MissionCenterModal';
+import { ProgramCenterModal } from '../../src/components/ProgramCenterModal';
+import { WarfrontDailyBoardModal } from '../../src/components/WarfrontDailyBoardModal';
+import { WeeklyRaidModal } from '../../src/components/WeeklyRaidModal';
+import { ScheduledProgramSession } from '../../src/types/program';
+import { EncounterTemplate, WeeklyRaidCycle } from '../../src/types/warfront';
+import { getMissionById } from '../../src/content/missions/catalog';
+import { MissionObjectiveDefinition } from '../../src/types/mission';
 import { calculateWorkoutXp } from '../../src/services/progression/xpCalculator';
 import { WorkoutExercise, ExerciseSet, XpBreakdown, WorkoutSession } from '../../src/types/workout';
 import { ExerciseDefinition } from '../../src/types/exercise';
@@ -51,13 +59,30 @@ export default function WorkoutScreen() {
     setActiveCoopRaid,
     currentFaction,
     currentSubfaction,
+    activeMissions,
+    activeEnrollment,
+    enrollInProgram,
+    pauseActiveProgram,
+    resumeActiveProgram,
+    startProgramWorkout,
+    dailyRotation,
+    weeklyRaid,
+    warfrontSettings,
+    setWarfrontSpawnDay,
+    deployDailyEncounter,
+    deployWeeklyRaid,
+    claimWeeklyRaidRewardsAction,
   } = useApp();
 
   // Exercise Library Modal State
   const [isLibraryModalVisible, setIsLibraryModalVisible] = useState(false);
+  const [isProgramModalVisible, setIsProgramModalVisible] = useState(false);
+  const [isDailyBoardModalVisible, setIsDailyBoardModalVisible] = useState(false);
+  const [isWeeklyRaidModalVisible, setIsWeeklyRaidModalVisible] = useState(false);
 
   // Combat Modals State
   const [isMissionModalVisible, setIsMissionModalVisible] = useState(false);
+  const [isFactionMissionCenterVisible, setIsFactionMissionCenterVisible] = useState(false);
   const [isCombatLogVisible, setIsCombatLogVisible] = useState(false);
   const [isCoopModalVisible, setIsCoopModalVisible] = useState(false);
   const [coopQueueStats, setCoopQueueStats] = useState(() => {
@@ -85,6 +110,19 @@ export default function WorkoutScreen() {
     () => getEnemyById(currentMission.enemyId),
     [currentMission.enemyId]
   );
+
+  const currentProgramSession: ScheduledProgramSession | null = useMemo(() => {
+    if (!activeEnrollment) return null;
+    const snap = activeEnrollment.programSnapshot;
+    const block =
+      snap.blocks.find(
+        (b) => b.blockNumber === activeEnrollment.currentBlockNumber
+      ) || snap.blocks[0];
+    if (!block || !block.sessions) return null;
+    return (
+      block.sessions[activeEnrollment.currentSessionIndex] || block.sessions[0]
+    );
+  }, [activeEnrollment]);
 
   // Pure functional combat encounter state derived from completed sets
   const combatState: CombatEncounterState = useMemo(() => {
@@ -484,6 +522,66 @@ export default function WorkoutScreen() {
             style={{ width: '100%', marginBottom: THEME.spacing.sm }}
           />
 
+          {/* Scheduled Program Quick Start */}
+          {activeEnrollment && currentProgramSession && !currentProgramSession.isRestDay && (
+            <TerminalButton
+              title={`DEPLOY SCHEDULED: ${currentProgramSession.title.toUpperCase()}`}
+              onPress={() => startProgramWorkout(currentProgramSession)}
+              variant="secondary"
+              size="md"
+              icon={<Ionicons name="flash-outline" size={16} color={THEME.colors.primary} />}
+              style={{ width: '100%', marginBottom: THEME.spacing.sm }}
+            />
+          )}
+
+          <TerminalButton
+            title={
+              activeEnrollment
+                ? `TRAINING PROGRAM: ${activeEnrollment.programTitle.toUpperCase()}`
+                : 'TRAINING PROGRAM CENTER'
+            }
+            onPress={() => setIsProgramModalVisible(true)}
+            variant="outline"
+            size="md"
+            icon={<Ionicons name="calendar-outline" size={16} color={THEME.colors.primary} />}
+            style={{ width: '100%', marginBottom: THEME.spacing.sm }}
+          />
+
+          <TerminalButton
+            title={
+              activeMissions.length > 0
+                ? `VIEW FACTION MISSIONS (${activeMissions.length} ACTIVE)`
+                : 'FACTION MISSION CENTER'
+            }
+            onPress={() => setIsFactionMissionCenterVisible(true)}
+            variant={activeMissions.length > 0 ? 'secondary' : 'outline'}
+            size="md"
+            icon={<Ionicons name="flag-outline" size={16} color={THEME.colors.primary} />}
+            style={{ width: '100%', marginBottom: THEME.spacing.sm }}
+          />
+
+          <TerminalButton
+            title="WARFRONT // DAILY ENGAGEMENTS"
+            onPress={() => setIsDailyBoardModalVisible(true)}
+            variant="secondary"
+            size="md"
+            icon={<Ionicons name="compass-outline" size={16} color={THEME.colors.primary} />}
+            style={{ width: '100%', marginBottom: THEME.spacing.sm }}
+          />
+
+          <TerminalButton
+            title={
+              weeklyRaid
+                ? `WEEKLY RAID: ${weeklyRaid.boss.name.toUpperCase()}`
+                : 'WEEKLY RAID BOSS'
+            }
+            onPress={() => setIsWeeklyRaidModalVisible(true)}
+            variant={weeklyRaid?.status === 'active' ? 'primary' : 'outline'}
+            size="md"
+            icon={<Ionicons name="skull-outline" size={16} color={THEME.colors.primary} />}
+            style={{ width: '100%', marginBottom: THEME.spacing.sm }}
+          />
+
           {mostRecent && (
             <TerminalButton
               title={`REPEAT RECENT: ${mostRecent.title.toUpperCase()}`}
@@ -507,6 +605,24 @@ export default function WorkoutScreen() {
           selectedMissionId={currentMission.id}
           onSelectMission={setCurrentMission}
           onClose={() => setIsMissionModalVisible(false)}
+        />
+
+        <MissionCenterModal
+          visible={isFactionMissionCenterVisible}
+          onClose={() => setIsFactionMissionCenterVisible(false)}
+        />
+
+        <ProgramCenterModal
+          visible={isProgramModalVisible}
+          onClose={() => setIsProgramModalVisible(false)}
+          activeEnrollment={activeEnrollment}
+          onEnrollProgram={enrollInProgram}
+          onPauseProgram={pauseActiveProgram}
+          onResumeProgram={resumeActiveProgram}
+          onStartScheduledWorkout={(session) => {
+            startProgramWorkout(session);
+            setIsProgramModalVisible(false);
+          }}
         />
       </SafeAreaView>
     );
@@ -601,6 +717,53 @@ export default function WorkoutScreen() {
           onOpenCombatLog={() => setIsCombatLogVisible(true)}
           onSwitchMission={() => setIsMissionModalVisible(true)}
         />
+
+        {/* Active Faction Directive Banner */}
+        {activeMissions.length > 0 && (() => {
+          const firstRecord = activeMissions[0];
+          const missionDef = firstRecord.mission || getMissionById(firstRecord.missionId);
+          if (!missionDef) return null;
+          return (
+            <TouchableOpacity
+              style={styles.activeMissionWorkoutBanner}
+              onPress={() => setIsFactionMissionCenterVisible(true)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.activeMissionWorkoutHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="flag-outline" size={14} color={THEME.colors.primary} />
+                  <Text style={styles.activeMissionWorkoutTag}>
+                    FACTION DIRECTIVE // {missionDef.category.toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={styles.activeMissionWorkoutLink}>DETAILS ›</Text>
+              </View>
+              <Text style={styles.activeMissionWorkoutTitle} numberOfLines={1}>
+                {missionDef.title}
+              </Text>
+              {missionDef.objectives.slice(0, 2).map((obj: MissionObjectiveDefinition) => {
+                const progRecord = firstRecord.objectives?.find((o) => o.objectiveId === obj.id);
+                const currentVal = progRecord ? progRecord.currentValue : 0;
+                const pct = Math.min(100, Math.round((currentVal / obj.targetValue) * 100));
+                return (
+                  <View key={obj.id} style={{ marginTop: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <Text style={styles.activeMissionWorkoutObjText} numberOfLines={1}>
+                        {obj.description}
+                      </Text>
+                      <Text style={styles.activeMissionWorkoutObjProgress}>
+                        {currentVal} / {obj.targetValue}
+                      </Text>
+                    </View>
+                    <View style={styles.miniProgressBarTrack}>
+                      <View style={[styles.miniProgressBarFill, { width: `${pct}%` }]} />
+                    </View>
+                  </View>
+                );
+              })}
+            </TouchableOpacity>
+          );
+        })()}
 
         {/* Real-time Estimated XP Banner */}
         {currentBreakdown && (
@@ -817,6 +980,52 @@ export default function WorkoutScreen() {
         }}
         activeRaid={activeCoopRaid}
         onSelectActiveRaid={setActiveCoopRaid}
+      />
+
+      {/* ==========================================
+          FACTION MISSION CENTER TERMINAL MODAL
+         ========================================== */}
+      <MissionCenterModal
+        visible={isFactionMissionCenterVisible}
+        onClose={() => setIsFactionMissionCenterVisible(false)}
+      />
+
+      <ProgramCenterModal
+        visible={isProgramModalVisible}
+        onClose={() => setIsProgramModalVisible(false)}
+        activeEnrollment={activeEnrollment}
+        onEnrollProgram={enrollInProgram}
+        onPauseProgram={pauseActiveProgram}
+        onResumeProgram={resumeActiveProgram}
+        onStartScheduledWorkout={(session) => {
+          startProgramWorkout(session);
+          setIsProgramModalVisible(false);
+        }}
+      />
+
+      {/* Warfront Daily Engagements Board Modal */}
+      <WarfrontDailyBoardModal
+        visible={isDailyBoardModalVisible}
+        onClose={() => setIsDailyBoardModalVisible(false)}
+        dailyRotation={dailyRotation}
+        onDeployEncounter={(enc) => {
+          deployDailyEncounter(enc);
+          setIsDailyBoardModalVisible(false);
+        }}
+      />
+
+      {/* Weekly Raid Boss Encounter Modal */}
+      <WeeklyRaidModal
+        visible={isWeeklyRaidModalVisible}
+        onClose={() => setIsWeeklyRaidModalVisible(false)}
+        weeklyRaid={weeklyRaid}
+        preferredSpawnDay={warfrontSettings.preferredSpawnDay}
+        onSetSpawnDay={setWarfrontSpawnDay}
+        onDeployRaidWorkout={(raid) => {
+          deployWeeklyRaid(raid);
+          setIsWeeklyRaidModalVisible(false);
+        }}
+        onClaimRewards={claimWeeklyRaidRewardsAction}
       />
     </SafeAreaView>
   );
@@ -1135,5 +1344,60 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  activeMissionWorkoutBanner: {
+    backgroundColor: '#0F1522',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
+    borderRadius: THEME.borderRadius.md,
+    padding: THEME.spacing.sm,
+    marginBottom: THEME.spacing.sm,
+  },
+  activeMissionWorkoutHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  activeMissionWorkoutTag: {
+    color: THEME.colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginLeft: 6,
+  },
+  activeMissionWorkoutLink: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  activeMissionWorkoutTitle: {
+    color: THEME.colors.textBright,
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  activeMissionWorkoutObjText: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+    flex: 1,
+    marginRight: 8,
+  },
+  activeMissionWorkoutObjProgress: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  miniProgressBarTrack: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginTop: 2,
+  },
+  miniProgressBarFill: {
+    height: '100%',
+    backgroundColor: THEME.colors.primary,
+    borderRadius: 2,
   },
 });

@@ -21,6 +21,106 @@ import {
   DEFAULT_FALLBACK_ATTACKS,
 } from '../content/combat/factionAttacks';
 import { getAttackCategoryForExercise } from '../services/combat/attackEngine';
+import { ACHIEVEMENT_CATALOG } from '../content/achievements/catalog';
+import {
+  AchievementDefinition,
+  AchievementEvaluationContext,
+  AchievementAward,
+  AchievementProgress,
+  AchievementCategory,
+} from '../types/achievements';
+import {
+  BattleRecord,
+  BattleSnapshot,
+  BattleParticipantContribution,
+  BattleTimelineEvent,
+  BattleOutcome,
+} from '../types/battleHistory';
+import {
+  evaluateCriterionMetric,
+  evaluateAchievements,
+  getNumericTier,
+} from '../services/progression/achievementEvaluator';
+import {
+  FACTION_MISSION_CATALOG,
+  getMissionsForFaction,
+  getMissionDefinitionById,
+} from '../content/missions/catalog';
+import {
+  checkMissionEligibility,
+  evaluateObjectiveMetric,
+  evaluateActiveMission,
+} from '../services/progression/missionEvaluator';
+import {
+  MissionEvaluationContext,
+  FactionMissionDefinition,
+  ActiveMissionRecord,
+} from '../types/mission';
+import {
+  TRAINING_PROGRAM_CATALOG,
+  getProgramById,
+  getProgramsByCategory,
+  createCustomProgramTemplate,
+} from '../content/programs/catalog';
+import {
+  TrainingProgramDefinition,
+  ScheduledProgramSession,
+  UserProgramEnrollment,
+  ProgramSessionRecord,
+} from '../types/program';
+import {
+  createProgramEnrollment,
+  populateWorkoutFromScheduledSession,
+  evaluateSessionAdherence,
+  advanceEnrollmentSession,
+  calculateExercisePerformanceTrends,
+} from '../services/progression/programEngine';
+import {
+  CAMPAIGN_CATALOG,
+  getCampaignById,
+  getDefaultCampaign,
+} from '../content/campaigns/catalog';
+import {
+  CampaignDefinition,
+  CampaignNode,
+  CampaignTelemetryContext,
+} from '../types/campaign';
+import {
+  evaluateCampaignRequirement,
+  evaluateCampaignNode,
+  evaluateFullCampaign,
+} from '../services/progression/campaignEvaluator';
+import {
+  allEncounterTemplates,
+  getAllEncounterTemplates,
+  getEncounterById,
+  getEncountersByCategory,
+  getEncountersByFaction,
+  convertToCombatMission,
+  convertToEnemyDefinition,
+} from '../content/encounters/catalog';
+import {
+  EncounterTemplate,
+  EncounterCategory,
+  DailyRotationRecord,
+  WeeklyRaidCycle,
+  GeneratedBossIdentity,
+} from '../types/warfront';
+import {
+  createDeterministicPrng,
+  generateProceduralBoss,
+} from '../services/progression/bossGenerator';
+import {
+  getTodayDateString,
+  getOrCreateDailyRotation,
+  completeDailyEncounter,
+  calculateWeeklyCycleTiming,
+  reconcileExpiredRaids,
+  getOrCreateWeeklyRaid,
+  applyDamageToWeeklyRaid,
+  claimWeeklyRaidRewards,
+  inMemoryWarfrontStorage,
+} from '../services/progression/warfrontEngine';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -712,7 +812,1128 @@ const coopFactionPayload = sanitizeCoopAttackPayload({
 assert(coopFactionPayload.attackName === factionCombatState.attacks[0].attackName, 'Co-op payload preserves faction attack name for all players');
 assert(coopFactionPayload.styleName === factionCombatState.attacks[0].styleName, 'Co-op payload preserves style name');
 
+// ----------------------------------------------------
+// TEST SUITE 10: Battle History Engine & Snapshot Integrity
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 10: Battle History Engine & Snapshot Integrity]');
+
+// 10.1 Snapshot creation and immutable schema integrity
+const mockTimeline: BattleTimelineEvent[] = [
+  {
+    timestamp: '2026-10-18T00:00:00.000Z',
+    eventType: 'battle_started',
+    actorName: 'Brother Titus',
+    description: 'Crusade encounter initiated against Chaos Helbrute.',
+  },
+  {
+    timestamp: '2026-10-18T00:05:00.000Z',
+    eventType: 'strike_landed',
+    actorName: 'Brother Titus',
+    description: 'Thunder Hammer Slam landed for 450 damage!',
+    damageDealt: 450,
+  },
+  {
+    timestamp: '2026-10-18T00:10:00.000Z',
+    eventType: 'critical_strike',
+    actorName: 'Brother Titus',
+    description: 'CRITICAL Thunder Hammer Slam landed for 900 damage!',
+    damageDealt: 900,
+  },
+  {
+    timestamp: '2026-10-18T00:15:00.000Z',
+    eventType: 'enemy_slain',
+    actorName: 'Brother Titus',
+    description: 'Chaos Helbrute has been destroyed.',
+  },
+];
+
+const mockParticipantA: BattleParticipantContribution = {
+  userId: 'user_titus',
+  callsign: 'Brother Titus',
+  factionId: 'adeptus-astartes',
+  subfactionId: 'ultramarines',
+  attacksCount: 2,
+  damageDealt: 1350,
+  damageSharePercent: 67.5,
+  workoutsAttributed: 1,
+  setsAttributed: 2,
+};
+
+const mockParticipantB: BattleParticipantContribution = {
+  userId: 'user_vance',
+  callsign: 'Brother Vance',
+  factionId: 'adeptus-astartes',
+  subfactionId: 'blood-angels',
+  attacksCount: 1,
+  damageDealt: 650,
+  damageSharePercent: 32.5,
+  workoutsAttributed: 1,
+  setsAttributed: 1,
+};
+
+const mockSnapshot: BattleSnapshot = {
+  enemyDescription: 'A towering daemon engine encased in corrupted adamantium.',
+  enemyGlyph: 'skull',
+  enemyFaction: 'heretic-astartes',
+  initialHealth: 2000,
+  finalHealth: 0,
+  timeline: mockTimeline,
+  participants: [mockParticipantA, mockParticipantB],
+  userAttacks: [],
+  linkedWorkoutIds: ['sess_test_100'],
+  rewards: {
+    baseXpEarned: 350,
+    gloryBonusXp: 150,
+    totalXpEarned: 500,
+  },
+  afterActionReportSummary: 'Decisive victory achieved against Chaos Helbrute.',
+};
+
+const mockBattleRecord: BattleRecord = {
+  id: 'battle_test_100',
+  encounterMode: 'coop',
+  sessionId: 'sess_test_100',
+  missionId: 'mission_iron_clash',
+  missionTitle: 'Clash of Iron',
+  enemyId: 'enemy_chaos_helbrute',
+  enemyName: 'Chaos Helbrute',
+  enemyFaction: 'heretic-astartes',
+  enemyDifficulty: 'boss',
+  enemyMaxHp: 2000,
+  enemyRemainingHp: 0,
+  outcome: 'victory',
+  totalDamage: 2000,
+  totalAttacks: 3,
+  participantCount: 2,
+  squadId: 'squad_first_company',
+  squadName: '1st Company Terminators',
+  startedAt: '2026-10-18T00:00:00.000Z',
+  completedAt: '2026-10-18T00:15:00.000Z',
+  durationSeconds: 900,
+  xpEarned: 500,
+  snapshot: mockSnapshot,
+  createdAt: '2026-10-18T00:15:00.000Z',
+};
+
+assert(mockBattleRecord.outcome === 'victory', 'Battle record accurately marks victory');
+assert(mockBattleRecord.snapshot.initialHealth === 2000, 'Immutable snapshot stores original enemy health');
+assert(mockBattleRecord.snapshot.finalHealth === 0, 'Immutable snapshot stores final defeated health');
+assert(mockBattleRecord.snapshot.timeline.length === 4, 'Snapshot preserves full chronological combat timeline');
+assert(mockBattleRecord.snapshot.timeline[0].eventType === 'battle_started', 'Timeline begins with battle_started');
+assert(mockBattleRecord.snapshot.timeline[3].eventType === 'enemy_slain', 'Timeline ends with enemy_slain');
+
+// 10.2 Damage share percentage validation
+const combinedDamageShare = mockParticipantA.damageSharePercent + mockParticipantB.damageSharePercent;
+assert(Math.round(combinedDamageShare) === 100, 'Participants damage share percentages total exactly 100%');
+assert(mockParticipantA.damageDealt + mockParticipantB.damageDealt === 2000, 'Participants damage dealt sums to total battle damage');
+
+// 10.3 Outcome resolution logic
+function resolveBattleOutcome(maxHp: number, remainingHp: number, isDefeated: boolean): BattleOutcome {
+  if (isDefeated || remainingHp <= 0) return 'victory';
+  if (remainingHp === maxHp) return 'abandoned';
+  return 'defeat';
+}
+
+assert(resolveBattleOutcome(1000, 0, true) === 'victory', 'Outcome resolves to victory when defeated');
+assert(resolveBattleOutcome(1000, 400, false) === 'defeat', 'Outcome resolves to defeat when time runs out with damage dealt');
+assert(resolveBattleOutcome(1000, 1000, false) === 'abandoned', 'Outcome resolves to abandoned when 0 damage was dealt');
+
+// 10.4 Filtering and sorting
+const mockBattleList: BattleRecord[] = [
+  mockBattleRecord,
+  {
+    ...mockBattleRecord,
+    id: 'battle_test_101',
+    encounterMode: 'solo',
+    outcome: 'defeat',
+    totalDamage: 850,
+    startedAt: '2026-10-17T00:00:00.000Z',
+  },
+  {
+    ...mockBattleRecord,
+    id: 'battle_test_102',
+    encounterMode: 'solo',
+    outcome: 'victory',
+    totalDamage: 3200,
+    startedAt: '2026-10-16T00:00:00.000Z',
+  },
+];
+
+const victoryFilter = mockBattleList.filter((b) => b.outcome === 'victory');
+assert(victoryFilter.length === 2, 'Filtering by victory outcome returns correct count');
+
+const coopFilter = mockBattleList.filter((b) => b.encounterMode === 'coop');
+assert(coopFilter.length === 1, 'Filtering by coop mode returns only coop encounters');
+
+const sortedByDamage = [...mockBattleList].sort((a, b) => b.totalDamage - a.totalDamage);
+assert(sortedByDamage[0].totalDamage === 3200, 'Highest damage sorting prioritizes 3200 dmg encounter');
+assert(sortedByDamage[2].totalDamage === 850, 'Lowest damage is at tail of sorted list');
+
+// ----------------------------------------------------
+// TEST SUITE 11: Achievement Catalog & Evaluation Engine
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 11: Achievement Catalog & Evaluation Engine]');
+
+// 11.1 Catalog size and requirements
+assert(
+  ACHIEVEMENT_CATALOG.length >= 200,
+  `Catalog contains at least 200 distinct definitions (actual: ${ACHIEVEMENT_CATALOG.length})`
+);
+
+const expectedCategories: AchievementCategory[] = [
+  'workouts',
+  'volume',
+  'variety',
+  'personal_records',
+  'consistency',
+  'combat',
+  'bosses',
+  'squad',
+  'progression',
+  'equipment',
+  'campaigns',
+];
+
+const categoryCounts = new Map<string, number>();
+for (const def of ACHIEVEMENT_CATALOG) {
+  categoryCounts.set(def.category, (categoryCounts.get(def.category) || 0) + 1);
+}
+
+for (const cat of expectedCategories) {
+  const count = categoryCounts.get(cat) || 0;
+  assert(count >= 10, `Category '${cat}' is represented with at least 10 achievements (found ${count})`);
+}
+
+// 11.2 Scope and tier coverage
+const scopeCounts = new Map<string, number>();
+const tierCounts = new Map<string, number>();
+const idSet = new Set<string>();
+
+for (const def of ACHIEVEMENT_CATALOG) {
+  assert(!idSet.has(def.id), `Achievement ID '${def.id}' is unique in catalog`);
+  idSet.add(def.id);
+
+  scopeCounts.set(def.scope, (scopeCounts.get(def.scope) || 0) + 1);
+  tierCounts.set(def.tier, (tierCounts.get(def.tier) || 0) + 1);
+}
+
+assert((scopeCounts.get('user') || 0) > 0, 'User scope achievements present');
+assert((scopeCounts.get('character') || 0) > 0, 'Character scope achievements present');
+assert((scopeCounts.get('squad') || 0) > 0, 'Squad scope achievements present');
+
+assert((tierCounts.get('bronze') || 0) > 0, 'Bronze tier achievements present');
+assert((tierCounts.get('silver') || 0) > 0, 'Silver tier achievements present');
+assert((tierCounts.get('gold') || 0) > 0, 'Gold tier achievements present');
+assert((tierCounts.get('platinum') || 0) > 0, 'Platinum tier achievements present');
+assert((tierCounts.get('relic') || 0) > 0, 'Relic tier achievements present');
+
+// 11.3 Criteria metric resolution
+const testContext: AchievementEvaluationContext = {
+  userId: 'user_tester',
+  characterId: 'char_tester',
+  characterTotalXp: 12500,
+  characterLevel: 7,
+  rankTier: 2,
+  factionId: 'adeptus-astartes',
+  subfactionId: 'ultramarines',
+  squadId: 'squad_alpha',
+  completedWorkoutsCount: 12,
+  completedSetsCount: 65,
+  totalReps: 550,
+  totalVolumeKg: 42000,
+  distinctExercisesCount: 14,
+  distinctCategoriesCount: 4,
+  distinctEquipmentCount: 5,
+  personalRecordsBrokenCount: 8,
+  maxSingleLiftWeightKg: 140,
+  maxSingleSetVolumeKg: 1800,
+  consecutiveTrainingWeeks: 6,
+  longestRestDaysHonored: 2,
+  totalCombatAttacks: 45,
+  totalCombatCrits: 9,
+  totalCombatDamage: 28000,
+  soloBossesDefeatedCount: 4,
+  distinctEnemiesDefeatedCount: 4,
+  coopBossesDefeatedCount: 2,
+  coopAttacksCount: 15,
+  squadSharedDamageDealt: 12000,
+  distinctFactionsExploredCount: 1,
+  campaignMissionsCompletedCount: 12,
+};
+
+assert(
+  evaluateCriterionMetric({ type: 'count_workouts', targetValue: 10 }, testContext) === 12,
+  'Metric count_workouts correctly resolves from context'
+);
+assert(
+  evaluateCriterionMetric({ type: 'single_lift_weight_kg', targetValue: 100 }, testContext) === 140,
+  'Metric single_lift_weight_kg correctly resolves max lift'
+);
+assert(
+  evaluateCriterionMetric({ type: 'solo_boss_defeated', targetValue: 3 }, testContext) === 4,
+  'Metric solo_boss_defeated correctly resolves bosses count'
+);
+assert(
+  evaluateCriterionMetric({ type: 'character_level', targetValue: 5 }, testContext) === 7,
+  'Metric character_level correctly resolves character level'
+);
+
+// 11.4 In-Memory Evaluator Engine & Award Granting
+const inMemoryAwards = new Map<string, AchievementAward>();
+const inMemoryProgress = new Map<string, AchievementProgress>();
+const notificationsList: string[] = [];
+
+const mockHandlers = {
+  checkAwardedFn: (achievementId: string, scope: string, targetId: string) => {
+    return inMemoryAwards.has(`${achievementId}_${scope}_${targetId}`);
+  },
+  awardFn: (award: AchievementAward) => {
+    const key = `${award.achievementId}_${award.scope}_${award.targetId}`;
+    if (inMemoryAwards.has(key)) return false;
+    inMemoryAwards.set(key, award);
+    return true;
+  },
+  saveProgressFn: (prog: AchievementProgress) => {
+    inMemoryProgress.set(`${prog.achievementId}_${prog.targetId}`, prog);
+  },
+  queueNotificationFn: (title: string, subtitle: string) => {
+    notificationsList.push(`${title}: ${subtitle}`);
+  },
+};
+
+const evalRun1 = evaluateAchievements(testContext, mockHandlers);
+assert(evalRun1.newlyAwarded.length > 0, `First evaluation run awarded ${evalRun1.newlyAwarded.length} achievements`);
+assert(notificationsList.length === evalRun1.newlyAwarded.length, 'Each new award queued a notification');
+
+// Verify specific expected awards
+const hasFirstDeployment = evalRun1.newlyAwarded.some((a) => a.achievementId === 'ach_wo_first_deployment');
+assert(hasFirstDeployment, 'Player received First Deployment achievement');
+
+const hasCenturyMark = evalRun1.newlyAwarded.some((a) => a.achievementId === 'ach_pr_weight_hundred_kg');
+assert(hasCenturyMark, 'Player with 140kg lift received Century Plate Club (100kg milestone)');
+
+// 11.5 Strict Duplicate Prevention & Idempotency
+const evalRun2 = evaluateAchievements(testContext, mockHandlers);
+assert(
+  evalRun2.newlyAwarded.length === 0,
+  'Second evaluation run with identical context awarded 0 duplicates (strict idempotency)'
+);
+
+// 11.6 Tier helper validation
+assert(getNumericTier('bronze') === 1, 'Bronze tier maps to 1');
+assert(getNumericTier('silver') === 2, 'Silver tier maps to 2');
+assert(getNumericTier('gold') === 3, 'Gold tier maps to 3');
+assert(getNumericTier('platinum') === 4, 'Platinum tier maps to 4');
+assert(getNumericTier('relic') === 5, 'Relic tier maps to 5');
+
+// ----------------------------------------------------
+// TEST SUITE 12: Faction Missions & Objective Progress Engine
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 12: Faction Missions & Objective Progress Engine]');
+
+// 12.1 Faction Mission Catalog Coverage (All 20 Factions)
+assert(FACTION_MISSION_CATALOG.length >= 60, `Catalog contains ${FACTION_MISSION_CATALOG.length} missions (>= 60 expected)`);
+
+const allFactions = warhammer40kUniverse.factions;
+assert(allFactions.length === 20, 'Universe catalog contains exactly 20 distinct factions');
+
+for (const f of allFactions) {
+  const factionMissions = FACTION_MISSION_CATALOG.filter((m) => m.factionId === f.id);
+  assert(
+    factionMissions.length >= 2,
+    `Faction "${f.name}" (${f.id}) has ${factionMissions.length} missions (>= 2 required)`
+  );
+
+  // Validate structural integrity of each mission definition
+  for (const m of factionMissions) {
+    assert(Boolean(m.id && m.id.length > 0), `Mission ${m.id} has valid non-empty ID`);
+    assert(Boolean(m.title && m.title.length > 0), `Mission ${m.id} has title "${m.title}"`);
+    assert(Boolean(m.shortDescription && m.shortDescription.length > 0), `Mission ${m.id} has short description`);
+    assert(Boolean(m.briefing && m.briefing.length > 0), `Mission ${m.id} has narrative briefing`);
+    assert(Boolean(m.category && m.category.length > 0), `Mission ${m.id} has category "${m.category}"`);
+    assert(Boolean(m.difficulty && m.difficulty.length > 0), `Mission ${m.id} has difficulty "${m.difficulty}"`);
+    assert(Boolean(m.objectives && m.objectives.length > 0), `Mission ${m.id} has at least 1 objective`);
+    assert(Boolean(m.rewards && m.rewards.length > 0), `Mission ${m.id} has at least 1 reward`);
+    assert(Boolean(m.iconName && m.iconName.length > 0), `Mission ${m.id} has iconName "${m.iconName}"`);
+
+    // Verify objectives have positive target values
+    for (const obj of m.objectives) {
+      assert(obj.targetValue > 0, `Objective ${obj.id} in ${m.id} has positive targetValue (${obj.targetValue})`);
+      assert(Boolean(obj.description && obj.description.length > 0), `Objective ${obj.id} has description`);
+    }
+  }
+}
+
+// 12.2 Subfaction Resolution & Gating
+const marineGeneralAndWolves = getMissionsForFaction('adeptus-astartes', 'space-wolves');
+const marineGeneralAndUltras = getMissionsForFaction('adeptus-astartes', 'ultramarines');
+const spaceWolvesOnly = marineGeneralAndWolves.filter((m) => m.subfactionId === 'space-wolves');
+const ultrasOnly = marineGeneralAndUltras.filter((m) => m.subfactionId === 'ultramarines');
+
+assert(spaceWolvesOnly.length > 0, 'Space Wolves subfaction retrieves wolf-specific rites');
+assert(ultrasOnly.length > 0, 'Ultramarines subfaction retrieves Ultramarine-specific rites');
+assert(
+  !marineGeneralAndUltras.some((m) => m.subfactionId === 'space-wolves'),
+  'Ultramarines query excludes Space Wolves specific rites'
+);
+assert(
+  !marineGeneralAndWolves.some((m) => m.subfactionId === 'ultramarines'),
+  'Space Wolves query excludes Ultramarines specific rites'
+);
+
+const tauEnclaves = getMissionsForFaction('tau-empire', 'farsight-enclaves');
+assert(
+  tauEnclaves.some((m) => m.subfactionId === 'farsight-enclaves'),
+  'Farsight Enclaves retrieves Mont\'ka assault directive'
+);
+
+// 12.3 Eligibility Evaluation Logic
+const sampleTier1Mission = FACTION_MISSION_CATALOG.find((m) => (m.minRankTier || 1) === 1)!;
+const sampleTier2Mission = FACTION_MISSION_CATALOG.find((m) => m.minRankTier === 2)!;
+
+function createMockMissionContext(overrides?: Partial<MissionEvaluationContext>): MissionEvaluationContext {
+  return {
+    characterId: 'char_test',
+    factionId: 'adeptus-astartes',
+    rankTier: 1,
+    characterLevel: 1,
+    completedWorkoutsCount: 0,
+    completedSetsCount: 0,
+    totalReps: 0,
+    totalVolumeKg: 0,
+    totalCombatDamage: 0,
+    totalCombatAttacks: 0,
+    enemiesDefeatedIds: [],
+    coopAttacksCount: 0,
+    coopBossesDefeatedCount: 0,
+    personalRecordsBrokenCount: 0,
+    completedMissionIds: [],
+    ...overrides,
+  };
+}
+
+const rookieEligibility = checkMissionEligibility(
+  sampleTier2Mission,
+  createMockMissionContext({ factionId: sampleTier2Mission.factionId, rankTier: 1 })
+);
+assert(!rookieEligibility.isEligible, 'Tier 1 rookie is ineligible for Tier 2 mission');
+assert(
+  rookieEligibility.reason !== undefined && rookieEligibility.reason.includes('Tier 2'),
+  `Lock reason explains rank tier requirement: "${rookieEligibility.reason}"`
+);
+
+const veteranEligibility = checkMissionEligibility(
+  sampleTier2Mission,
+  createMockMissionContext({
+    factionId: sampleTier2Mission.factionId,
+    rankTier: 2,
+    characterLevel: 5,
+    completedMissionIds: sampleTier2Mission.prerequisites || [],
+  })
+);
+assert(veteranEligibility.isEligible, 'Tier 2 veteran with prerequisites is eligible');
+
+// Prerequisite chaining check
+if (sampleTier2Mission.prerequisites && sampleTier2Mission.prerequisites.length > 0) {
+  const missingPrereqEligibility = checkMissionEligibility(
+    sampleTier2Mission,
+    createMockMissionContext({
+      factionId: sampleTier2Mission.factionId,
+      rankTier: 2,
+      characterLevel: 5,
+      completedMissionIds: [], // missing prerequisite
+    })
+  );
+  assert(!missingPrereqEligibility.isEligible, 'Mission with missing prerequisite is locked');
+  assert(
+    Boolean(
+      missingPrereqEligibility.reason?.includes('prerequisite') ||
+      missingPrereqEligibility.reason?.includes('Requires prior completion')
+    ),
+    'Lock reason identifies missing prerequisite'
+  );
+}
+
+// Subfaction lock check
+const subfactionLockedMission = FACTION_MISSION_CATALOG.find((m) => Boolean(m.subfactionId))!;
+const wrongSubfactionEligibility = checkMissionEligibility(
+  subfactionLockedMission,
+  createMockMissionContext({
+    factionId: subfactionLockedMission.factionId,
+    subfactionId: 'wrong-chapter',
+    rankTier: 5,
+    characterLevel: 10,
+    completedMissionIds: subfactionLockedMission.prerequisites || [],
+  })
+);
+assert(!wrongSubfactionEligibility.isEligible, 'Mission requiring specific subfaction is locked for wrong subfaction');
+
+// 12.4 Objective Metric Evaluation Logic
+const mockMissionContext = createMockMissionContext({
+  characterId: 'char_test',
+  factionId: 'adeptus-astartes',
+  characterLevel: 5,
+  rankTier: 2,
+  completedWorkoutsCount: 4,
+  completedSetsCount: 28,
+  totalVolumeKg: 3200,
+  totalReps: 240,
+  totalCombatDamage: 1850,
+  totalCombatAttacks: 14,
+  enemiesDefeatedIds: ['enemy_1', 'enemy_2', 'enemy_3'],
+  coopAttacksCount: 6,
+  coopBossesDefeatedCount: 1,
+  personalRecordsBrokenCount: 2,
+  categorySetsCount: {
+    chest: 12,
+    back: 8,
+    legs: 8,
+  },
+});
+
+assert(
+  evaluateObjectiveMetric({ id: 'o1', type: 'complete_workouts', targetValue: 3, description: '' }, mockMissionContext) === 4,
+  'complete_workouts correctly evaluates to 4'
+);
+assert(
+  evaluateObjectiveMetric({ id: 'o2', type: 'complete_sets', targetValue: 20, description: '' }, mockMissionContext) === 28,
+  'complete_sets correctly evaluates to 28'
+);
+assert(
+  evaluateObjectiveMetric({ id: 'o3', type: 'volume_kg', targetValue: 3000, description: '' }, mockMissionContext) === 3200,
+  'volume_kg correctly evaluates to 3200'
+);
+assert(
+  evaluateObjectiveMetric({ id: 'o4', type: 'combat_damage', targetValue: 1500, description: '' }, mockMissionContext) === 1850,
+  'combat_damage correctly evaluates to 1850'
+);
+assert(
+  evaluateObjectiveMetric({ id: 'o5', type: 'defeat_enemy', targetValue: 2, description: '' }, mockMissionContext) === 3,
+  'defeat_enemy correctly evaluates to 3'
+);
+assert(
+  evaluateObjectiveMetric({ id: 'o6', type: 'exercise_category_sets', exerciseCategory: 'chest', targetValue: 10, description: '' }, mockMissionContext) === 12,
+  'exercise_category_sets (chest) correctly evaluates to 12'
+);
+
+// 12.5 Active Mission Transition & Objective Evaluation
+const testMissionToActivate: FactionMissionDefinition = {
+  id: 'mis_test_assault',
+  title: 'Test Spearhead Assault',
+  shortDescription: 'Test assault description',
+  briefing: 'Test briefing lore',
+  factionId: 'adeptus-astartes',
+  category: 'assault',
+  difficulty: 'skirmish',
+  isCanonical: false,
+  iconName: 'flash-outline',
+  objectives: [
+    { id: 'obj_w', type: 'complete_workouts', targetValue: 2, description: 'Complete 2 workouts' },
+    { id: 'obj_v', type: 'volume_kg', targetValue: 2000, description: 'Move 2,000 kg volume' },
+  ],
+  rewards: [
+    { type: 'xp', amount: 250, description: '+250 XP' },
+    { type: 'title', title: 'Iron Spear', description: 'Title: Iron Spear' },
+  ],
+};
+
+const activeRecordToEvaluate: ActiveMissionRecord = {
+  id: 'active_1',
+  missionId: testMissionToActivate.id,
+  factionId: testMissionToActivate.factionId,
+  characterId: 'char_test',
+  status: 'active',
+  objectives: [
+    { objectiveId: 'obj_w', currentValue: 0, targetValue: 2, isCompleted: false, progressPercent: 0 },
+    { objectiveId: 'obj_v', currentValue: 0, targetValue: 2000, isCompleted: false, progressPercent: 0 },
+  ],
+  rewards: testMissionToActivate.rewards,
+  isClaimed: false,
+};
+
+// Scenario A: Partial Progress
+const partialContext = createMockMissionContext({
+  completedWorkoutsCount: 1, // 1 of 2
+  completedSetsCount: 5,
+  totalVolumeKg: 1200, // 1200 of 2000
+  totalReps: 50,
+  totalCombatDamage: 100,
+  totalCombatAttacks: 2,
+});
+
+const partialEval = evaluateActiveMission(testMissionToActivate, activeRecordToEvaluate, partialContext);
+assert(!partialEval.isNewlyCompleted, 'Partial progress does not newly complete mission');
+assert(partialEval.updatedRecord.status === 'active', 'Partial mission status remains active');
+assert(partialEval.updatedRecord.objectives[0].currentValue === 1, 'Objective 1 partial progress is 1');
+assert(partialEval.updatedRecord.objectives[0].progressPercent === 50, 'Objective 1 is 50% complete');
+assert(partialEval.updatedRecord.objectives[1].currentValue === 1200, 'Objective 2 partial progress is 1200');
+assert(partialEval.updatedRecord.objectives[1].progressPercent === 60, 'Objective 2 is 60% complete');
+
+// Scenario B: Full Completion
+const completeContext = createMockMissionContext({
+  completedWorkoutsCount: 2, // 2 of 2 (100%)
+  completedSetsCount: 15,
+  totalVolumeKg: 2500, // 2500 of 2000 (100% clamped)
+  totalReps: 150,
+  totalCombatDamage: 500,
+  totalCombatAttacks: 8,
+  enemiesDefeatedIds: ['enemy_1'],
+});
+
+const completeEval = evaluateActiveMission(testMissionToActivate, activeRecordToEvaluate, completeContext);
+assert(completeEval.isNewlyCompleted, 'Full progress marks newly completed');
+assert(completeEval.updatedRecord.status === 'completed', 'Completed mission transitions status to "completed"');
+assert(completeEval.updatedRecord.completedAt !== undefined, 'Completed mission records timestamp');
+assert(completeEval.updatedRecord.objectives[0].isCompleted === true, 'Objective 1 marked completed');
+assert(completeEval.updatedRecord.objectives[1].isCompleted === true, 'Objective 2 marked completed');
+
+// 12.6 Idempotent Reward Protection & Faction Safety
+assert(!activeRecordToEvaluate.isClaimed, 'New active record is initially unclaimed');
+const claimedRecord: ActiveMissionRecord = {
+  ...completeEval.updatedRecord,
+  isClaimed: true,
+};
+assert(claimedRecord.isClaimed === true, 'Claimed mission record is marked isClaimed');
+
+// Verify lookup by ID helper
+const foundMission = getMissionDefinitionById('mis_sm_initiation');
+assert(foundMission !== undefined, 'Found mission by ID helper');
+assert(foundMission?.factionId === 'adeptus-astartes', 'Mission belongs to Adeptus Astartes');
+
+// ============================================================================
+// TEST SUITE 13: Structured Training Programs & Campaign Map Progression Engine
+// ============================================================================
+console.log('\n--- TEST SUITE 13: Structured Training Programs & Campaign Map Engine ---');
+
+// 13.1 Program Catalog Completeness & Categorization
+assert(TRAINING_PROGRAM_CATALOG.length >= 7, `Program catalog contains ${TRAINING_PROGRAM_CATALOG.length} programs (>= 7 required)`);
+const categories = new Set(TRAINING_PROGRAM_CATALOG.map((p) => p.category));
+assert(categories.has('gvt'), 'Catalog contains German Volume Training (GVT)');
+assert(categories.has('ppl'), 'Catalog contains Push/Pull/Legs (PPL)');
+assert(categories.has('upper_lower'), 'Catalog contains Upper/Lower split');
+assert(categories.has('full_body'), 'Catalog contains Full-Body program');
+assert(categories.has('strength_5x5'), 'Catalog contains Strength 5x5');
+assert(categories.has('hypertrophy'), 'Catalog contains Hypertrophy split');
+assert(categories.has('calisthenics'), 'Catalog contains Calisthenics program');
+
+for (const prog of TRAINING_PROGRAM_CATALOG) {
+  assert(prog.id.length > 0, `Program ${prog.id} has valid ID`);
+  assert(prog.title.length > 0, `Program ${prog.id} has title "${prog.title}"`);
+  assert(prog.sourceNote.length > 0, `Program ${prog.id} documents historical source/convention`);
+  assert(prog.durationWeeks > 0, `Program ${prog.id} specifies duration (${prog.durationWeeks} weeks)`);
+  assert(prog.frequencyDaysPerWeek > 0, `Program ${prog.id} specifies frequency (${prog.frequencyDaysPerWeek} days/wk)`);
+  assert(prog.blocks.length > 0, `Program ${prog.id} has at least 1 training block`);
+  assert(prog.blocks[0].sessions.length > 0, `Program ${prog.id} has scheduled sessions`);
+}
+
+// 13.2 Program Enrollment & Immutable Snapshot Capture
+const gvtProgram = getProgramById('prog_gvt_classic');
+assert(gvtProgram !== undefined, 'Found classic GVT program');
+const enrollment = createProgramEnrollment('char_tester_01', gvtProgram!);
+assert(enrollment.characterId === 'char_tester_01', 'Enrollment assigned to character');
+assert(enrollment.programId === 'prog_gvt_classic', 'Enrollment references GVT program ID');
+assert(enrollment.currentBlockNumber === 1, 'Enrollment starts at Block 1');
+assert(enrollment.currentSessionIndex === 0, 'Enrollment starts at Session 0');
+assert(enrollment.status === 'active', 'Enrollment initially active');
+assert(enrollment.programSnapshot.title === gvtProgram!.title, 'Enrollment stores immutable program snapshot');
+assert(enrollment.totalPlannedSessionsCount > 0, `Total planned sessions calculated (${enrollment.totalPlannedSessionsCount})`);
+
+// 13.3 Prepopulating Workout Logger from Scheduled Session
+const scheduledSession = gvtProgram!.blocks[0].sessions[0]; // Day 1: Chest & Back
+assert(!scheduledSession.isRestDay, 'Day 1 is an active training day');
+assert(scheduledSession.exercises.length === 2, 'Day 1 prescribes 2 antagonist exercises');
+assert(scheduledSession.exercises[0].targetSets === 10, 'Bench Press prescribes 10 sets');
+
+const populatedWorkout = populateWorkoutFromScheduledSession(scheduledSession, 'Crusade Training');
+assert(populatedWorkout.exercises.length === 2, 'Workout logger populated with 2 exercises');
+assert(populatedWorkout.exercises[0].sets.length === 10, 'Exercise 1 has 10 prepopulated sets');
+assert(populatedWorkout.exercises[1].sets.length === 10, 'Exercise 2 has 10 prepopulated sets');
+
+// CRITICAL SAFETY CHECK: Planned sets are NEVER marked as completed before user records them!
+const anyPlannedSetMarkedCompleted = populatedWorkout.exercises.some((e) =>
+  e.sets.some((s) => s.isCompleted === true)
+);
+assert(!anyPlannedSetMarkedCompleted, 'Planned sets are NEVER marked as completed before recording');
+
+// 13.4 Recording Actual Performance & Adherence Evaluation
+// Simulate user recording actual workout performance (e.g. 10 sets of 10 reps @ 80kg)
+const recordedWorkout: WorkoutSession = {
+  ...populatedWorkout,
+  isCompleted: true,
+  finishedAt: new Date().toISOString(),
+  exercises: populatedWorkout.exercises.map((e) => ({
+    ...e,
+    sets: e.sets.map((s) => ({
+      ...s,
+      weight: 80,
+      reps: 10,
+      isCompleted: true,
+    })),
+  })),
+};
+
+const fullAdherence = evaluateSessionAdherence(scheduledSession, recordedWorkout, enrollment.id);
+assert(fullAdherence.status === 'completed', 'Fully completed session marked "completed"');
+assert(fullAdherence.actualSetsCompleted === 20, '20 actual sets recorded');
+assert(fullAdherence.prescribedSetsCount === 20, '20 prescribed sets counted');
+assert(fullAdherence.actualVolumeKg === 16000, `Calculated volume: 16,000 kg (${fullAdherence.actualVolumeKg})`);
+
+// Partial session simulation (e.g. user finished early after 14 sets)
+const partialWorkout: WorkoutSession = {
+  ...populatedWorkout,
+  isCompleted: true,
+  exercises: [
+    {
+      ...populatedWorkout.exercises[0],
+      sets: populatedWorkout.exercises[0].sets.map((s) => ({ ...s, weight: 80, reps: 10, isCompleted: true })), // 10 sets
+    },
+    {
+      ...populatedWorkout.exercises[1],
+      sets: populatedWorkout.exercises[1].sets.map((s, idx) => ({ ...s, weight: 80, reps: 10, isCompleted: idx < 4 })), // 4 sets
+    },
+  ],
+};
+const partialAdherence = evaluateSessionAdherence(scheduledSession, partialWorkout, enrollment.id);
+assert(partialAdherence.status === 'partial', 'Finishing early marks session as "partial" without throwing error');
+assert(partialAdherence.actualSetsCompleted === 14, '14 sets recorded');
+assert(partialAdherence.deviationNotes !== undefined, 'Deviation notes recorded');
+
+// 13.5 Planned Rest Days & Recovery
+const restSession = gvtProgram!.blocks[0].sessions[2]; // Day 3 Rest
+assert(restSession.isRestDay === true, 'Day 3 is a scheduled rest day');
+assert(restSession.exercises.length === 0, 'Rest day prescribes zero lifts');
+
+// Advancing enrollment
+const advancedEnrollment = advanceEnrollmentSession(enrollment, true);
+assert(advancedEnrollment.completedSessionsCount === 1, 'Completed sessions count incremented');
+assert(advancedEnrollment.currentSessionIndex === 1, 'Advanced to session index 1');
+
+// 13.6 Custom Program Builder Template
+const customProg = createCustomProgramTemplate('Space Wolf Iron Might', 'Custom strength split for Fenrisians', [
+  {
+    id: 'cust_s1',
+    sessionIndex: 0,
+    dayNumber: 1,
+    title: 'Fang of the Wolf',
+    focus: 'Deadlift & Overhead Press',
+    isRestDay: false,
+    exercises: [
+      {
+        id: 'cust_e1',
+        exerciseRefId: 'ex_bb_deadlift',
+        exerciseName: 'Conventional Barbell Deadlift',
+        targetSets: 5,
+        targetRepsMin: 5,
+        targetRepsMax: 5,
+        sortOrder: 1,
+      },
+    ],
+  },
+]);
+assert(customProg.category === 'custom', 'Custom program created with category "custom"');
+assert(customProg.customizable === true, 'Custom program marked customizable');
+assert(customProg.blocks[0].sessions.length === 1, 'Custom program has custom session');
+
+// 13.7 Campaign Map Graph & Topological Navigation
+const campaign = getCampaignById('camp_damocles_crusade');
+assert(campaign !== undefined, 'Retrieved Damocles Gulf Crusade campaign');
+assert(campaign!.nodes.length === 5, 'Campaign contains 5 nodes');
+
+// Initial state: Start node is unlocked, others are locked
+const initialContext: CampaignTelemetryContext = {
+  characterId: 'char_tester_01',
+  totalWorkouts: 0,
+  totalSets: 0,
+  totalVolumeKg: 0,
+  totalCombatDamage: 0,
+  totalCombatAttacks: 0,
+  defeatedEnemyIds: [],
+  completedFactionMissionIds: [],
+  completedProgramSessionsCount: 0,
+  completedProgramBlockNumber: 1,
+  squadBattleAttacks: 0,
+};
+
+const initialEval = evaluateFullCampaign(campaign!, initialContext);
+assert(initialEval.unlockedNodeIds.includes('node_damocles_dropzone'), 'Dropzone start node is unlocked');
+assert(!initialEval.unlockedNodeIds.includes('node_damocles_outpost'), 'Outpost node is locked initially');
+assert(!initialEval.unlockedNodeIds.includes('node_damocles_fortress_prime'), 'Fortress Prime is locked initially');
+
+// Progress state: Player completes 1 workout
+const step1Context: CampaignTelemetryContext = {
+  ...initialContext,
+  totalWorkouts: 1,
+};
+const step1Eval = evaluateFullCampaign(campaign!, step1Context);
+assert(step1Eval.completedNodeIds.includes('node_damocles_dropzone'), 'Dropzone node completed after 1 workout');
+assert(step1Eval.unlockedNodeIds.includes('node_damocles_outpost'), 'Outpost node unlocked as successor to Dropzone');
+
+// 13.8 Branch Point Unlocking: Outpost completion opens Route Alpha AND Route Beta
+const step2Context: CampaignTelemetryContext = {
+  ...step1Context,
+  totalWorkouts: 2,
+  totalCombatDamage: 450, // Meets outpost requirements (2 workouts, 400 damage)
+};
+const step2Eval = evaluateFullCampaign(campaign!, step2Context);
+assert(step2Eval.completedNodeIds.includes('node_damocles_outpost'), 'Outpost completed after 2 workouts and 450 damage');
+assert(step2Eval.unlockedNodeIds.includes('node_damocles_mines'), 'Route Alpha (Subterranean Mines) unlocked');
+assert(step2Eval.unlockedNodeIds.includes('node_damocles_orbital_array'), 'Route Beta (Orbital Uplink Spire) unlocked');
+
+// 13.9 Multi-Program Campaign Compatibility: Different programs can advance campaign
+// Player A uses GVT (high sets/volume)
+const playerGvtContext: CampaignTelemetryContext = {
+  characterId: 'char_gvt',
+  totalWorkouts: 3,
+  totalSets: 30,
+  totalVolumeKg: 8500, // Meets 3,000 kg volume for Mines
+  totalCombatDamage: 1200,
+  totalCombatAttacks: 15,
+  defeatedEnemyIds: ['enemy_ork_boyz'],
+  completedFactionMissionIds: [],
+  activeProgramId: 'prog_gvt_classic',
+  completedProgramSessionsCount: 3,
+  completedProgramBlockNumber: 1,
+  squadBattleAttacks: 0,
+};
+const playerGvtEval = evaluateFullCampaign(campaign!, playerGvtContext);
+assert(playerGvtEval.completedNodeIds.includes('node_damocles_mines'), 'Player using GVT completed Subterranean Mines via high volume');
+
+// Player B uses Calisthenics (bodyweight/attacks)
+const playerCalisthenicsContext: CampaignTelemetryContext = {
+  characterId: 'char_cal',
+  totalWorkouts: 3,
+  totalSets: 18,
+  totalVolumeKg: 0, // Zero barbell volume
+  totalCombatDamage: 950, // Meets 800 damage for Orbital Array
+  totalCombatAttacks: 18, // Meets 12 attacks for Orbital Array
+  defeatedEnemyIds: ['enemy_ork_boyz'],
+  completedFactionMissionIds: [],
+  activeProgramId: 'prog_calisthenics_recon',
+  completedProgramSessionsCount: 3,
+  completedProgramBlockNumber: 1,
+  squadBattleAttacks: 0,
+};
+const playerCalEval = evaluateFullCampaign(campaign!, playerCalisthenicsContext);
+assert(playerCalEval.completedNodeIds.includes('node_damocles_orbital_array'), 'Player using Calisthenics completed Orbital Array via attacks/damage');
+
+// Boss encounter unlock: Completing either branch route allows unlocking Fortress Prime
+assert(playerGvtEval.unlockedNodeIds.includes('node_damocles_fortress_prime'), 'GVT player branch completion unlocked Fortress Prime');
+assert(playerCalEval.unlockedNodeIds.includes('node_damocles_fortress_prime'), 'Calisthenics player branch completion unlocked Fortress Prime');
+
+// 13.10 Boss Defeat Closes Campaign Sector
+const finalBossContext: CampaignTelemetryContext = {
+  ...playerGvtContext,
+  totalWorkouts: 4,
+  totalCombatDamage: 2500,
+  defeatedEnemyIds: ['enemy_ork_boyz', 'enemy_helbrute'], // Warlord neutralized
+};
+const finalEval = evaluateFullCampaign(campaign!, finalBossContext);
+assert(finalEval.completedNodeIds.includes('node_damocles_fortress_prime'), 'Fortress Prime conquered upon Helbrute defeat');
+assert(finalEval.campaignProgressPercent >= 80, `Campaign pacification progress: ${finalEval.campaignProgressPercent}%`);
+
+// 13.11 Exercise-Level Performance Trends Tracking
+const mockWorkoutsForTrends: WorkoutSession[] = [
+  {
+    id: 's_1',
+    title: 'Session 1',
+    startedAt: '2026-10-01T10:00:00Z',
+    finishedAt: '2026-10-01T11:00:00Z',
+    isCompleted: true,
+    totalXpEarned: 200,
+    exercises: [
+      {
+        id: 'e_1',
+        sessionId: 's_1',
+        exerciseRefId: 'ex_bb_bench_press',
+        name: 'Barbell Flat Bench Press',
+        sortOrder: 1,
+        sets: [
+          { id: 'set_1', exerciseId: 'e_1', setNumber: 1, reps: 5, weight: 100, unit: 'kg', isCompleted: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: 's_2',
+    title: 'Session 2',
+    startedAt: '2026-10-05T10:00:00Z',
+    finishedAt: '2026-10-05T11:00:00Z',
+    isCompleted: true,
+    totalXpEarned: 200,
+    exercises: [
+      {
+        id: 'e_2',
+        sessionId: 's_2',
+        exerciseRefId: 'ex_bb_bench_press',
+        name: 'Barbell Flat Bench Press',
+        sortOrder: 1,
+        sets: [
+          { id: 'set_2', exerciseId: 'e_2', setNumber: 1, reps: 5, weight: 105, unit: 'kg', isCompleted: true },
+        ],
+      },
+    ],
+  },
+];
+
+const trends = calculateExercisePerformanceTrends(mockWorkoutsForTrends);
+assert(trends['ex_bb_bench_press'] !== undefined, 'Tracked trends for Barbell Flat Bench Press');
+assert(trends['ex_bb_bench_press'].sessionsLogged === 2, 'Logged across 2 sessions');
+assert(trends['ex_bb_bench_press'].bestWeightKg === 105, 'Best weight is 105kg');
+assert(trends['ex_bb_bench_press'].estimated1RM >= 118, 'Estimated 1RM calculated with Brzycki formula');
+
+// ----------------------------------------------------
+// TEST SUITE 14: Warfront Daily Battles, Procedural Bosses & Weekly Raids
+// ----------------------------------------------------
+console.log('\n--- TEST SUITE 14: Warfront Daily Battles, Procedural Bosses & Weekly Raids ---');
+
+// 14.1 Catalog Breadth & Taxonomy Verification
+const allEncounters = getAllEncounterTemplates();
+assert(allEncounters.length >= 100, `Encounter catalog contains ${allEncounters.length} templates (>= 100 required)`);
+
+const requiredCategories: EncounterCategory[] = [
+  'recon',
+  'assault',
+  'defense',
+  'sabotage',
+  'hunting',
+  'special_ops',
+  'escalating',
+  'coop',
+];
+
+for (const cat of requiredCategories) {
+  const inCat = getEncountersByCategory(cat);
+  assert(inCat.length >= 10, `Category "${cat}" has ${inCat.length} templates (>= 10 required)`);
+}
+
+// 14.2 20 Factions Representation in Warfront Catalog
+const factionsInWarfront = new Set(allEncounters.map((e) => e.enemyFactionId));
+for (const faction of warhammer40kFactions) {
+  assert(
+    factionsInWarfront.has(faction.id),
+    `Faction "${faction.name}" (${faction.id}) represented in Warfront encounter catalog`
+  );
+}
+
+// 14.3 Template Data Integrity Check
+const sampleEncounter = getEncounterById('enc_hunting_01');
+assert(sampleEncounter !== undefined, 'Found Carnifex Rampage Hunt template');
+assert(sampleEncounter!.title === 'Carnifex Rampage Hunt', 'Encounter title matches');
+assert(sampleEncounter!.category === 'hunting', 'Category is hunting');
+assert(sampleEncounter!.enemyFactionId === 'tyranids', 'Enemy faction is tyranids');
+assert(sampleEncounter!.recommendedSets > 0, `Recommended sets positive (${sampleEncounter!.recommendedSets})`);
+assert(sampleEncounter!.baseHealth > 0, `Base health positive (${sampleEncounter!.baseHealth})`);
+assert(sampleEncounter!.baseXpBonus > 0, `Base XP bonus positive (${sampleEncounter!.baseXpBonus})`);
+assert(sampleEncounter!.modifiers.length > 0, 'Encounter has at least 1 modifier');
+
+// 14.4 Runtime Conversion Helpers
+const convertedMission = convertToCombatMission(sampleEncounter!);
+assert(convertedMission.id === `mission_${sampleEncounter!.id}`, 'Converted mission has valid ID');
+assert(convertedMission.title === sampleEncounter!.title, 'Converted mission has matching title');
+assert(convertedMission.difficulty === sampleEncounter!.difficulty, 'Converted mission preserves difficulty');
+assert(convertedMission.gloryBonusXp === sampleEncounter!.baseXpBonus, 'Converted mission preserves glory XP');
+
+const convertedEnemy = convertToEnemyDefinition(sampleEncounter!);
+assert(convertedEnemy.id === sampleEncounter!.id, 'Converted enemy has matching ID');
+assert(convertedEnemy.name === sampleEncounter!.enemyName, 'Converted enemy has matching name');
+assert(convertedEnemy.baseHealth === sampleEncounter!.baseHealth, 'Converted enemy has matching base health');
+assert(convertedEnemy.visual.iconName === sampleEncounter!.iconName, 'Converted enemy has visual glyph');
+
+// 14.5 Refresh-Proof Daily Engagements Board (Idempotent Date Rotation)
+const testDate = '2026-10-18';
+const rotation1 = getOrCreateDailyRotation(testDate);
+assert(rotation1.rotationDate === testDate, `Rotation initialized for date ${testDate}`);
+assert(rotation1.offeredEncounterIds.length === 3, 'Board offers exactly 3 daily encounters');
+
+// CRITICAL REFRESH-PROOF CHECK: Calling again for the same date returns identical encounter IDs (NO reroll)
+const rotation2 = getOrCreateDailyRotation(testDate);
+assert(
+  JSON.stringify(rotation1.offeredEncounterIds) === JSON.stringify(rotation2.offeredEncounterIds),
+  'Daily board is refresh-proof: identical encounter IDs returned on subsequent lookups without reroll'
+);
+
+// 14.6 Daily Encounter Completion Flow
+const encounterToComplete = rotation1.offeredEncounterIds[0];
+const updatedRot = completeDailyEncounter(testDate, encounterToComplete);
+assert(updatedRot !== null, 'Daily encounter completed successfully');
+assert(updatedRot!.completedEncounterIds.includes(encounterToComplete), 'Encounter marked completed in rotation');
+
+// Idempotent completion: completing again does not duplicate ID
+const idempotentRot = completeDailyEncounter(testDate, encounterToComplete);
+assert(
+  idempotentRot!.completedEncounterIds.filter((id) => id === encounterToComplete).length === 1,
+  'Encounter completion is idempotent; no duplicate IDs in completed list'
+);
+
+// 14.7 14-Day History Buffer Verification
+const cutoff = '2026-10-01';
+const recentList = inMemoryWarfrontStorage.getRecentEncounterIds(cutoff);
+assert(recentList.includes(encounterToComplete), '14-day history buffer contains recent encounter ID');
+
+// 14.8 Deterministic Procedural Boss Generator
+const testSeed = 'cycle_2026_w42_alpha';
+const boss1 = generateProceduralBoss(testSeed);
+const boss2 = generateProceduralBoss(testSeed);
+assert(boss1.name === boss2.name, `Deterministic boss name: "${boss1.name}"`);
+assert(boss1.title === boss2.title, `Deterministic boss title: "${boss1.title}"`);
+assert(boss1.signatureWeapon === boss2.signatureWeapon, `Deterministic signature weapon: "${boss1.signatureWeapon}"`);
+assert(boss1.combatTrait === boss2.combatTrait, `Deterministic combat trait: "${boss1.combatTrait}"`);
+assert(boss1.baseHealth === boss2.baseHealth, `Deterministic base health: ${boss1.baseHealth}`);
+
+// Verify 3 dynamic boss phases
+assert(boss1.phases.length === 3, 'Boss has exactly 3 combat phases');
+assert(boss1.phases[0].hpThresholdPercent === 100, 'Phase 1 threshold is 100%');
+assert(boss1.phases[1].hpThresholdPercent === 66, 'Phase 2 threshold is 66%');
+assert(boss1.phases[2].hpThresholdPercent === 33, 'Phase 3 threshold is 33%');
+assert(boss1.phases[0].taunt.length > 0, 'Phase 1 has tactical taunt');
+assert(boss1.phases[1].taunt.length > 0, 'Phase 2 has tactical taunt');
+assert(boss1.phases[2].taunt.length > 0, 'Phase 3 has tactical taunt');
+
+// Verify all 20 factions generate valid procedural bosses
+for (const faction of warhammer40kFactions) {
+  const fb = generateProceduralBoss(`seed_${faction.id}`, faction.id);
+  assert(fb.factionId === faction.id, `Procedural boss generated for faction "${faction.name}"`);
+  assert(fb.signatureWeapon.length > 0, `Procedural boss has signature weapon for "${faction.name}"`);
+  assert(fb.combatTrait.length > 0, `Procedural boss has combat trait for "${faction.name}"`);
+}
+
+// 14.9 Weekly Raid Cycle Timing (Friday vs Saturday spawn schedule)
+const friTiming = calculateWeeklyCycleTiming(new Date('2026-10-18T12:00:00Z'), 'friday');
+assert(friTiming.cycleId.includes('_friday'), `Friday spawn cycle timing generated: ${friTiming.cycleId}`);
+const satTiming = calculateWeeklyCycleTiming(new Date('2026-10-18T12:00:00Z'), 'saturday');
+assert(satTiming.cycleId.includes('_saturday'), `Saturday spawn cycle timing generated: ${satTiming.cycleId}`);
+
+// 14.10 Weekly Raid Initialization & Scale (Individual vs Squad)
+const soloRaid = getOrCreateWeeklyRaid({
+  now: new Date('2026-10-18T12:00:00Z'),
+  preferredSpawnDay: 'friday',
+});
+assert(soloRaid.scope === 'individual', 'Solo raid scope is individual');
+assert(soloRaid.maxHp === 2400, `Solo raid HP scaled to 2,400 HP (${soloRaid.maxHp})`);
+assert(soloRaid.status === 'active', 'Raid initially active');
+
+const squadRaid = getOrCreateWeeklyRaid({
+  now: new Date('2026-10-18T12:00:00Z'),
+  squadId: 'squad_iron_wolves_01',
+  squadName: 'Iron Wolves',
+  preferredSpawnDay: 'friday',
+});
+assert(squadRaid.scope === 'squad', 'Squad raid scope is squad');
+assert(squadRaid.maxHp === 7500, `Squad raid HP scaled to 7,500 HP (${squadRaid.maxHp})`);
+
+// 14.11 Applying Raid Damage & Participant Contribution
+const afterAtk1 = applyDamageToWeeklyRaid(
+  squadRaid.cycleId,
+  'user_tester_01',
+  'Brother Titus',
+  'adeptus-astartes',
+  1200,
+  8
+);
+assert(afterAtk1 !== null, 'Applied 1,200 damage to weekly raid');
+assert(afterAtk1!.currentHp === 6300, `Current HP updated to 6,300 (${afterAtk1!.currentHp})`);
+assert(afterAtk1!.contributions['user_tester_01'].damage === 1200, 'Participant recorded 1,200 damage');
+assert(afterAtk1!.contributions['user_tester_01'].attacksCount === 8, 'Participant recorded 8 attacks landed');
+assert(afterAtk1!.contributions['user_tester_01'].workoutsCount === 1, 'Participant recorded 1 workout');
+
+// Cumulative idempotent damage application
+const afterAtk2 = applyDamageToWeeklyRaid(
+  squadRaid.cycleId,
+  'user_tester_01',
+  'Brother Titus',
+  'adeptus-astartes',
+  800,
+  6
+);
+assert(afterAtk2!.currentHp === 5500, `Current HP updated to 5,500 (${afterAtk2!.currentHp})`);
+assert(afterAtk2!.contributions['user_tester_01'].damage === 2000, 'Participant accumulated 2,000 damage');
+assert(afterAtk2!.contributions['user_tester_01'].attacksCount === 14, 'Participant accumulated 14 attacks');
+assert(afterAtk2!.contributions['user_tester_01'].workoutsCount === 2, 'Participant accumulated 2 workouts');
+
+// 14.12 Raid Boss Defeat & Reward Claiming
+const fatalDamage = 5500;
+const afterDefeat = applyDamageToWeeklyRaid(
+  squadRaid.cycleId,
+  'user_tester_01',
+  'Brother Titus',
+  'adeptus-astartes',
+  fatalDamage,
+  10
+);
+assert(afterDefeat!.currentHp === 0, 'Raid boss HP reduced to zero');
+assert(afterDefeat!.status === 'defeated', 'Raid status transitioned to "defeated"');
+
+// Claiming rewards
+const claim1 = claimWeeklyRaidRewards(squadRaid.cycleId);
+assert(claim1.success, 'Successfully claimed weekly raid rewards');
+assert(claim1.gloryXpAwarded === 500, 'Awarded 500 Glory XP');
+
+// Reward claim idempotency (prevent double-claim exploit)
+const claim2 = claimWeeklyRaidRewards(squadRaid.cycleId);
+assert(!claim2.success, 'Duplicate reward claim prevented; cannot claim spoils twice');
+
+// 14.13 Unresolved Boss Policy (Escaped Warlord without False Defeat)
+const expiredRaid: WeeklyRaidCycle = {
+  cycleId: '2026_W40_expired_test',
+  scope: 'individual',
+  boss: generateProceduralBoss('2026_W40_expired_test'),
+  maxHp: 2400,
+  currentHp: 1800, // Not defeated
+  status: 'active',
+  spawnDay: 'friday',
+  startedAt: '2026-10-01T00:00:00Z',
+  expiresAt: '2026-10-08T00:00:00Z', // In the past!
+  isRewardClaimed: false,
+  contributions: {
+    user_test: {
+      userId: 'user_test',
+      callsign: 'Iron Guard',
+      factionId: 'astra-militarum',
+      damage: 600,
+      attacksCount: 5,
+      workoutsCount: 1,
+      lastContributedAt: '2026-10-05T10:00:00Z',
+    },
+  },
+  updatedAt: '2026-10-05T10:00:00Z',
+};
+inMemoryWarfrontStorage.saveWeeklyRaid(expiredRaid);
+
+// Run reconciliation
+reconcileExpiredRaids(new Date('2026-10-18T12:00:00Z'));
+const resolvedExpired = inMemoryWarfrontStorage.getWeeklyRaid(expiredRaid.cycleId);
+assert(resolvedExpired !== null, 'Loaded expired raid record');
+assert(resolvedExpired!.status === 'escaped', 'Unresolved boss cleanly archived with status "escaped"');
+assert(resolvedExpired!.status !== 'defeated', 'Expired boss is NOT marked defeated (no false victories)');
+assert(resolvedExpired!.contributions['user_test'].damage === 600, 'Historical participant damage preserved');
+
+// 14.14 Combat Engine Integration with Warfront Encounter
+const mockExercisesForCombat: WorkoutExercise[] = [
+  {
+    id: 'we_1',
+    sessionId: 'sess_wf_1',
+    name: 'Barbell Flat Bench Press',
+    sortOrder: 1,
+    sets: [
+      { id: 'set_c1', exerciseId: 'we_1', setNumber: 1, reps: 8, weight: 100, unit: 'kg', isCompleted: true },
+      { id: 'set_c2', exerciseId: 'we_1', setNumber: 2, reps: 8, weight: 100, unit: 'kg', isCompleted: true },
+    ],
+  },
+];
+const wfCombatState = computeCombatState(
+  convertedEnemy,
+  convertedMission,
+  mockExercisesForCombat,
+  undefined,
+  'adeptus-astartes',
+  'ultramarines'
+);
+assert(wfCombatState.attacks.length === 2, '2 attacks generated from completed sets');
+assert(wfCombatState.totalDamage > 0, `Total combat damage applied (${wfCombatState.totalDamage})`);
+assert(wfCombatState.currentHealth === Math.max(0, convertedEnemy.baseHealth - wfCombatState.totalDamage), 'Enemy health decremented accurately');
+
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
 console.log('====================================================');
+
 

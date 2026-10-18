@@ -16,6 +16,18 @@ import { Badge } from '../../src/components/Badge';
 import { PlaceholderPortrait } from '../../src/components/PlaceholderPortrait';
 import { TerminalButton } from '../../src/components/TerminalButton';
 import { CoopRaidModal } from '../../src/components/CoopRaidModal';
+import { AchievementToast } from '../../src/components/AchievementToast';
+import { AchievementHubModal } from '../../src/components/AchievementHubModal';
+import { MissionCenterModal } from '../../src/components/MissionCenterModal';
+import { ProgramCenterModal } from '../../src/components/ProgramCenterModal';
+import { CampaignMapModal } from '../../src/components/CampaignMapModal';
+import { WarfrontDailyBoardModal } from '../../src/components/WarfrontDailyBoardModal';
+import { WeeklyRaidModal } from '../../src/components/WeeklyRaidModal';
+import { ScheduledProgramSession } from '../../src/types/program';
+import { CampaignNode } from '../../src/types/campaign';
+import { EncounterTemplate, WeeklyRaidCycle } from '../../src/types/warfront';
+import { getMissionById } from '../../src/content/missions/catalog';
+import { MissionObjectiveDefinition } from '../../src/types/mission';
 import { Ionicons } from '@expo/vector-icons';
 import { getRankForXp } from '../../src/content/warhammer40k';
 
@@ -31,9 +43,32 @@ export default function CharacterScreen() {
     startNewWorkout,
     activeCoopRaid,
     setActiveCoopRaid,
+    pendingNotifications,
+    dismissPendingNotification,
+    activeMissions,
+    activeEnrollment,
+    campaignTelemetry,
+    dailyRotation,
+    weeklyRaid,
+    warfrontSettings,
+    setWarfrontSpawnDay,
+    deployDailyEncounter,
+    deployWeeklyRaid,
+    claimWeeklyRaidRewardsAction,
+    enrollInProgram,
+    pauseActiveProgram,
+    resumeActiveProgram,
+    startProgramWorkout,
+    setCurrentMission,
   } = useApp();
 
   const [isCoopModalVisible, setIsCoopModalVisible] = useState(false);
+  const [isAchievementModalVisible, setIsAchievementModalVisible] = useState(false);
+  const [isMissionModalVisible, setIsMissionModalVisible] = useState(false);
+  const [isProgramModalVisible, setIsProgramModalVisible] = useState(false);
+  const [isCampaignModalVisible, setIsCampaignModalVisible] = useState(false);
+  const [isDailyBoardModalVisible, setIsDailyBoardModalVisible] = useState(false);
+  const [isWeeklyRaidModalVisible, setIsWeeklyRaidModalVisible] = useState(false);
 
   const { currentRank } = getRankForXp(currentFaction, character.totalXp);
 
@@ -41,6 +76,39 @@ export default function CharacterScreen() {
     if (!activeWorkout) {
       startNewWorkout('Crusade Training');
     }
+    router.push('/(tabs)/workout');
+  };
+
+  const handleDeployCampaignNode = (node: CampaignNode) => {
+    if (node.enemyId) {
+      setCurrentMission({
+        id: `mission_${node.id}`,
+        title: node.title,
+        briefing: node.narrativeBriefing,
+        difficulty: node.difficulty,
+        enemyId: node.enemyId,
+        recommendedSets: 6,
+        gloryBonusXp: 200,
+      });
+    }
+    if (!activeWorkout) {
+      startNewWorkout(`Campaign: ${node.title}`);
+    }
+    router.push('/(tabs)/workout');
+  };
+
+  const handleStartScheduledWorkout = (session: ScheduledProgramSession) => {
+    startProgramWorkout(session);
+    router.push('/(tabs)/workout');
+  };
+
+  const handleDeployDailyEncounter = (encounter: EncounterTemplate) => {
+    deployDailyEncounter(encounter);
+    router.push('/(tabs)/workout');
+  };
+
+  const handleDeployWeeklyRaid = (raid: WeeklyRaidCycle) => {
+    deployWeeklyRaid(raid);
     router.push('/(tabs)/workout');
   };
 
@@ -154,6 +222,72 @@ export default function CharacterScreen() {
           </SciFiCard>
         )}
 
+        {/* Active Mission Operations Card */}
+        {activeMissions.length > 0 && (() => {
+          const firstRecord = activeMissions[0];
+          const missionDef = firstRecord.mission || getMissionById(firstRecord.missionId);
+          if (!missionDef) return null;
+          return (
+            <SciFiCard
+              title={`ACTIVE DIRECTIVE // ${missionDef.title.toUpperCase()}`}
+              variant="accent"
+              rightAction={
+                <TouchableOpacity onPress={() => setIsMissionModalVisible(true)}>
+                  <Text style={styles.manageMissionsText}>
+                    VIEW ALL ({activeMissions.length})
+                  </Text>
+                </TouchableOpacity>
+              }
+            >
+              <Text style={styles.activeMissionDesc} numberOfLines={2}>
+                {missionDef.shortDescription}
+              </Text>
+              {missionDef.objectives.map((obj: MissionObjectiveDefinition) => {
+                const progRecord = firstRecord.objectives?.find((o) => o.objectiveId === obj.id);
+                const currentVal = progRecord ? progRecord.currentValue : 0;
+                const pct = Math.min(100, Math.round((currentVal / obj.targetValue) * 100));
+                return (
+                  <View key={obj.id} style={{ marginTop: 8 }}>
+                    <ProgressBar
+                      progress={pct}
+                      label={obj.description}
+                      valueText={`${currentVal} / ${obj.targetValue}`}
+                      color={THEME.colors.primary}
+                      height={6}
+                    />
+                  </View>
+                );
+              })}
+            </SciFiCard>
+          );
+        })()}
+
+        {/* Active Training Program Card */}
+        {activeEnrollment && (
+          <SciFiCard
+            title={`TRAINING PROGRAM // ${activeEnrollment.programTitle.toUpperCase()}`}
+            variant="accent"
+            rightAction={
+              <TouchableOpacity onPress={() => setIsProgramModalVisible(true)}>
+                <Text style={styles.manageMissionsText}>
+                  MANAGE SCHEDULE
+                </Text>
+              </TouchableOpacity>
+            }
+          >
+            <Text style={styles.activeMissionDesc} numberOfLines={2}>
+              {activeEnrollment.programSnapshot.shortDescription}
+            </Text>
+            <ProgressBar
+              progress={activeEnrollment.adherencePercent}
+              label={`Block ${activeEnrollment.currentBlockNumber} Progress`}
+              valueText={`${activeEnrollment.completedSessionsCount} / ${activeEnrollment.totalPlannedSessionsCount} sessions (${activeEnrollment.adherencePercent}%)`}
+              color={THEME.colors.primary}
+              height={6}
+            />
+          </SciFiCard>
+        )}
+
         {/* Career Statistics */}
         <SciFiCard title="CRUSADE COMBAT METRICS">
           <View style={styles.statsGrid}>
@@ -201,6 +335,70 @@ export default function CharacterScreen() {
           />
 
           <TerminalButton
+            title={
+              activeMissions.length > 0
+                ? `TACTICAL OPERATIONS // MISSIONS (${activeMissions.length} ACTIVE)`
+                : 'TACTICAL OPERATIONS // MISSIONS'
+            }
+            onPress={() => setIsMissionModalVisible(true)}
+            variant={activeMissions.length > 0 ? 'secondary' : 'outline'}
+            size="md"
+            icon={
+              <Ionicons
+                name="locate-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
+          />
+
+          <TerminalButton
+            title={
+              activeEnrollment
+                ? `TRAINING PROGRAM // ${activeEnrollment.programCategory.toUpperCase()}`
+                : 'TRAINING PROGRAM CENTER'
+            }
+            onPress={() => setIsProgramModalVisible(true)}
+            variant={activeEnrollment ? 'secondary' : 'outline'}
+            size="md"
+            icon={
+              <Ionicons
+                name="barbell-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
+          />
+
+          <TerminalButton
+            title="PLANETARY CAMPAIGN THEATER MAP"
+            onPress={() => setIsCampaignModalVisible(true)}
+            variant="outline"
+            size="md"
+            icon={
+              <Ionicons
+                name="map-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
+          />
+
+          <TerminalButton
+            title="CRUSADE HONORS // ACHIEVEMENTS"
+            onPress={() => setIsAchievementModalVisible(true)}
+            variant="outline"
+            size="md"
+            icon={
+              <Ionicons
+                name="trophy-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
+          />
+
+          <TerminalButton
             title="CRUSADE SQUAD // CO-OP RAID"
             onPress={() => setIsCoopModalVisible(true)}
             variant={activeCoopRaid ? 'primary' : 'outline'}
@@ -208,6 +406,38 @@ export default function CharacterScreen() {
             icon={
               <Ionicons
                 name="people-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
+          />
+
+          <TerminalButton
+            title="WARFRONT // DAILY ENGAGEMENTS"
+            onPress={() => setIsDailyBoardModalVisible(true)}
+            variant="secondary"
+            size="md"
+            icon={
+              <Ionicons
+                name="compass-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
+          />
+
+          <TerminalButton
+            title={
+              weeklyRaid
+                ? `WEEKLY RAID // ${weeklyRaid.boss.name.toUpperCase()}`
+                : 'WEEKLY RAID BOSS'
+            }
+            onPress={() => setIsWeeklyRaidModalVisible(true)}
+            variant={weeklyRaid?.status === 'active' ? 'primary' : 'outline'}
+            size="md"
+            icon={
+              <Ionicons
+                name="skull-outline"
                 size={18}
                 color={THEME.colors.primary}
               />
@@ -230,12 +460,76 @@ export default function CharacterScreen() {
         </View>
       </ScrollView>
 
+      {/* Floating Achievement Unlock Notification Toast */}
+      {pendingNotifications && pendingNotifications.length > 0 && (
+        <AchievementToast
+          notification={pendingNotifications[0]}
+          onDismiss={dismissPendingNotification}
+          onPress={() => {
+            dismissPendingNotification(pendingNotifications[0].id);
+            setIsAchievementModalVisible(true);
+          }}
+        />
+      )}
+
+      {/* Warfront Daily Engagements Board Modal */}
+      <WarfrontDailyBoardModal
+        visible={isDailyBoardModalVisible}
+        onClose={() => setIsDailyBoardModalVisible(false)}
+        dailyRotation={dailyRotation}
+        onDeployEncounter={handleDeployDailyEncounter}
+      />
+
+      {/* Weekly Raid Boss Encounter Modal */}
+      <WeeklyRaidModal
+        visible={isWeeklyRaidModalVisible}
+        onClose={() => setIsWeeklyRaidModalVisible(false)}
+        weeklyRaid={weeklyRaid}
+        preferredSpawnDay={warfrontSettings.preferredSpawnDay}
+        onSetSpawnDay={setWarfrontSpawnDay}
+        onDeployRaidWorkout={handleDeployWeeklyRaid}
+        onClaimRewards={claimWeeklyRaidRewardsAction}
+      />
+
+      {/* Faction Tactical Operations & Mission Center Modal */}
+      <MissionCenterModal
+        visible={isMissionModalVisible}
+        onClose={() => setIsMissionModalVisible(false)}
+      />
+
+      {/* Structured Training Program Center Modal */}
+      <ProgramCenterModal
+        visible={isProgramModalVisible}
+        onClose={() => setIsProgramModalVisible(false)}
+        activeEnrollment={activeEnrollment}
+        onEnrollProgram={enrollInProgram}
+        onPauseProgram={pauseActiveProgram}
+        onResumeProgram={resumeActiveProgram}
+        onStartScheduledWorkout={handleStartScheduledWorkout}
+      />
+
+      {/* Planetary Campaign Theater Map Modal */}
+      <CampaignMapModal
+        visible={isCampaignModalVisible}
+        onClose={() => setIsCampaignModalVisible(false)}
+        telemetryContext={campaignTelemetry}
+        onDeployNode={handleDeployCampaignNode}
+      />
+
       {/* Cooperative Crusade Squad & Raid Modal */}
       <CoopRaidModal
         visible={isCoopModalVisible}
         onClose={() => setIsCoopModalVisible(false)}
         activeRaid={activeCoopRaid}
         onSelectActiveRaid={setActiveCoopRaid}
+      />
+
+      {/* Comprehensive Crusade Achievement Hub */}
+      <AchievementHubModal
+        visible={isAchievementModalVisible}
+        onClose={() => setIsAchievementModalVisible(false)}
+        userId="user_main"
+        characterId="char_main"
       />
     </SafeAreaView>
   );
@@ -388,5 +682,17 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     marginBottom: THEME.spacing.sm,
+  },
+  manageMissionsText: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  activeMissionDesc: {
+    color: THEME.colors.textMuted,
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 4,
   },
 });
