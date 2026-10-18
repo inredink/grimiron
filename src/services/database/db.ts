@@ -471,6 +471,76 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
     db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (11, datetime('now'));");
   }
 
+  // Migration 12: Campaign Academy 90-Day Campaigns, Quests, Phase Reports & Final Dossiers
+  if (!appliedMigrations.includes(12)) {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS campaign_academy_enrollments (
+        id TEXT PRIMARY KEY,
+        character_id TEXT NOT NULL DEFAULT 'char_main',
+        campaign_id TEXT NOT NULL,
+        campaign_title TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        current_phase_number INTEGER NOT NULL DEFAULT 1,
+        current_chapter_number INTEGER NOT NULL DEFAULT 1,
+        active_program_enrollment_id TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        paused_at TEXT,
+        resumed_at TEXT,
+        completed_at TEXT,
+        completed_chapter_ids_json TEXT NOT NULL DEFAULT '[]',
+        completed_quest_ids_json TEXT NOT NULL DEFAULT '[]',
+        unlocked_boss_chapter_ids_json TEXT NOT NULL DEFAULT '[]',
+        defeated_boss_chapter_ids_json TEXT NOT NULL DEFAULT '[]',
+        phase1_report_claimed INTEGER NOT NULL DEFAULT 0,
+        phase2_report_claimed INTEGER NOT NULL DEFAULT 0,
+        phase3_report_claimed INTEGER NOT NULL DEFAULT 0,
+        final_dossier_claimed INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS campaign_phase_reports (
+        id TEXT PRIMARY KEY,
+        enrollment_id TEXT NOT NULL,
+        campaign_id TEXT NOT NULL,
+        phase_number INTEGER NOT NULL,
+        phase_title TEXT NOT NULL,
+        completed_at TEXT NOT NULL,
+        sessions_completed INTEGER NOT NULL,
+        total_volume_kg REAL NOT NULL,
+        total_working_sets INTEGER NOT NULL,
+        boss_defeated_name TEXT NOT NULL,
+        xp_earned INTEGER NOT NULL,
+        summary_notes_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (enrollment_id) REFERENCES campaign_academy_enrollments (id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS campaign_final_dossiers (
+        id TEXT PRIMARY KEY,
+        enrollment_id TEXT NOT NULL,
+        campaign_id TEXT NOT NULL,
+        campaign_title TEXT NOT NULL,
+        experience_level TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        completed_at TEXT NOT NULL,
+        total_sessions_completed INTEGER NOT NULL,
+        total_planned_sessions INTEGER NOT NULL,
+        total_volume_kg REAL NOT NULL,
+        total_working_sets INTEGER NOT NULL,
+        chapters_completed_count INTEGER NOT NULL,
+        quests_completed_count INTEGER NOT NULL,
+        bosses_defeated_count INTEGER NOT NULL,
+        total_glory_xp_awarded INTEGER NOT NULL,
+        conferred_titles_json TEXT NOT NULL,
+        adherence_percentage REAL NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (enrollment_id) REFERENCES campaign_academy_enrollments (id) ON DELETE CASCADE
+      );
+    `);
+
+    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (12, datetime('now'));");
+  }
+
   return db;
 }
 

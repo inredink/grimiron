@@ -119,6 +119,38 @@ import {
   convertToEnemyDefinition,
   getEncounterById,
 } from '../content/encounters/catalog';
+import {
+  CampaignAcademyTemplate,
+  UserCampaignEnrollment,
+  CampaignChapter,
+  CampaignQuest,
+  CampaignPhaseReport,
+  FinalCampaignDossier,
+  CampaignPhaseNumber,
+} from '../types/campaignAcademy';
+import {
+  createCampaignEnrollment,
+  evaluateCampaignQuests,
+  evaluateChapterBossUnlock,
+  recordBossVictory,
+  generatePhaseReport,
+  generateFinalDossier,
+} from '../services/progression/campaignAcademyEngine';
+import {
+  saveAcademyEnrollment,
+  getActiveAcademyEnrollment,
+  getAllAcademyEnrollments,
+  pauseAcademyEnrollment,
+  resumeAcademyEnrollment,
+  savePhaseReport,
+  getPhaseReports,
+  saveFinalDossier,
+  getFinalDossier,
+} from '../services/database/campaignAcademyRepository';
+import {
+  CAMPAIGN_ACADEMY_CATALOG,
+  getAcademyCampaignById,
+} from '../content/campaignAcademy/catalog';
 
 export interface FinishWorkoutResult {
   xpEarned: number;
@@ -189,6 +221,17 @@ interface AppContextValue {
   repeatWorkout: (sessionId: string) => boolean;
   changeFaction: (factionId: string, subfactionId?: string) => void;
   refreshData: () => void;
+  activeAcademyEnrollment: UserCampaignEnrollment | null;
+  academyEnrollments: UserCampaignEnrollment[];
+  activeAcademyCampaign: CampaignAcademyTemplate | null;
+  academyPhaseReports: CampaignPhaseReport[];
+  academyFinalDossier: FinalCampaignDossier | null;
+  enrollInAcademyCampaign: (campaign: CampaignAcademyTemplate) => void;
+  pauseAcademyCampaign: () => void;
+  resumeAcademyCampaign: () => void;
+  claimAcademyPhaseReport: (phaseNumber: CampaignPhaseNumber) => CampaignPhaseReport | null;
+  claimAcademyFinalDossier: () => FinalCampaignDossier | null;
+  deployChapterBossBattle: (chapter: CampaignChapter) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -245,6 +288,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [activeDailyEncounterId, setActiveDailyEncounterId] = useState<string | null>(null);
   const [activeRaidCycleId, setActiveRaidCycleId] = useState<string | null>(null);
+  const [activeAcademyEnrollment, setActiveAcademyEnrollment] = useState<UserCampaignEnrollment | null>(null);
+  const [academyEnrollments, setAcademyEnrollments] = useState<UserCampaignEnrollment[]>([]);
+  const [activeAcademyCampaign, setActiveAcademyCampaign] = useState<CampaignAcademyTemplate | null>(null);
+  const [academyPhaseReports, setAcademyPhaseReports] = useState<CampaignPhaseReport[]>([]);
+  const [academyFinalDossier, setAcademyFinalDossier] = useState<FinalCampaignDossier | null>(null);
 
   const loadData = useCallback(() => {
     try {
@@ -334,6 +382,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setDailyRotation(rot);
       setWarfrontSettingsState(wfSettings);
       setWeeklyRaid(raid);
+
+      // Load Campaign Academy data
+      try {
+        const curAcadEnrollment = getActiveAcademyEnrollment(prof.id.toString());
+        setActiveAcademyEnrollment(curAcadEnrollment);
+        const allAcad = getAllAcademyEnrollments(prof.id.toString());
+        setAcademyEnrollments(allAcad);
+        if (curAcadEnrollment) {
+          const foundCamp = getAcademyCampaignById(curAcadEnrollment.campaignId) || null;
+          setActiveAcademyCampaign(foundCamp);
+          setAcademyPhaseReports(getPhaseReports(curAcadEnrollment.id));
+          setAcademyFinalDossier(getFinalDossier(curAcadEnrollment.id));
+        } else {
+          setActiveAcademyCampaign(null);
+          setAcademyPhaseReports([]);
+          setAcademyFinalDossier(null);
+        }
+      } catch (acadLoadErr) {
+        console.warn('Error loading academy enrollment:', acadLoadErr);
+      }
+
       setIsInitialized(true);
     } catch (err) {
       console.error('Database initialization error:', err);
@@ -764,6 +833,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveRaidCycleId(null);
     }
 
+    // Advance Campaign Academy progression if enrolled
+    if (activeAcademyEnrollment && activeAcademyEnrollment.status === 'active' && activeAcademyCampaign) {
+      try {
+        let currentAcadEnrollment = { ...activeAcademyEnrollment };
+
+        // Check if this workout defeated the current chapter boss
+        if (encounterState?.isDefeated) {
+          const currentChapter = activeAcademyCampaign.chapters.find(
+            (c) => c.chapterNumber === currentAcadEnrollment.currentChapterNumber
+          );
+          if (
+            currentChapter &&
+            (currentChapter.bossEncounterId === encounterState.enemy.id ||
+              mission?.id === `chap_boss_${currentChapter.id}`)
+          ) {
+            const victoryResult = recordBossVictory(
+              activeAcademyCampaign,
+              currentAcadEnrollment,
+              currentChapter.id
+            );
+            currentAcadEnrollment = victoryResult.updatedEnrollment;
+          }
+        }
+
+        // Refresh telemetry to evaluate quests & unlock state
+        const campCtx = buildCampaignTelemetryContext(character.id.toString());
+        const questResult = evaluateCampaignQuests(
+          activeAcademyCampaign,
+          currentAcadEnrollment,
+          campCtx
+        );
+        if (questResult.newlyCompletedQuests.length > 0) {
+          currentAcadEnrollment.completedQuestIds = questResult.updatedCompletedQuestIds;
+          if (questResult.totalXpAwarded > 0) {
+            addCharacterXp(questResult.totalXpAwarded);
+          }
+        }
+
+        const unlockResult = evaluateChapterBossUnlock(
+          activeAcademyCampaign,
+          currentAcadEnrollment,
+          campCtx.completedProgramSessionsCount
+        );
+        currentAcadEnrollment.unlockedBossChapterIds = unlockResult.unlockedBossChapterIds;
+
+        saveAcademyEnrollment(currentAcadEnrollment);
+        setActiveAcademyEnrollment(currentAcadEnrollment);
+      } catch (acadErr) {
+        console.warn('Error advancing Campaign Academy upon workout finish:', acadErr);
+      }
+    }
+
     // Clear in-progress workout draft upon completion
     clearWorkoutDraft();
     setActiveDailyEncounterId(null);
@@ -986,6 +1107,104 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveCoopRaidState(raid);
   };
 
+  const enrollInAcademyCampaign = useCallback(
+    (campaign: CampaignAcademyTemplate) => {
+      try {
+        const progEnrollment = createProgramEnrollment(character.id.toString(), campaign.programDefinition);
+        saveProgramEnrollment(progEnrollment);
+        setActiveEnrollment(progEnrollment);
+
+        const acadEnrollment = createCampaignEnrollment(character.id.toString(), campaign, progEnrollment.id);
+        saveAcademyEnrollment(acadEnrollment);
+        setActiveAcademyEnrollment(acadEnrollment);
+        setActiveAcademyCampaign(campaign);
+        loadData();
+      } catch (err) {
+        console.warn('Failed to enroll in academy campaign:', err);
+      }
+    },
+    [character, loadData]
+  );
+
+  const pauseAcademyCampaign = useCallback(() => {
+    if (activeAcademyEnrollment) {
+      pauseAcademyEnrollment(activeAcademyEnrollment.id);
+      if (activeEnrollment) {
+        pauseProgramEnrollment(activeEnrollment.id);
+      }
+      loadData();
+    }
+  }, [activeAcademyEnrollment, activeEnrollment, loadData]);
+
+  const resumeAcademyCampaign = useCallback(() => {
+    if (activeAcademyEnrollment) {
+      resumeAcademyEnrollment(activeAcademyEnrollment.id);
+      if (activeEnrollment) {
+        resumeProgramEnrollment(activeEnrollment.id);
+      }
+      loadData();
+    }
+  }, [activeAcademyEnrollment, activeEnrollment, loadData]);
+
+  const claimAcademyPhaseReport = useCallback(
+    (phaseNumber: CampaignPhaseNumber): CampaignPhaseReport | null => {
+      if (!activeAcademyEnrollment || !activeAcademyCampaign) return null;
+      try {
+        const campCtx = buildCampaignTelemetryContext(character.id.toString());
+        const report = generatePhaseReport(activeAcademyEnrollment, activeAcademyCampaign, phaseNumber, campCtx);
+        savePhaseReport(report);
+        const updated = { ...activeAcademyEnrollment };
+        if (phaseNumber === 1) updated.phase1ReportClaimed = true;
+        if (phaseNumber === 2) updated.phase2ReportClaimed = true;
+        if (phaseNumber === 3) updated.phase3ReportClaimed = true;
+        saveAcademyEnrollment(updated);
+        setActiveAcademyEnrollment(updated);
+        addCharacterXp(report.xpEarned);
+        loadData();
+        return report;
+      } catch (err) {
+        console.warn('Error claiming academy phase report:', err);
+        return null;
+      }
+    },
+    [activeAcademyEnrollment, activeAcademyCampaign, character, loadData]
+  );
+
+  const claimAcademyFinalDossier = useCallback((): FinalCampaignDossier | null => {
+    if (!activeAcademyEnrollment || !activeAcademyCampaign) return null;
+    try {
+      const campCtx = buildCampaignTelemetryContext(character.id.toString());
+      const dossier = generateFinalDossier(activeAcademyEnrollment, activeAcademyCampaign, campCtx);
+      saveFinalDossier(dossier);
+      const updated = { ...activeAcademyEnrollment, finalDossierClaimed: true };
+      saveAcademyEnrollment(updated);
+      setActiveAcademyEnrollment(updated);
+      addCharacterXp(dossier.totalGloryXpAwarded);
+      loadData();
+      return dossier;
+    } catch (err) {
+      console.warn('Error claiming final campaign dossier:', err);
+      return null;
+    }
+  }, [activeAcademyEnrollment, activeAcademyCampaign, character, loadData]);
+
+  const deployChapterBossBattle = useCallback(
+    (chapter: CampaignChapter) => {
+      const mission: CombatMission = {
+        id: `chap_boss_${chapter.id}`,
+        title: `Chapter Boss: ${chapter.bossName}`,
+        briefing: `${chapter.bossTitle}. ${chapter.bossBriefing}`,
+        difficulty: 'boss',
+        enemyId: chapter.bossEncounterId,
+        recommendedSets: 16,
+        gloryBonusXp: chapter.rewards.find((r) => r.type === 'xp')?.amount || 500,
+      };
+      setCurrentMission(mission);
+      startNewWorkout(`Boss Engagement: ${chapter.bossName}`, mission);
+    },
+    []
+  );
+
   const changeFaction = (factionId: string, subfactionId?: string) => {
     const updated = updateFactionAllegiance(factionId, subfactionId);
     setCharacter(updated);
@@ -1036,6 +1255,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         repeatWorkout,
         changeFaction,
         refreshData: loadData,
+        activeAcademyEnrollment,
+        academyEnrollments,
+        activeAcademyCampaign,
+        academyPhaseReports,
+        academyFinalDossier,
+        enrollInAcademyCampaign,
+        pauseAcademyCampaign,
+        resumeAcademyCampaign,
+        claimAcademyPhaseReport,
+        claimAcademyFinalDossier,
+        deployChapterBossBattle,
       }}
     >
       {children}

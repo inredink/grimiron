@@ -23,8 +23,10 @@ import { ProgramCenterModal } from '../../src/components/ProgramCenterModal';
 import { CampaignMapModal } from '../../src/components/CampaignMapModal';
 import { WarfrontDailyBoardModal } from '../../src/components/WarfrontDailyBoardModal';
 import { WeeklyRaidModal } from '../../src/components/WeeklyRaidModal';
+import { CampaignAcademyModal } from '../../src/components/CampaignAcademyModal';
 import { ScheduledProgramSession } from '../../src/types/program';
 import { CampaignNode } from '../../src/types/campaign';
+import { CampaignChapter } from '../../src/types/campaignAcademy';
 import { EncounterTemplate, WeeklyRaidCycle } from '../../src/types/warfront';
 import { getMissionById } from '../../src/content/missions/catalog';
 import { MissionObjectiveDefinition } from '../../src/types/mission';
@@ -61,6 +63,16 @@ export default function CharacterScreen() {
     startProgramWorkout,
     logRestDaySessionAction,
     setCurrentMission,
+    activeAcademyEnrollment,
+    activeAcademyCampaign,
+    academyPhaseReports,
+    academyFinalDossier,
+    enrollInAcademyCampaign,
+    pauseAcademyCampaign,
+    resumeAcademyCampaign,
+    claimAcademyPhaseReport,
+    claimAcademyFinalDossier,
+    deployChapterBossBattle,
   } = useApp();
 
   const [isCoopModalVisible, setIsCoopModalVisible] = useState(false);
@@ -70,6 +82,7 @@ export default function CharacterScreen() {
   const [isCampaignModalVisible, setIsCampaignModalVisible] = useState(false);
   const [isDailyBoardModalVisible, setIsDailyBoardModalVisible] = useState(false);
   const [isWeeklyRaidModalVisible, setIsWeeklyRaidModalVisible] = useState(false);
+  const [isAcademyModalVisible, setIsAcademyModalVisible] = useState(false);
 
   const { currentRank } = getRankForXp(currentFaction, character.totalXp);
 
@@ -110,6 +123,11 @@ export default function CharacterScreen() {
 
   const handleDeployWeeklyRaid = (raid: WeeklyRaidCycle) => {
     deployWeeklyRaid(raid);
+    router.push('/(tabs)/workout');
+  };
+
+  const handleDeployChapterBoss = (chapter: CampaignChapter) => {
+    deployChapterBossBattle(chapter);
     router.push('/(tabs)/workout');
   };
 
@@ -289,6 +307,42 @@ export default function CharacterScreen() {
           </SciFiCard>
         )}
 
+        {/* Active 90-Day Campaign Academy Card */}
+        {activeAcademyEnrollment && activeAcademyCampaign && (
+          <SciFiCard
+            title={`90-DAY CRUSADE // ${activeAcademyCampaign.title.toUpperCase()}`}
+            variant="accent"
+            rightAction={
+              <TouchableOpacity onPress={() => setIsAcademyModalVisible(true)}>
+                <Text style={styles.manageMissionsText}>
+                  MANAGE CRUSADE
+                </Text>
+              </TouchableOpacity>
+            }
+          >
+            <Text style={styles.activeMissionDesc} numberOfLines={2}>
+              {activeAcademyCampaign.subtitle} — Phase {activeAcademyEnrollment.currentPhaseNumber} (Chapter {activeAcademyEnrollment.currentChapterNumber} / 6)
+            </Text>
+            <ProgressBar
+              progress={
+                Math.min(
+                  100,
+                  Math.round(
+                    (campaignTelemetry.completedProgramSessionsCount /
+                      (activeAcademyCampaign.programDefinition.durationWeeks *
+                        activeAcademyCampaign.programDefinition.frequencyDaysPerWeek || 36)) *
+                      100
+                  )
+                )
+              }
+              label={`Crusade Milestone Progress`}
+              valueText={`${campaignTelemetry.completedProgramSessionsCount} Sessions Logged`}
+              color={THEME.colors.primary}
+              height={6}
+            />
+          </SciFiCard>
+        )}
+
         {/* Career Statistics */}
         <SciFiCard title="CRUSADE COMBAT METRICS">
           <View style={styles.statsGrid}>
@@ -446,6 +500,24 @@ export default function CharacterScreen() {
           />
 
           <TerminalButton
+            title={
+              activeAcademyCampaign
+                ? `CAMPAIGN ACADEMY // ${activeAcademyCampaign.title.toUpperCase()}`
+                : 'CAMPAIGN ACADEMY // 90-DAY CRUSADES'
+            }
+            onPress={() => setIsAcademyModalVisible(true)}
+            variant={activeAcademyEnrollment ? 'primary' : 'outline'}
+            size="md"
+            icon={
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
+          />
+
+          <TerminalButton
             title="BROWSE FACTION CODEX"
             onPress={() => router.push('/(tabs)/factions')}
             variant="outline"
@@ -490,6 +562,23 @@ export default function CharacterScreen() {
         onSetSpawnDay={setWarfrontSpawnDay}
         onDeployRaidWorkout={handleDeployWeeklyRaid}
         onClaimRewards={claimWeeklyRaidRewardsAction}
+      />
+
+      {/* 90-Day Campaign Academy Modal */}
+      <CampaignAcademyModal
+        visible={isAcademyModalVisible}
+        onClose={() => setIsAcademyModalVisible(false)}
+        activeEnrollment={activeAcademyEnrollment}
+        activeCampaign={activeAcademyCampaign}
+        phaseReports={academyPhaseReports}
+        finalDossier={academyFinalDossier}
+        campaignTelemetry={campaignTelemetry}
+        onEnrollCampaign={enrollInAcademyCampaign}
+        onPauseCampaign={pauseAcademyCampaign}
+        onResumeCampaign={resumeAcademyCampaign}
+        onClaimPhaseReport={claimAcademyPhaseReport}
+        onClaimFinalDossier={claimAcademyFinalDossier}
+        onDeployChapterBoss={handleDeployChapterBoss}
       />
 
       {/* Faction Tactical Operations & Mission Center Modal */}

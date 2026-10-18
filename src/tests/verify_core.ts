@@ -132,6 +132,31 @@ import {
   isEnemySlain,
   isEnemyEscaped,
 } from '../services/progression/warfrontEngine';
+import {
+  CAMPAIGN_ACADEMY_CATALOG,
+  getAcademyCampaignById,
+  getCampaignsByExperience,
+  getCampaignsByGoal,
+  getCampaignsByEquipment,
+} from '../content/campaignAcademy/catalog';
+import {
+  CampaignAcademyTemplate,
+  UserCampaignEnrollment,
+  CampaignChapter,
+  CampaignQuest,
+  CampaignPhaseReport,
+  FinalCampaignDossier,
+  CampaignPhaseNumber,
+} from '../types/campaignAcademy';
+import {
+  createCampaignEnrollment,
+  evaluateCampaignQuests,
+  evaluateChapterBossUnlock,
+  recordBossVictory,
+  generatePhaseReport,
+  generateFinalDossier,
+  inMemoryAcademyStorage,
+} from '../services/progression/campaignAcademyEngine';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -2496,6 +2521,206 @@ assert(
   `Daily rotation excludes permanently slain enemy encounter "${dailyEncounterToSlay.enemyName}"`
 );
 assert(dailyRotation.offeredEncounterIds.length === 3, `Daily rotation maintains complete 3-encounter board`);
+
+// ====================================================
+// SUITE 19: CAMPAIGN ACADEMY (90-DAY FITNESS CRUSADES)
+// ====================================================
+console.log('\n--- SUITE 19: CAMPAIGN ACADEMY (90-DAY FITNESS CRUSADES) ---');
+
+// 19.1 Catalog Integrity & Curriculum Transparency
+console.log('Testing Campaign Academy Catalog Integrity & Curriculum Transparency...');
+assert(CAMPAIGN_ACADEMY_CATALOG.length >= 8, `Campaign Academy catalog contains at least 8 campaigns (${CAMPAIGN_ACADEMY_CATALOG.length} found)`);
+
+const beginnerCamps = getCampaignsByExperience('beginner');
+const intermediateCamps = getCampaignsByExperience('intermediate');
+const advancedCamps = getCampaignsByExperience('advanced');
+assert(beginnerCamps.length === 3, `Catalog offers 3 beginner campaigns (found ${beginnerCamps.length})`);
+assert(intermediateCamps.length === 3, `Catalog offers 3 intermediate campaigns (found ${intermediateCamps.length})`);
+assert(advancedCamps.length === 2, `Catalog offers 2 advanced campaigns (found ${advancedCamps.length})`);
+
+for (const camp of CAMPAIGN_ACADEMY_CATALOG) {
+  assert(camp.id.length > 0, `Campaign has id: ${camp.id}`);
+  assert(camp.title.length > 0, `Campaign has title: ${camp.title}`);
+  assert(camp.chapters.length === 6, `Campaign ${camp.id} has exactly 6 chapters for 3 phases`);
+  assert(camp.programDefinition.blocks.length === 3, `Campaign ${camp.id} has 3 training blocks`);
+  assert(camp.programDefinition.durationWeeks === 12, `Campaign ${camp.id} has 12 weeks / 90 days total duration`);
+  assert(camp.trainingMethodSource.isOriginalAdaptation === true, `Campaign ${camp.id} transparently documents methodology`);
+  assert(camp.trainingMethodSource.historicalBasis.length > 10, `Campaign ${camp.id} has verified historical basis`);
+
+  // Verify all 6 chapters have valid boss encounters and rewards
+  for (const ch of camp.chapters) {
+    assert(ch.bossEncounterId.length > 0, `Chapter ${ch.chapterNumber} has bossEncounterId`);
+    assert(ch.bossName.length > 0, `Chapter ${ch.chapterNumber} has bossName: ${ch.bossName}`);
+    assert(ch.bossMaxHp > 0, `Chapter ${ch.chapterNumber} boss has positive max HP (${ch.bossMaxHp})`);
+    assert(ch.requiredSessionsCount > 0, `Chapter ${ch.chapterNumber} requires positive session count`);
+    assert(ch.rewards.length > 0, `Chapter ${ch.chapterNumber} has non-empty rewards array`);
+  }
+
+  // Verify quests cover all 3 phases
+  assert(camp.quests.length >= 4, `Campaign ${camp.id} has at least 4 quests`);
+  assert(camp.quests.some((q) => q.phaseNumber === 1), `Campaign ${camp.id} has phase 1 quests`);
+  assert(camp.quests.some((q) => q.phaseNumber === 2), `Campaign ${camp.id} has phase 2 quests`);
+  assert(camp.quests.some((q) => q.phaseNumber === 3), `Campaign ${camp.id} has phase 3 quests`);
+}
+
+// 19.2 Enrollment & Adaptive Non-Punitive Lifecycle
+console.log('Testing Campaign Academy Enrollment & Non-Punitive Lifecycle...');
+const testCampaign = getAcademyCampaignById('acad_camp_first_muster');
+assert(testCampaign !== undefined, 'Found acad_camp_first_muster campaign in catalog');
+
+const testAcadEnrollment = createCampaignEnrollment('char_90day_tester', testCampaign!, 'prog_enroll_mock_01');
+assert(testAcadEnrollment.characterId === 'char_90day_tester', 'Enrollment character matches');
+assert(testAcadEnrollment.campaignId === testCampaign!.id, 'Enrollment campaignId matches');
+assert(testAcadEnrollment.status === 'active', 'Initial status is active');
+assert(testAcadEnrollment.currentPhaseNumber === 1, 'Initial phase is Phase 1');
+assert(testAcadEnrollment.currentChapterNumber === 1, 'Initial chapter is Chapter 1');
+assert(testAcadEnrollment.completedChapterIds.length === 0, 'No chapters completed initially');
+assert(testAcadEnrollment.defeatedBossChapterIds.length === 0, 'No bosses defeated initially');
+
+inMemoryAcademyStorage.saveEnrollment(testAcadEnrollment);
+const retrievedEnrollment = inMemoryAcademyStorage.getActiveEnrollment('char_90day_tester');
+assert(retrievedEnrollment !== null, 'Active enrollment successfully retrieved from repository');
+assert(retrievedEnrollment!.campaignId === testCampaign!.id, 'Retrieved enrollment campaign matches');
+
+// Test Pause and Resume
+inMemoryAcademyStorage.pauseEnrollment(testAcadEnrollment.id);
+const pausedEnrollment = inMemoryAcademyStorage.getActiveEnrollment('char_90day_tester');
+assert(pausedEnrollment === null, 'Paused enrollment is no longer returned as active enrollment');
+
+inMemoryAcademyStorage.resumeEnrollment(testAcadEnrollment.id);
+const resumedEnrollment = inMemoryAcademyStorage.getActiveEnrollment('char_90day_tester');
+assert(resumedEnrollment !== null && resumedEnrollment.status === 'active', 'Resumed enrollment is active again');
+
+// 19.3 Quest Evaluation & Telemetry
+console.log('Testing Campaign Academy Quest Evaluation from Real Telemetry...');
+const mockAcademyTelemetry: CampaignTelemetryContext = {
+  characterId: 'char_90day_tester',
+  totalWorkouts: 2,
+  totalSets: 14,
+  totalVolumeKg: 2500,
+  totalCombatDamage: 600,
+  totalCombatAttacks: 12,
+  defeatedEnemyIds: [],
+  completedFactionMissionIds: [],
+  completedProgramSessionsCount: 2,
+  completedProgramBlockNumber: 1,
+  squadBattleAttacks: 0,
+};
+
+const questEvalResult = evaluateCampaignQuests(testCampaign!, resumedEnrollment!, mockAcademyTelemetry);
+assert(questEvalResult.newlyCompletedQuests.length > 0, `Completed quests detected from telemetry: ${questEvalResult.newlyCompletedQuests.length}`);
+assert(questEvalResult.totalXpAwarded > 0, `XP awarded for completed quests: ${questEvalResult.totalXpAwarded} XP`);
+resumedEnrollment!.completedQuestIds = questEvalResult.updatedCompletedQuestIds;
+
+// Verify quest idempotency
+const idempotentEval = evaluateCampaignQuests(testCampaign!, resumedEnrollment!, mockAcademyTelemetry);
+assert(idempotentEval.newlyCompletedQuests.length === 0, 'Idempotent quest evaluation awards no duplicate completions');
+assert(idempotentEval.totalXpAwarded === 0, 'No duplicate XP awarded');
+
+// 19.4 Training-Block-to-Boss Unlock Separation
+console.log('Testing Training-Block-to-Boss Unlock Separation...');
+// Test insufficient sessions
+const lockedBossEval = evaluateChapterBossUnlock(testCampaign!, resumedEnrollment!, 2);
+assert(!lockedBossEval.isBossUnlocked, 'Boss remains locked when block session quota is not yet met');
+
+// Test meeting session quota unlocks boss without auto-defeating it
+const unlockedBossEval = evaluateChapterBossUnlock(testCampaign!, resumedEnrollment!, 6);
+assert(unlockedBossEval.isBossUnlocked, 'Boss is unlocked when block session quota is satisfied');
+assert(
+  unlockedBossEval.unlockedBossChapterIds.includes(unlockedBossEval.chapter.id),
+  'Chapter boss added to unlocked list'
+);
+resumedEnrollment!.unlockedBossChapterIds = unlockedBossEval.unlockedBossChapterIds;
+assert(
+  !resumedEnrollment!.defeatedBossChapterIds.includes(unlockedBossEval.chapter.id),
+  'Crucial Rule Verified: Meeting training block quota UNLOCKS boss, but DOES NOT auto-defeat it!'
+);
+
+// 19.5 Chapter Boss Combat Victory & 90-Day Progression
+console.log('Testing Chapter Boss Combat Victory & Narrative Advancement...');
+// Defeat Chapter 1 Boss
+const chap1 = testCampaign!.chapters[0];
+const vic1 = recordBossVictory(testCampaign!, resumedEnrollment!, chap1.id);
+assert(!vic1.isPhaseComplete, 'Chapter 1 defeat does not complete Phase 1');
+assert(!vic1.isCampaignComplete, 'Campaign not yet complete');
+assert(vic1.updatedEnrollment.currentChapterNumber === 2, 'Advanced to Chapter 2');
+assert(vic1.updatedEnrollment.currentPhaseNumber === 1, 'Still in Phase 1');
+assert(vic1.updatedEnrollment.defeatedBossChapterIds.includes(chap1.id), 'Chapter 1 boss recorded defeated');
+
+// Defeat Chapter 2 Boss (Phase 1 Culmination)
+const chap2 = testCampaign!.chapters[1];
+const vic2 = recordBossVictory(testCampaign!, vic1.updatedEnrollment, chap2.id);
+assert(vic2.isPhaseComplete, 'Chapter 2 defeat completes Phase 1 (Foundation)');
+assert(!vic2.isCampaignComplete, 'Campaign not yet complete');
+assert(vic2.updatedEnrollment.currentPhaseNumber === 2, 'Advanced to Phase 2 (Development)');
+assert(vic2.updatedEnrollment.currentChapterNumber === 3, 'Advanced to Chapter 3');
+
+// Defeat Chapter 3 & 4 Bosses (Phase 2 Culmination)
+const chap3 = testCampaign!.chapters[2];
+const vic3 = recordBossVictory(testCampaign!, vic2.updatedEnrollment, chap3.id);
+const chap4 = testCampaign!.chapters[3];
+const vic4 = recordBossVictory(testCampaign!, vic3.updatedEnrollment, chap4.id);
+assert(vic4.isPhaseComplete, 'Chapter 4 defeat completes Phase 2 (Development)');
+assert(vic4.updatedEnrollment.currentPhaseNumber === 3, 'Advanced to Phase 3 (Culmination)');
+assert(vic4.updatedEnrollment.currentChapterNumber === 5, 'Advanced to Chapter 5');
+
+// Defeat Chapter 5 & 6 Bosses (Phase 3 & Campaign Culmination)
+const chap5 = testCampaign!.chapters[4];
+const vic5 = recordBossVictory(testCampaign!, vic4.updatedEnrollment, chap5.id);
+const chap6 = testCampaign!.chapters[5];
+const vic6 = recordBossVictory(testCampaign!, vic5.updatedEnrollment, chap6.id);
+assert(vic6.isPhaseComplete, 'Chapter 6 defeat completes Phase 3');
+assert(vic6.isCampaignComplete, 'Chapter 6 defeat completes entire 90-day campaign crusade!');
+assert(vic6.updatedEnrollment.status === 'completed', 'Enrollment status updated to "completed"');
+assert(vic6.updatedEnrollment.completedAt !== undefined, 'Completion timestamp recorded');
+assert(vic6.updatedEnrollment.defeatedBossChapterIds.length === 6, 'All 6 chapter commanders neutralized');
+
+// 19.6 Milestone Phase Reports & Final 90-Day Dossier
+console.log('Testing Objective Phase Reports & Final 90-Day Dossier Generation...');
+const fullTelemetry: CampaignTelemetryContext = {
+  characterId: 'char_90day_tester',
+  totalWorkouts: 36,
+  totalSets: 288,
+  totalVolumeKg: 42500,
+  totalCombatDamage: 18500,
+  totalCombatAttacks: 288,
+  defeatedEnemyIds: ['boss_1', 'boss_2', 'boss_3', 'boss_4', 'boss_5', 'boss_6'],
+  completedFactionMissionIds: [],
+  completedProgramSessionsCount: 36,
+  completedProgramBlockNumber: 3,
+  squadBattleAttacks: 0,
+};
+
+// Phase 1 Report
+const rep1 = generatePhaseReport(vic6.updatedEnrollment, testCampaign!, 1, fullTelemetry);
+assert(rep1.phaseNumber === 1, 'Phase 1 report has phaseNumber 1');
+assert(rep1.xpEarned === 500, 'Phase 1 report awards 500 XP');
+assert(rep1.bossDefeatedName === chap2.bossName, `Phase 1 report names defeated commander: ${rep1.bossDefeatedName}`);
+inMemoryAcademyStorage.savePhaseReport(rep1);
+
+// Phase 2 & 3 Reports
+const rep2 = generatePhaseReport(vic6.updatedEnrollment, testCampaign!, 2, fullTelemetry);
+inMemoryAcademyStorage.savePhaseReport(rep2);
+const rep3 = generatePhaseReport(vic6.updatedEnrollment, testCampaign!, 3, fullTelemetry);
+inMemoryAcademyStorage.savePhaseReport(rep3);
+
+const savedReports = inMemoryAcademyStorage.getPhaseReports(vic6.updatedEnrollment.id);
+assert(savedReports.length === 3, `Saved and retrieved 3 objective phase reports (found ${savedReports.length})`);
+
+// Final 90-Day Campaign Completion Dossier
+const dossier = generateFinalDossier(vic6.updatedEnrollment, testCampaign!, fullTelemetry);
+assert(dossier.campaignTitle === testCampaign!.title, 'Dossier campaignTitle matches');
+assert(dossier.totalSessionsCompleted === 36, 'Dossier records 36 verified completed sessions');
+assert(dossier.totalVolumeKg === 42500, 'Dossier records 42,500 kg total volume');
+assert(dossier.bossesDefeatedCount === 6, 'Dossier records 6 defeated commanders');
+assert(dossier.totalGloryXpAwarded === 5000, 'Dossier awards 5,000 Glory XP for completing 90-day crusade');
+assert(dossier.adherencePercentage === 100, 'Dossier calculates 100% adherence');
+assert(dossier.conferredTitles.length > 0, `Dossier confers titles: ${dossier.conferredTitles.join(', ')}`);
+
+inMemoryAcademyStorage.saveFinalDossier(dossier);
+const retrievedDossier = inMemoryAcademyStorage.getFinalDossier(vic6.updatedEnrollment.id);
+assert(retrievedDossier !== null, 'Final 90-day dossier successfully persisted and retrieved');
+assert(retrievedDossier!.totalGloryXpAwarded === 5000, 'Retrieved dossier glory XP matches');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
