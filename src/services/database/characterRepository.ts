@@ -63,6 +63,31 @@ export function updateFactionAllegiance(factionId: string, subfactionId?: string
   return getCharacterProfile();
 }
 
+/**
+ * Syncs the local character profile name, faction, and subfaction from cloud account.
+ */
+export function syncCharacterProfileFromCloud(profile: {
+  displayName?: string;
+  factionId?: string;
+  subfactionId?: string;
+}): CharacterProfile {
+  const db = getDatabase();
+  const current = getCharacterProfile();
+  const newName = profile.displayName || current.characterName;
+  const newFaction = profile.factionId || current.factionId;
+  const newSubfaction =
+    profile.subfactionId !== undefined ? profile.subfactionId : current.subfactionId;
+  const now = new Date().toISOString();
+
+  db.runSync(
+    `UPDATE character_profile 
+     SET character_name = ?, faction_id = ?, subfaction_id = ?, updated_at = ? 
+     WHERE id = 1`,
+    [newName, newFaction, newSubfaction || null, now]
+  );
+  return getCharacterProfile();
+}
+
 export function addCharacterXp(xpGained: number): CharacterProfile {
   const db = getDatabase();
   const current = getCharacterProfile();

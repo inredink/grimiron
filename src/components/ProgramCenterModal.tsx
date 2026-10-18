@@ -34,6 +34,7 @@ interface ProgramCenterModalProps {
   onPauseProgram: () => void;
   onResumeProgram: () => void;
   onStartScheduledWorkout: (session: ScheduledProgramSession) => void;
+  onLogRestDay?: (session: ScheduledProgramSession) => void;
 }
 
 const CATEGORY_TABS: { id: ProgramCategory | 'all'; label: string }[] = [
@@ -55,6 +56,7 @@ export const ProgramCenterModal: React.FC<ProgramCenterModalProps> = ({
   onPauseProgram,
   onResumeProgram,
   onStartScheduledWorkout,
+  onLogRestDay,
 }) => {
   const [selectedTab, setSelectedTab] = useState<'dashboard' | 'catalog'>(
     activeEnrollment ? 'dashboard' : 'catalog'
@@ -268,14 +270,26 @@ export const ProgramCenterModal: React.FC<ProgramCenterModalProps> = ({
                       </Text>
 
                       {currentScheduledSession.isRestDay ? (
-                        <View style={styles.restDayNotice}>
-                          <Ionicons name="leaf-outline" size={24} color={THEME.colors.success} />
-                          <View style={{ flex: 1, marginLeft: 12 }}>
-                            <Text style={styles.restTitle}>PLANNED RECOVERY WINDOW</Text>
-                            <Text style={styles.restBody}>
-                              Rest days are essential for myofibrillar protein synthesis, central nervous system restoration, and injury prevention. Taking your planned rest days never assesses penalties or deductions in GrimIron.
-                            </Text>
+                        <View>
+                          <View style={styles.restDayNotice}>
+                            <Ionicons name="leaf-outline" size={24} color={THEME.colors.success} />
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                              <Text style={styles.restTitle}>PLANNED RECOVERY WINDOW</Text>
+                              <Text style={styles.restBody}>
+                                Rest days are essential for myofibrillar protein synthesis, central nervous system restoration, and injury prevention. Taking your planned rest days never assesses penalties or deductions in GrimIron.
+                              </Text>
+                            </View>
                           </View>
+                          <TerminalButton
+                            title="LOG RECOVERY DAY & ADVANCE"
+                            onPress={() => {
+                              onLogRestDay?.(currentScheduledSession);
+                            }}
+                            variant="secondary"
+                            size="md"
+                            icon={<Ionicons name="checkmark-circle-outline" size={18} color={THEME.colors.primary} />}
+                            style={{ marginTop: 14 }}
+                          />
                         </View>
                       ) : (
                         <>

@@ -10,11 +10,16 @@ import {
   getCharacterProfile,
   updateFactionAllegiance,
   getUserCareerStats,
+  addCharacterXp,
+  syncCharacterProfileFromCloud,
 } from '../services/database/characterRepository';
 import {
   saveCompletedWorkout,
   getAllWorkouts,
   cloneWorkoutForRepeat,
+  saveWorkoutDraft,
+  loadWorkoutDraft,
+  clearWorkoutDraft,
 } from '../services/database/workoutRepository';
 import { calculateProgression } from '../services/progression/rankEngine';
 import { calculateWorkoutXp } from '../services/progression/xpCalculator';
@@ -26,14 +31,17 @@ import {
 import { getDefaultMission } from '../content/combat/missions';
 import { saveCombatEncounter } from '../services/database/combatRepository';
 import { buildAfterActionReport } from '../services/combat/combatEngine';
-import { ActiveCoopRaid } from '../types/coop';
+import { ActiveCoopRaid, CoopBoss, CoopGroup, CoopAttack } from '../types/coop';
 import {
   getActiveRaid,
   saveActiveRaid,
   clearActiveRaid,
 } from '../services/database/coopQueueRepository';
 import { coopService } from '../services/supabase/coopService';
-import { recordBattleHistory } from '../services/database/battleHistoryRepository';
+import {
+  recordBattleHistory,
+  getBattleHistoryById,
+} from '../services/database/battleHistoryRepository';
 import {
   BattleRecord,
   BattleParticipantContribution,
@@ -72,6 +80,7 @@ import {
   populateWorkoutFromScheduledSession,
   evaluateSessionAdherence,
   advanceEnrollmentSession,
+  recordRestDaySession,
 } from '../services/progression/programEngine';
 import {
   saveProgramEnrollment,
@@ -80,7 +89,11 @@ import {
   resumeProgramEnrollment,
   recordProgramSession,
 } from '../services/database/programRepository';
-import { buildCampaignTelemetryContext } from '../services/database/campaignRepository';
+import {
+  buildCampaignTelemetryContext,
+  syncCampaignProgressToDb,
+} from '../services/database/campaignRepository';
+import { CAMPAIGN_CATALOG } from '../content/campaigns/catalog';
 import {
   DailyRotationRecord,
   WeeklyRaidCycle,
@@ -161,6 +174,18 @@ interface AppContextValue {
     mission?: CombatMission
   ) => FinishWorkoutResult | null;
   cancelActiveWorkout: () => void;
+  logRestDaySessionAction: (session: ScheduledProgramSession) => void;
+  claimCoopRaidVictoryAction: (
+    boss: CoopBoss,
+    group?: CoopGroup,
+    attacks?: CoopAttack[]
+  ) => boolean;
+  isCoopVictoryClaimed: (bossId: string) => boolean;
+  syncUserProfileFromCloud: (profile: {
+    displayName?: string;
+    factionId?: string;
+    subfactionId?: string;
+  }) => void;
   repeatWorkout: (sessionId: string) => boolean;
   changeFaction: (factionId: string, subfactionId?: string) => void;
   refreshData: () => void;
@@ -245,6 +270,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Load active program enrollment & campaign telemetry
       const currentEnrollment = getActiveProgramEnrollment(prof.id.toString());
       const campTelemetry = buildCampaignTelemetryContext(prof.id.toString());
+
+      // Persist campaign graph evaluations to SQLite
+      try {
+        for (const camp of CAMPAIGN_CATALOG) {
+          syncCampaignProgressToDb(camp, campTelemetry, prof.id.toString());
+        }
+      } catch (campErr) {
+        console.warn('Initial campaign sync skipped:', campErr);
+      }
+
+      // Restore in-progress workout draft across crashes / app restarts
+      try {
+        const savedDraft = loadWorkoutDraft();
+        if (savedDraft && savedDraft.workout && !savedDraft.workout.isCompleted) {
+          setActiveWorkout((prev) => prev || savedDraft.workout);
+          if (savedDraft.mission) {
+            setCurrentMission(savedDraft.mission);
+          }
+          if (savedDraft.dailyEncounterId) {
+            setActiveDailyEncounterId(savedDraft.dailyEncounterId);
+          }
+          if (savedDraft.raidCycleId) {
+            setActiveRaidCycleId(savedDraft.raidCycleId);
+          }
+        }
+      } catch (draftErr) {
+        console.warn('Draft restore skipped:', draftErr);
+      }
+
+      // Automatically sync cloud profile if authenticated with Supabase
+      if (coopService.isConfigured()) {
+        coopService
+          .getMyProfile()
+          .then((cloudProf) => {
+            if (cloudProf) {
+              const synced = syncCharacterProfileFromCloud({
+                displayName: cloudProf.displayName,
+                factionId: cloudProf.factionId,
+              });
+              setCharacter(synced);
+            }
+          })
+          .catch(() => {});
+      }
 
       // Activate SQLite storage adapter for Warfront
       setWarfrontStorageAdapter(sqliteWarfrontStorage);
@@ -362,6 +431,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const startProgramWorkout = useCallback((session: ScheduledProgramSession) => {
     const prepopulated = populateWorkoutFromScheduledSession(session);
     setActiveWorkout(prepopulated);
+    saveWorkoutDraft(prepopulated, undefined, null, null);
   }, []);
 
   const startNewWorkout = (
@@ -380,13 +450,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       exercises: [],
     };
     setActiveWorkout(newSession);
+    saveWorkoutDraft(
+      newSession,
+      mission || currentMission,
+      activeDailyEncounterId,
+      activeRaidCycleId
+    );
   };
 
   const updateActiveWorkout = (workout: WorkoutSession) => {
     setActiveWorkout(workout);
+    saveWorkoutDraft(
+      workout,
+      currentMission,
+      activeDailyEncounterId,
+      activeRaidCycleId
+    );
   };
 
   const cancelActiveWorkout = () => {
+    clearWorkoutDraft();
+    setActiveDailyEncounterId(null);
+    setActiveRaidCycleId(null);
     setActiveWorkout(null);
   };
 
@@ -394,6 +479,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cloned = cloneWorkoutForRepeat(sessionId);
     if (cloned) {
       setActiveWorkout(cloned);
+      saveWorkoutDraft(cloned, undefined, null, null);
       return true;
     }
     return false;
@@ -678,7 +764,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveRaidCycleId(null);
     }
 
+    // Clear in-progress workout draft upon completion
+    clearWorkoutDraft();
+    setActiveDailyEncounterId(null);
+    setActiveRaidCycleId(null);
     setActiveWorkout(null);
+
+    // Sync planetary campaign theater progression
+    try {
+      const campCtx = buildCampaignTelemetryContext(character.id.toString());
+      for (const camp of CAMPAIGN_CATALOG) {
+        syncCampaignProgressToDb(camp, campCtx, character.id.toString());
+      }
+    } catch (cErr) {
+      console.warn('Error syncing campaign progress upon workout finish:', cErr);
+    }
+
     loadData();
 
     // Asynchronously flush any buffered offline attacks in the background
@@ -686,6 +787,195 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return { xpEarned: totalXp, breakdown, report };
   };
+
+  const logRestDaySessionAction = useCallback(
+    (session: ScheduledProgramSession) => {
+      if (!activeEnrollment || activeEnrollment.status !== 'active') return;
+      try {
+        const restRecord = recordRestDaySession(session, activeEnrollment.id);
+        recordProgramSession(restRecord);
+        const updatedEnrollment = advanceEnrollmentSession(activeEnrollment, true);
+        saveProgramEnrollment(updatedEnrollment);
+        loadData();
+        try {
+          const evalCtx = buildEvaluationContextFromDb('user_main', 'char_main');
+          runEvaluationWithDb(evalCtx);
+        } catch (e) {}
+      } catch (err) {
+        console.warn('Error recording rest day session:', err);
+      }
+    },
+    [activeEnrollment, loadData]
+  );
+
+  const isCoopVictoryClaimed = useCallback((bossId: string): boolean => {
+    try {
+      const record = getBattleHistoryById(`battle_coop_${bossId}`);
+      return Boolean(record);
+    } catch (err) {
+      return false;
+    }
+  }, []);
+
+  const claimCoopRaidVictoryAction = useCallback(
+    (boss: CoopBoss, group?: CoopGroup, attacks?: CoopAttack[]): boolean => {
+      const battleId = `battle_coop_${boss.id}`;
+      try {
+        const existing = getBattleHistoryById(battleId);
+        if (existing) {
+          return true; // Idempotent: already claimed and recorded
+        }
+
+        const totalDamage =
+          attacks && attacks.length > 0
+            ? attacks.reduce((sum, a) => sum + a.damage, 0)
+            : Math.max(1, boss.maxHp - boss.currentHp);
+        const totalAttacksCount = attacks && attacks.length > 0 ? attacks.length : 1;
+
+        // Group attacks by participant
+        const participantMap = new Map<
+          string,
+          { userId: string; callsign: string; attacksCount: number; damageDealt: number }
+        >();
+
+        if (attacks && attacks.length > 0) {
+          for (const atk of attacks) {
+            const p = participantMap.get(atk.userId) || {
+              userId: atk.userId,
+              callsign: atk.userName || 'Battle-Brother',
+              attacksCount: 0,
+              damageDealt: 0,
+            };
+            p.attacksCount += 1;
+            p.damageDealt += atk.damage;
+            participantMap.set(atk.userId, p);
+          }
+        } else {
+          participantMap.set('user_main', {
+            userId: 'user_main',
+            callsign: character.characterName,
+            attacksCount: 1,
+            damageDealt: totalDamage,
+          });
+        }
+
+        const participants: BattleParticipantContribution[] = Array.from(
+          participantMap.values()
+        ).map((p) => ({
+          userId: p.userId,
+          callsign: p.callsign,
+          factionId: character.factionId,
+          subfactionId: character.subfactionId || undefined,
+          attacksCount: p.attacksCount,
+          damageDealt: p.damageDealt,
+          damageSharePercent:
+            totalDamage > 0 ? Math.round((p.damageDealt / totalDamage) * 100) : 100,
+          workoutsAttributed: 1,
+          setsAttributed: p.attacksCount,
+        }));
+
+        const gloryBonusXp = boss.gloryXp || 500;
+
+        const timeline: BattleTimelineEvent[] = [
+          {
+            timestamp: boss.createdAt,
+            eventType: 'battle_started',
+            actorName: group?.name || 'Crusade Squad',
+            description: `Cooperative Crusade assault commenced against ${boss.name}.`,
+          },
+          {
+            timestamp: boss.defeatedAt || new Date().toISOString(),
+            eventType: 'enemy_slain',
+            actorName: character.characterName,
+            description: `${boss.name} has been vanquished by the squad! Total damage dealt: ${totalDamage}.`,
+            damageDealt: totalDamage,
+          },
+        ];
+
+        const battleRecord: BattleRecord = {
+          id: battleId,
+          encounterMode: 'coop',
+          sessionId: undefined,
+          missionId: `mission_coop_${boss.id}`,
+          missionTitle: `Co-op Raid: ${boss.name}`,
+          enemyId: boss.bossKey,
+          enemyName: boss.name,
+          enemyFaction: boss.faction,
+          enemyDifficulty: 'boss',
+          enemyMaxHp: boss.maxHp,
+          enemyRemainingHp: 0,
+          outcome: 'victory',
+          totalDamage,
+          totalAttacks: totalAttacksCount,
+          participantCount: participants.length,
+          squadId: boss.groupId,
+          squadName: group?.name || 'Crusade Squad',
+          startedAt: boss.createdAt,
+          completedAt: boss.defeatedAt || new Date().toISOString(),
+          durationSeconds: Math.max(
+            60,
+            Math.floor(
+              (new Date(boss.defeatedAt || new Date()).getTime() -
+                new Date(boss.createdAt).getTime()) /
+                1000
+            )
+          ),
+          xpEarned: gloryBonusXp,
+          snapshot: {
+            enemyDescription: boss.loreTitle,
+            enemyGlyph: boss.glyphName,
+            enemyFaction: boss.faction,
+            initialHealth: boss.maxHp,
+            finalHealth: 0,
+            timeline,
+            participants,
+            userAttacks: [],
+            linkedWorkoutIds: [],
+            rewards: {
+              baseXpEarned: 0,
+              gloryBonusXp: gloryBonusXp,
+              totalXpEarned: gloryBonusXp,
+            },
+            afterActionReportSummary: `Crusade victory achieved! ${boss.name} was slain through squad cooperation.`,
+          },
+          createdAt: new Date().toISOString(),
+        };
+
+        recordBattleHistory(battleRecord);
+        addCharacterXp(gloryBonusXp);
+
+        // Trigger achievement evaluation dynamically
+        try {
+          const evalCtx = buildEvaluationContextFromDb('user_main', 'char_main', undefined, {
+            latestBattleId: battleId,
+          });
+          runEvaluationWithDb(evalCtx);
+        } catch (achErr) {
+          console.warn('Error during co-op victory achievement evaluation:', achErr);
+        }
+
+        loadData();
+        return true;
+      } catch (err) {
+        console.warn('Failed to claim co-op raid victory:', err);
+        return false;
+      }
+    },
+    [character, loadData]
+  );
+
+  const syncUserProfileFromCloud = useCallback(
+    (profile: { displayName?: string; factionId?: string; subfactionId?: string }) => {
+      try {
+        const updated = syncCharacterProfileFromCloud(profile);
+        setCharacter(updated);
+        loadData();
+      } catch (err) {
+        console.warn('Failed to sync profile from cloud:', err);
+      }
+    },
+    [loadData]
+  );
 
   const setActiveCoopRaid = (raid: ActiveCoopRaid | null) => {
     if (raid) {
@@ -739,6 +1029,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateActiveWorkout,
         finishActiveWorkout,
         cancelActiveWorkout,
+        logRestDaySessionAction,
+        claimCoopRaidVictoryAction,
+        isCoopVictoryClaimed,
+        syncUserProfileFromCloud,
         repeatWorkout,
         changeFaction,
         refreshData: loadData,

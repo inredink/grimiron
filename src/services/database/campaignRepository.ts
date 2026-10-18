@@ -1,8 +1,10 @@
 import { getDatabase } from './db';
 import {
+  CampaignDefinition,
   CampaignNodeProgress,
   CampaignTelemetryContext,
 } from '../../types/campaign';
+import { evaluateFullCampaign } from '../progression/campaignEvaluator';
 
 /**
  * SQLite Repository for Campaign Map Progress and Telemetry Context Gathering.
@@ -119,3 +121,53 @@ export function buildCampaignTelemetryContext(
     squadBattleAttacks: 0,
   };
 }
+
+/**
+ * Evaluates the full campaign against the current telemetry and persists all node states to SQLite.
+ */
+export function syncCampaignProgressToDb(
+  campaign: CampaignDefinition,
+  telemetry: CampaignTelemetryContext,
+  characterId: string = 'char_main'
+): void {
+  try {
+    const fullEval = evaluateFullCampaign(campaign, telemetry);
+    const existingRecords = getCampaignProgressRecords(characterId, campaign.id);
+    const existingMap = new Map(existingRecords.map((r) => [r.nodeId, r]));
+
+    for (const node of campaign.nodes) {
+      const nodeEval = fullEval.evaluations[node.id];
+      if (!nodeEval) continue;
+
+      const existing = existingMap.get(node.id);
+      const isCompleted = nodeEval.isCompleted;
+      const isUnlocked = nodeEval.isUnlocked;
+      const status: 'locked' | 'unlocked' | 'completed' = isCompleted
+        ? 'completed'
+        : isUnlocked
+        ? 'unlocked'
+        : 'locked';
+
+      const completedAt = isCompleted
+        ? existing?.completedAt || new Date().toISOString()
+        : undefined;
+      const unlockedAt = isUnlocked
+        ? existing?.unlockedAt || new Date().toISOString()
+        : undefined;
+
+      saveCampaignNodeProgress({
+        id: `cnp_${characterId}_${campaign.id}_${node.id}`,
+        characterId,
+        campaignId: campaign.id,
+        nodeId: node.id,
+        status,
+        completedAt,
+        unlockedAt,
+        requirementsStatus: nodeEval.requirementsStatus,
+      });
+    }
+  } catch (err) {
+    console.warn('Failed to sync campaign progress to SQLite:', err);
+  }
+}
+

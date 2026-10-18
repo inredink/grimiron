@@ -65,6 +65,7 @@ export default function WorkoutScreen() {
     pauseActiveProgram,
     resumeActiveProgram,
     startProgramWorkout,
+    logRestDaySessionAction,
     dailyRotation,
     weeklyRaid,
     warfrontSettings,
@@ -623,6 +624,7 @@ export default function WorkoutScreen() {
             startProgramWorkout(session);
             setIsProgramModalVisible(false);
           }}
+          onLogRestDay={logRestDaySessionAction}
         />
       </SafeAreaView>
     );
@@ -1001,6 +1003,7 @@ export default function WorkoutScreen() {
           startProgramWorkout(session);
           setIsProgramModalVisible(false);
         }}
+        onLogRestDay={logRestDaySessionAction}
       />
 
       {/* Warfront Daily Engagements Board Modal */}

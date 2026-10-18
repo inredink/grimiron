@@ -408,6 +408,22 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
     db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (8, datetime('now'));");
   }
 
+  // Migration 9: In-Progress Workout Draft Persistence for Crash Recovery
+  if (!appliedMigrations.includes(9)) {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS active_workout_draft (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        workout_json TEXT NOT NULL,
+        mission_json TEXT,
+        daily_encounter_id TEXT,
+        raid_cycle_id TEXT,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (9, datetime('now'));");
+  }
+
   return db;
 }
 

@@ -59,6 +59,7 @@ export default function CharacterScreen() {
     pauseActiveProgram,
     resumeActiveProgram,
     startProgramWorkout,
+    logRestDaySessionAction,
     setCurrentMission,
   } = useApp();
 
@@ -506,6 +507,7 @@ export default function CharacterScreen() {
         onPauseProgram={pauseActiveProgram}
         onResumeProgram={resumeActiveProgram}
         onStartScheduledWorkout={handleStartScheduledWorkout}
+        onLogRestDay={logRestDaySessionAction}
       />
 
       {/* Planetary Campaign Theater Map Modal */}

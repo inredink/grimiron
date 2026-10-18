@@ -220,3 +220,73 @@ export function deleteWorkout(sessionId: string): void {
   });
   syncTotalXpFromHistory();
 }
+
+export interface WorkoutDraftData {
+  workout: WorkoutSession;
+  mission?: any;
+  dailyEncounterId?: string | null;
+  raidCycleId?: string | null;
+  updatedAt: string;
+}
+
+/**
+ * Saves or updates the single active in-progress workout draft for crash recovery.
+ */
+export function saveWorkoutDraft(
+  workout: WorkoutSession,
+  mission?: any,
+  dailyEncounterId?: string | null,
+  raidCycleId?: string | null
+): void {
+  try {
+    const db = getDatabase();
+    db.runSync(
+      `INSERT OR REPLACE INTO active_workout_draft (
+        id, workout_json, mission_json, daily_encounter_id, raid_cycle_id, updated_at
+      ) VALUES (1, ?, ?, ?, ?, ?)`,
+      [
+        JSON.stringify(workout),
+        mission ? JSON.stringify(mission) : null,
+        dailyEncounterId || null,
+        raidCycleId || null,
+        new Date().toISOString(),
+      ]
+    );
+  } catch (err) {
+    console.warn('Failed to save active workout draft:', err);
+  }
+}
+
+/**
+ * Loads the active in-progress workout draft if one was preserved across restarts.
+ */
+export function loadWorkoutDraft(): WorkoutDraftData | null {
+  try {
+    const db = getDatabase();
+    const row = db.getFirstSync<any>(`SELECT * FROM active_workout_draft WHERE id = 1`);
+    if (!row || !row.workout_json) return null;
+    return {
+      workout: JSON.parse(row.workout_json),
+      mission: row.mission_json ? JSON.parse(row.mission_json) : undefined,
+      dailyEncounterId: row.daily_encounter_id || null,
+      raidCycleId: row.raid_cycle_id || null,
+      updatedAt: row.updated_at,
+    };
+  } catch (err) {
+    console.warn('Failed to load active workout draft:', err);
+    return null;
+  }
+}
+
+/**
+ * Clears the active workout draft after the workout finishes or is discarded.
+ */
+export function clearWorkoutDraft(): void {
+  try {
+    const db = getDatabase();
+    db.runSync(`DELETE FROM active_workout_draft WHERE id = 1`);
+  } catch (err) {
+    console.warn('Failed to clear active workout draft:', err);
+  }
+}
+

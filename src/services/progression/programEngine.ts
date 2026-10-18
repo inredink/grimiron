@@ -150,6 +150,29 @@ export function evaluateSessionAdherence(
 }
 
 /**
+ * Creates a completed rest/recovery record for a planned rest session and advances the program.
+ */
+export function recordRestDaySession(
+  scheduledSession: ScheduledProgramSession,
+  enrollmentId: string
+): ProgramSessionRecord {
+  return {
+    id: `prec_rest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    enrollmentId,
+    programId: scheduledSession.id.split('_')[0],
+    scheduledSessionId: scheduledSession.id,
+    workoutSessionId: undefined,
+    status: 'completed',
+    scheduledDate: new Date().toISOString(),
+    completedDate: new Date().toISOString(),
+    actualSetsCompleted: 0,
+    prescribedSetsCount: 0,
+    actualVolumeKg: 0,
+    deviationNotes: 'Planned recovery window observed. Central nervous system & joint recovery honored.',
+  };
+}
+
+/**
  * Advances the enrollment to the next session index or next training block.
  */
 export function advanceEnrollmentSession(

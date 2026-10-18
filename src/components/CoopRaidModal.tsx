@@ -24,6 +24,7 @@ import {
   CoopGroupMember,
 } from '../types/coop';
 import { getQueueStats } from '../services/database/coopQueueRepository';
+import { useApp } from '../context/AppContext';
 
 interface CoopRaidModalProps {
   visible: boolean;
@@ -38,6 +39,12 @@ export const CoopRaidModal: React.FC<CoopRaidModalProps> = ({
   activeRaid,
   onSelectActiveRaid,
 }) => {
+  const {
+    claimCoopRaidVictoryAction,
+    isCoopVictoryClaimed,
+    syncUserProfileFromCloud,
+  } = useApp();
+
   const isConfigured = coopService.isConfigured();
 
   // Authentication State
@@ -86,6 +93,12 @@ export const CoopRaidModal: React.FC<CoopRaidModalProps> = ({
       if (user) {
         const profile = await coopService.getMyProfile();
         setUserProfile(profile);
+        if (profile) {
+          syncUserProfileFromCloud({
+            displayName: profile.displayName,
+            factionId: profile.factionId,
+          });
+        }
 
         const squads = await coopService.getMySquads();
         setMySquads(squads);
@@ -628,16 +641,59 @@ export const CoopRaidModal: React.FC<CoopRaidModalProps> = ({
                         />
                       </View>
 
-                      {/* Target Select Button */}
-                      <TerminalButton
-                        title={
-                          activeRaid?.bossId === currentBoss.id
-                            ? 'TARGET ENGAGED FOR WORKOUTS'
-                            : 'ENGAGE IN WORKOUTS'
-                        }
-                        onPress={handleSelectSquadBoss}
-                        style={{ marginTop: 8 }}
-                      />
+                      {/* Target Select / Victory Claim Action */}
+                      {currentBoss.isDefeated ? (
+                        isCoopVictoryClaimed(currentBoss.id) ? (
+                          <TerminalButton
+                            title="BATTLE HONOR RECORDED // SPOILS SECURED"
+                            onPress={() => {}}
+                            variant="secondary"
+                            size="md"
+                            disabled
+                            icon={
+                              <Ionicons
+                                name="checkmark-done-circle-outline"
+                                size={18}
+                                color={THEME.colors.primary}
+                              />
+                            }
+                            style={{ marginTop: 8 }}
+                          />
+                        ) : (
+                          <TerminalButton
+                            title="CLAIM CRUSADE SPOILS & RECORD BATTLE HONOR"
+                            onPress={() => {
+                              const success = claimCoopRaidVictoryAction(
+                                currentBoss,
+                                selectedSquad || undefined,
+                                bossAttacks
+                              );
+                              if (success) {
+                                Alert.alert(
+                                  'CRUSADE VICTORY RECORDED',
+                                  `Glorious victory! ${currentBoss.name} has been permanently inscribed in your Crusade Battle History, and ${
+                                    currentBoss.gloryXp || 500
+                                  } Glory XP has been awarded to your character.`
+                                );
+                              }
+                            }}
+                            variant="primary"
+                            size="md"
+                            icon={<Ionicons name="trophy-outline" size={18} color="#0A0E17" />}
+                            style={{ marginTop: 8 }}
+                          />
+                        )
+                      ) : (
+                        <TerminalButton
+                          title={
+                            activeRaid?.bossId === currentBoss.id
+                              ? 'TARGET ENGAGED FOR WORKOUTS'
+                              : 'ENGAGE IN WORKOUTS'
+                          }
+                          onPress={handleSelectSquadBoss}
+                          style={{ marginTop: 8 }}
+                        />
+                      )}
 
                       {/* Privacy Note */}
                       <View style={styles.privacyNoteBox}>

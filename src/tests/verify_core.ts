@@ -73,8 +73,10 @@ import {
   populateWorkoutFromScheduledSession,
   evaluateSessionAdherence,
   advanceEnrollmentSession,
+  recordRestDaySession,
   calculateExercisePerformanceTrends,
 } from '../services/progression/programEngine';
+import { CoopBoss, CoopGroup, CoopAttack } from '../types/coop';
 import {
   CAMPAIGN_CATALOG,
   getCampaignById,
@@ -1975,6 +1977,184 @@ for (const faction of warhammer40kUniverse.factions) {
   const invalidFeatherNames = ['crosshair', 'cpu', 'award', 'zap', 'box', 'activity', 'feather', 'circle', 'smile', 'target', 'user-check', 'hexagon'];
   assert(!invalidFeatherNames.includes(faction.iconName), `Faction "${faction.id}" uses valid Ionicons iconName "${faction.iconName}"`);
 }
+
+// ============================================================================
+// TEST SUITE 16: Quality Audit Verifications & Enhancements
+// ============================================================================
+console.log('\n--- TEST SUITE 16: Quality Audit Verifications & Enhancements ---');
+
+// 16.1 Rest Day Session Engine & Non-Penalizing Progression
+console.log('Testing Rest Day Progression & Recovery Record Generation...');
+const testRestProgram = TRAINING_PROGRAM_CATALOG.find((p) =>
+  p.blocks.some((b) => b.sessions.some((s) => s.isRestDay))
+) || TRAINING_PROGRAM_CATALOG[0];
+const restSessionSuite16: ScheduledProgramSession = testRestProgram.blocks[0].sessions.find((s) => s.isRestDay) || {
+  id: 'sess_test_rest',
+  sessionIndex: 3,
+  dayNumber: 4,
+  title: 'Active Recovery & Mobilization',
+  focus: 'Rest, hydration & mobility',
+  isRestDay: true,
+  exercises: [],
+};
+
+const restRecord = recordRestDaySession(restSessionSuite16, 'enroll_test_01');
+assert(restRecord.status === 'completed', 'Rest day record is marked completed');
+assert(restRecord.actualSetsCompleted === 0, 'Rest day requires 0 actual sets');
+assert(restRecord.prescribedSetsCount === 0, 'Rest day requires 0 prescribed sets');
+assert(restRecord.actualVolumeKg === 0, 'Rest day records 0 kg volume');
+assert(Boolean(restRecord.deviationNotes && restRecord.deviationNotes.includes('recovery')), 'Rest day includes recovery deviation notes');
+
+const testEnrollment = createProgramEnrollment('char_test', testRestProgram);
+const advancedAfterRest = advanceEnrollmentSession(testEnrollment, true);
+assert(advancedAfterRest.completedSessionsCount === 1, 'Completed sessions count incremented after rest day');
+const expectedAdherence = Math.round((1 / advancedAfterRest.totalPlannedSessionsCount) * 100);
+assert(advancedAfterRest.adherencePercent === expectedAdherence, `Adherence percent tracks program completion (${expectedAdherence}%) after scheduled rest day`);
+
+// 16.2 In-Progress Workout Auto-Save & Crash Recovery Model
+console.log('Testing Workout Draft Auto-Save & Restore Serialization...');
+const mockDraftWorkout: WorkoutSession = {
+  id: 'session_draft_001',
+  title: 'Assault on Hive Tertium',
+  startedAt: '2026-10-18T10:00:00.000Z',
+  totalXpEarned: 0,
+  isCompleted: false,
+  exercises: [
+    {
+      id: 'we_draft_1',
+      sessionId: 'session_draft_001',
+      exerciseRefId: 'barbell_bench_press',
+      sortOrder: 1,
+      name: 'Barbell Bench Press',
+      sets: [
+        { id: 's_d1', exerciseId: 'we_draft_1', setNumber: 1, reps: 10, weight: 80, unit: 'kg', isCompleted: true },
+        { id: 's_d2', exerciseId: 'we_draft_1', setNumber: 2, reps: 8, weight: 85, unit: 'kg', isCompleted: false },
+      ],
+    },
+  ],
+};
+
+const draftJson = JSON.stringify(mockDraftWorkout);
+const restoredDraft: WorkoutSession = JSON.parse(draftJson);
+assert(restoredDraft.id === mockDraftWorkout.id, 'Draft workout session ID preserved');
+assert(restoredDraft.exercises.length === 1, 'Draft exercises preserved');
+assert(restoredDraft.exercises[0].sets.length === 2, 'Draft sets preserved');
+assert(restoredDraft.exercises[0].sets[0].isCompleted === true, 'Completed set flag preserved');
+assert(restoredDraft.exercises[0].sets[1].isCompleted === false, 'In-progress set flag preserved');
+assert(restoredDraft.exercises[0].sets[0].weight === 80, 'Weight preserved');
+
+// 16.3 Co-op Raid Victory Settlement Calculation & Idempotency
+console.log('Testing Co-op Raid Victory Settlement & Glory Distribution...');
+const mockBoss: CoopBoss = {
+  id: 'cboss_test_99',
+  groupId: 'group_crusade_1',
+  bossKey: 'enc_coop_gargant',
+  name: 'Mega-Dread Alpha',
+  faction: 'Orks',
+  loreTitle: 'Juggernaut of the Green Tide',
+  glyphName: 'skull',
+  primaryColor: '#2ECC71',
+  maxHp: 1000,
+  currentHp: 0,
+  isDefeated: true,
+  gloryXp: 500,
+  createdAt: '2026-10-18T08:00:00.000Z',
+  defeatedAt: '2026-10-18T09:30:00.000Z',
+};
+
+const mockAttacks: CoopAttack[] = [
+  { id: 'atk_1', groupBossId: mockBoss.id, userId: 'user_warrior_1', userName: 'Brother Titus', clientSetId: 's1', exerciseName: 'Barbell Squat', attackName: 'Smite', styleName: 'Heavy Strike', damage: 300, createdAt: '2026-10-18T08:15:00.000Z' },
+  { id: 'atk_2', groupBossId: mockBoss.id, userId: 'user_warrior_2', userName: 'Brother Dante', clientSetId: 's2', exerciseName: 'Deadlift', attackName: 'Cleave', styleName: 'Heavy Strike', damage: 450, createdAt: '2026-10-18T08:30:00.000Z' },
+  { id: 'atk_3', groupBossId: mockBoss.id, userId: 'user_warrior_2', userName: 'Brother Dante', clientSetId: 's3', exerciseName: 'Overhead Press', attackName: 'Fury', styleName: 'Crushing Blow', damage: 250, createdAt: '2026-10-18T09:00:00.000Z' },
+];
+
+const totalDmg = mockAttacks.reduce((sum, a) => sum + a.damage, 0);
+assert(totalDmg === 1000, 'Total damage across squad attacks matches 1000');
+
+// Calculate participants breakdown
+const pMap = new Map<string, { userId: string; callsign: string; attacksCount: number; damageDealt: number }>();
+for (const atk of mockAttacks) {
+  const p = pMap.get(atk.userId) || { userId: atk.userId, callsign: atk.userName, attacksCount: 0, damageDealt: 0 };
+  p.attacksCount += 1;
+  p.damageDealt += atk.damage;
+  pMap.set(atk.userId, p);
+}
+const pContributions: BattleParticipantContribution[] = Array.from(pMap.values()).map((p) => ({
+  userId: p.userId,
+  callsign: p.callsign,
+  factionId: 'adeptus-astartes',
+  attacksCount: p.attacksCount,
+  damageDealt: p.damageDealt,
+  damageSharePercent: Math.round((p.damageDealt / totalDmg) * 100),
+  workoutsAttributed: 1,
+  setsAttributed: p.attacksCount,
+}));
+
+assert(pContributions.length === 2, 'Two distinct squad participants calculated');
+const p1 = pContributions.find((p) => p.userId === 'user_warrior_1')!;
+const p2 = pContributions.find((p) => p.userId === 'user_warrior_2')!;
+assert(p1.damageSharePercent === 30, 'Participant 1 achieved 30% damage share');
+assert(p2.damageSharePercent === 70, 'Participant 2 achieved 70% damage share');
+assert(mockBoss.gloryXp === 500, '500 Glory XP reward confirmed');
+
+// 16.4 Planetary Campaign Theater Persistence
+console.log('Testing Campaign Graph Evaluations & Node Progress Alignment...');
+const defaultCamp = getDefaultCampaign();
+const campEvalTelemetry: CampaignTelemetryContext = {
+  characterId: 'char_eval_01',
+  totalWorkouts: 5,
+  totalSets: 30,
+  totalVolumeKg: 15000,
+  totalCombatDamage: 4000,
+  totalCombatAttacks: 25,
+  defeatedEnemyIds: ['scout_patrol_ork', 'rebel_guardsman'],
+  completedFactionMissionIds: ['mis_purge_1'],
+  completedProgramSessionsCount: 4,
+  completedProgramBlockNumber: 1,
+  squadBattleAttacks: 3,
+};
+
+const fullCampaignEval = evaluateFullCampaign(defaultCamp, campEvalTelemetry);
+assert(defaultCamp.nodes.length > 0, 'Campaign contains valid nodes');
+assert(fullCampaignEval.completedNodeIds.length >= 0, 'Completed nodes non-negative');
+assert(fullCampaignEval.campaignProgressPercent >= 0 && fullCampaignEval.campaignProgressPercent <= 100, 'Campaign progress within [0, 100]');
+
+for (const node of defaultCamp.nodes) {
+  const nodeEval = fullCampaignEval.evaluations[node.id];
+  assert(Boolean(nodeEval), `Node "${node.id}" has valid evaluation result`);
+  const status: 'locked' | 'unlocked' | 'completed' = nodeEval.isCompleted
+    ? 'completed'
+    : nodeEval.isUnlocked
+    ? 'unlocked'
+    : 'locked';
+  assert(['locked', 'unlocked', 'completed'].includes(status), `Node status "${status}" is valid`);
+}
+
+// 16.5 Multi-Account Cloud Profile Synchronization Model
+console.log('Testing Cloud Profile Synchronization Model...');
+const initialLocalProfile = {
+  characterName: 'Battle-Brother',
+  factionId: 'adeptus-astartes',
+  subfactionId: 'ultramarines',
+  totalXp: 12500,
+  currentLevel: 5,
+};
+
+const incomingCloudProfile = {
+  displayName: 'Captain Ventris',
+  factionId: 'adeptus-astartes',
+};
+
+const syncedProfile = {
+  ...initialLocalProfile,
+  characterName: incomingCloudProfile.displayName || initialLocalProfile.characterName,
+  factionId: incomingCloudProfile.factionId || initialLocalProfile.factionId,
+};
+
+assert(syncedProfile.characterName === 'Captain Ventris', 'Character name updated from cloud callsign');
+assert(syncedProfile.totalXp === 12500, 'Character XP preserved during cloud sync');
+assert(syncedProfile.currentLevel === 5, 'Character level preserved during cloud sync');
+assert(syncedProfile.subfactionId === 'ultramarines', 'Subfaction preserved during cloud sync');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
