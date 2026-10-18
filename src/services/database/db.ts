@@ -444,6 +444,33 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
     db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (10, datetime('now'));");
   }
 
+  // Migration 11: Slain Named Enemies Tracking & Immersion Filter
+  if (!appliedMigrations.includes(11)) {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS slain_named_enemies (
+        enemy_name TEXT PRIMARY KEY,
+        enemy_id TEXT,
+        faction_id TEXT,
+        slain_at TEXT NOT NULL,
+        battle_id TEXT
+      );
+
+      -- Backfill from previous victories in battle_history
+      INSERT OR IGNORE INTO slain_named_enemies (enemy_name, enemy_id, faction_id, slain_at, battle_id)
+      SELECT enemy_name, enemy_id, enemy_faction, completed_at, id
+      FROM battle_history
+      WHERE outcome = 'victory' AND enemy_name IS NOT NULL AND TRIM(enemy_name) != '';
+
+      -- Backfill from previous victories in weekly_raids
+      INSERT OR IGNORE INTO slain_named_enemies (enemy_name, enemy_id, faction_id, slain_at, battle_id)
+      SELECT json_extract(boss_data_json, '$.name'), cycle_id, json_extract(boss_data_json, '$.factionId'), updated_at, cycle_id
+      FROM weekly_raids
+      WHERE status = 'defeated' AND json_extract(boss_data_json, '$.name') IS NOT NULL;
+    `);
+
+    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (11, datetime('now'));");
+  }
+
   return db;
 }
 

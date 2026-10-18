@@ -133,6 +133,13 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
                   <Text style={styles.factionPillText}>{boss.factionName.toUpperCase()}</Text>
                 </View>
 
+                {boss.isReturningNemesis && (
+                  <View style={styles.returningNemesisPill}>
+                    <Ionicons name="alert-circle" size={12} color="#FF9100" />
+                    <Text style={styles.returningNemesisPillText}>RETURNING NEMESIS</Text>
+                  </View>
+                )}
+
                 {status === 'active' && (
                   <View style={styles.activeRaidPill}>
                     <Ionicons name="radio-outline" size={12} color="#00E676" />
@@ -330,6 +337,16 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
 
               {/* Lore Paragraph */}
               <Text style={styles.bossLoreText}>{boss.loreDescription}</Text>
+
+              {/* Returning Nemesis Warning */}
+              {boss.isReturningNemesis && (
+                <View style={styles.returningWarningBox}>
+                  <Ionicons name="warning-outline" size={15} color="#FF9100" />
+                  <Text style={styles.returningWarningText}>
+                    Auspex Warning: This hostile commander previously escaped imperial engagement and has returned with renewed forces.
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Unresolved Escaped Banner */}
@@ -600,6 +617,40 @@ const styles = StyleSheet.create({
     color: '#B0BEC5',
     fontSize: 10,
     fontWeight: '800',
+  },
+  returningNemesisPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 145, 0, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 145, 0, 0.4)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  returningNemesisPillText: {
+    color: '#FF9100',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  returningWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 145, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 145, 0, 0.3)',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+  },
+  returningWarningText: {
+    color: '#FFB74D',
+    fontSize: 11,
+    lineHeight: 15,
+    flex: 1,
+    fontWeight: '600',
   },
   bossIdentityRow: {
     flexDirection: 'row',

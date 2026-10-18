@@ -210,6 +210,66 @@ export function getRecentRaidBossKeys(limit: number = 12): string[] {
   return rows.map((r) => r.boss_key);
 }
 
+export function recordSlainEnemy(
+  enemyName: string,
+  enemyId?: string,
+  factionId?: string,
+  battleId?: string
+): void {
+  const db = getDatabase();
+  db.runSync(
+    `INSERT OR REPLACE INTO slain_named_enemies (
+      enemy_name, enemy_id, faction_id, slain_at, battle_id
+    ) VALUES (?, ?, ?, datetime('now'), ?)`,
+    [enemyName.trim(), enemyId || null, factionId || null, battleId || null]
+  );
+}
+
+export function getSlainEnemyNames(): string[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<{ enemy_name: string }>(
+    'SELECT enemy_name FROM slain_named_enemies'
+  );
+  return rows.map((r) => r.enemy_name);
+}
+
+export function isEnemySlain(enemyName: string): boolean {
+  const db = getDatabase();
+  const row = db.getFirstSync<{ count: number }>(
+    'SELECT COUNT(*) as count FROM slain_named_enemies WHERE LOWER(enemy_name) = LOWER(?)',
+    [enemyName.trim()]
+  );
+  return (row?.count || 0) > 0;
+}
+
+export function getEscapedEnemyNames(): string[] {
+  const db = getDatabase();
+  const raidRows = db.getAllSync<{ boss_name: string }>(`
+    SELECT json_extract(boss_data_json, '$.name') AS boss_name
+    FROM weekly_raids
+    WHERE status = 'escaped'
+  `);
+  const historyRows = db.getAllSync<{ enemy_name: string }>(`
+    SELECT enemy_name
+    FROM battle_history
+    WHERE outcome = 'escaped'
+  `);
+  const slainSet = new Set(getSlainEnemyNames().map((n) => n.toLowerCase()));
+  const escapedSet = new Set<string>();
+
+  for (const r of raidRows) {
+    if (r.boss_name && !slainSet.has(r.boss_name.toLowerCase())) {
+      escapedSet.add(r.boss_name);
+    }
+  }
+  for (const r of historyRows) {
+    if (r.enemy_name && !slainSet.has(r.enemy_name.toLowerCase())) {
+      escapedSet.add(r.enemy_name);
+    }
+  }
+  return Array.from(escapedSet);
+}
+
 import { WarfrontStorageAdapter } from '../progression/warfrontEngine';
 
 export const sqliteWarfrontStorage: WarfrontStorageAdapter = {
@@ -223,4 +283,7 @@ export const sqliteWarfrontStorage: WarfrontStorageAdapter = {
   getPreferredSpawnDay: () => getWarfrontSettings().preferredSpawnDay,
   getRecentRaidBossKeys: getRecentRaidBossKeys,
   recordRecentRaidBoss: recordRecentRaidBoss,
+  getSlainEnemyNames: getSlainEnemyNames,
+  recordSlainEnemy: recordSlainEnemy,
+  getEscapedEnemyNames: getEscapedEnemyNames,
 };

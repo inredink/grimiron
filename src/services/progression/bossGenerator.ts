@@ -897,6 +897,28 @@ export interface BossGenerationOptions {
   recentBossKeys?: string[];
   forceDifficulty?: BossDifficultyTier;
   scope?: 'squad' | 'individual';
+  slainEnemyNames?: string[];
+  escapedEnemyNames?: string[];
+  returningBossName?: string;
+}
+
+function toRomanNumeral(num: number): string {
+  const romanNumerals: [number, string][] = [
+    [10, 'X'],
+    [9, 'IX'],
+    [5, 'V'],
+    [4, 'IV'],
+    [1, 'I'],
+  ];
+  let result = '';
+  let remaining = num;
+  for (const [val, sym] of romanNumerals) {
+    while (remaining >= val) {
+      result += sym;
+      remaining -= val;
+    }
+  }
+  return result || 'II';
 }
 
 /**
@@ -908,6 +930,8 @@ export interface BossGenerationOptions {
  * - Faction-Specific Grammar: Different naming formulas per faction tradition.
  * - Substantial Variety: Varies archetypes, weapons, combat roles, traits, and modifiers.
  * - 12-Cycle Duplicate Avoidance: Avoids recently rolled boss keys/archetypes.
+ * - Immersion Guarantee: Slain/defeated enemies are never generated again for the player.
+ * - Escaped Creatures: Unresolved enemies that escaped remain eligible to return.
  */
 export function generateProceduralBoss(
   seedStr: string,
@@ -946,18 +970,56 @@ export function generateProceduralBoss(
   }
   const archetype = candidateArchetypes[Math.floor(prng() * candidateArchetypes.length)];
 
+  // Slain and Escaped enemy filtering for player immersion
+  const slainSet = new Set((options.slainEnemyNames || []).map((n) => n.trim().toLowerCase()));
+
+  // Check if an escaped enemy is returning
+  let returningNemesisName: string | null = options.returningBossName || null;
+  let isReturningNemesis = false;
+
+  if (returningNemesisName && !slainSet.has(returningNemesisName.toLowerCase())) {
+    isReturningNemesis = true;
+  }
+
+  // Filter out any name roots that have already been slain
+  let availableRoots = catalog.nameRoots.filter((r) => {
+    return !slainSet.has(r.toLowerCase());
+  });
+
+  if (availableRoots.length === 0) {
+    availableRoots = [...catalog.nameRoots];
+  }
+
   // Name, title, and honorific generation using faction grammar
-  const rootName = catalog.nameRoots[Math.floor(prng() * catalog.nameRoots.length)];
+  const rootName = availableRoots[Math.floor(prng() * availableRoots.length)];
   const epithet = catalog.epithets[Math.floor(prng() * catalog.epithets.length)];
   const rawTitle = catalog.titles[Math.floor(prng() * catalog.titles.length)];
   const honorific = catalog.honorifics[Math.floor(prng() * catalog.honorifics.length)];
 
-  const { name, title } = catalog.namingGrammar(
+  let { name, title } = catalog.namingGrammar(
     rootName,
     epithet,
     rawTitle,
     subfaction?.name
   );
+
+  // If this was an escaped boss returning:
+  if (returningNemesisName) {
+    name = returningNemesisName;
+    isReturningNemesis = true;
+  } else {
+    // IMMERSION ENFORCEMENT: Never fight an already slain enemy!
+    // If the generated name was previously slain/defeated, advance to a distinct successor
+    if (slainSet.has(name.toLowerCase())) {
+      let suffix = 2;
+      let candidateSuccessor = `${name} ${toRomanNumeral(suffix)}`;
+      while (slainSet.has(candidateSuccessor.toLowerCase())) {
+        suffix++;
+        candidateSuccessor = `${name} ${toRomanNumeral(suffix)}`;
+      }
+      name = candidateSuccessor;
+    }
+  }
 
   const lore = catalog.loreTemplates[Math.floor(prng() * catalog.loreTemplates.length)];
 
@@ -1035,14 +1097,23 @@ export function generateProceduralBoss(
     signatureWeapon: archetype.weapon,
     combatTrait: archetype.trait,
     tacticalDescription: `${archetype.tacticalDescription} Armed with ${archetype.weapon}. Fortified by ${archetype.trait}.`,
-    loreDescription: `${name}, ${title}. ${honorific}. ${lore}`,
+    loreDescription: isReturningNemesis
+      ? `ATTENTION: ${name} escaped a previous engagement and has returned to the warfront to seek vengeance! ${lore}`
+      : `${name}, ${title}. ${honorific}. ${lore}`,
     baseHealth,
     glyph: archetype.glyph,
     primaryColor,
     accentColor,
     phases,
-    taunts,
+    taunts: isReturningNemesis
+      ? [
+          `Did you think you could eliminate ${name} so easily?!`,
+          `I survived our last encounter... this time you will be broken!`,
+          ...taunts,
+        ]
+      : taunts,
     defeatQuote,
+    isReturningNemesis,
     generationSeed: seedStr,
     version: '2.0.0',
   };

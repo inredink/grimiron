@@ -215,6 +215,13 @@ export default function RaidScreen() {
               <Text style={styles.factionTagText}>{boss.factionName.toUpperCase()}</Text>
             </View>
 
+            {boss.isReturningNemesis && (
+              <View style={styles.returningNemesisPill}>
+                <Ionicons name="alert-circle" size={11} color="#FF9100" />
+                <Text style={styles.returningNemesisPillText}>RETURNING NEMESIS</Text>
+              </View>
+            )}
+
             {status === 'active' && (
               <View style={styles.activePill}>
                 <Ionicons name="radio-outline" size={11} color="#00E676" />
@@ -396,6 +403,16 @@ export default function RaidScreen() {
 
           {/* Lore Synopsis */}
           <Text style={styles.loreText}>{boss.loreDescription}</Text>
+
+          {/* Returning Nemesis Warning */}
+          {boss.isReturningNemesis && (
+            <View style={styles.returningWarningBox}>
+              <Ionicons name="warning-outline" size={15} color="#FF9100" />
+              <Text style={styles.returningWarningText}>
+                Auspex Warning: This hostile commander previously escaped imperial engagement and has returned to contest the sector!
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Participant Contributions & Leaderboard */}
@@ -686,6 +703,40 @@ const styles = StyleSheet.create({
     color: '#B0BEC5',
     fontSize: 10,
     fontWeight: '800',
+  },
+  returningNemesisPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 145, 0, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 145, 0, 0.4)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  returningNemesisPillText: {
+    color: '#FF9100',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  returningWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 145, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 145, 0, 0.3)',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+  },
+  returningWarningText: {
+    color: '#FFB74D',
+    fontSize: 11,
+    lineHeight: 15,
+    flex: 1,
+    fontWeight: '600',
   },
   bossProfileRow: {
     flexDirection: 'row',

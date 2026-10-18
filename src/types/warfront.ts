@@ -88,6 +88,7 @@ export interface GeneratedBossIdentity {
   defeatQuote: string;
   generationSeed?: string;
   version?: string;
+  isReturningNemesis?: boolean;
 }
 
 export type RaidSpawnDay = 'friday' | 'saturday';
@@ -121,6 +122,7 @@ export interface WeeklyRaidCycle {
   isRewardClaimed: boolean;
   contributions: Record<string, RaidParticipantContribution>;
   updatedAt: string;
+  isReturningNemesis?: boolean;
 }
 
 export interface WarfrontSettings {

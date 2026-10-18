@@ -45,6 +45,14 @@ export interface WarfrontStorageAdapter {
     factionId: string,
     bossName: string
   ): void;
+  getSlainEnemyNames?(): string[];
+  recordSlainEnemy?(
+    enemyName: string,
+    enemyId?: string,
+    factionId?: string,
+    battleId?: string
+  ): void;
+  getEscapedEnemyNames?(): string[];
 }
 
 // In-Memory Storage Adapter (Default)
@@ -52,6 +60,8 @@ const inMemoryDailyRotations = new Map<string, DailyRotationRecord>();
 const inMemoryRecentEncounters = new Map<string, string>(); // encounterId -> selectedDate
 const inMemoryWeeklyRaids = new Map<string, WeeklyRaidCycle>();
 const inMemoryRecentBossKeys: string[] = [];
+const inMemorySlainEnemies = new Set<string>();
+const inMemoryEscapedEnemies = new Set<string>();
 let inMemoryPreferredSpawnDay: RaidSpawnDay = 'saturday';
 
 export const inMemoryWarfrontStorage: WarfrontStorageAdapter = {
@@ -81,6 +91,21 @@ export const inMemoryWarfrontStorage: WarfrontStorageAdapter = {
   recordRecentRaidBoss: (_cycleId, bossKey) => {
     inMemoryRecentBossKeys.push(bossKey);
   },
+  getSlainEnemyNames: () => Array.from(inMemorySlainEnemies),
+  recordSlainEnemy: (enemyName) => {
+    inMemorySlainEnemies.add(enemyName);
+    inMemoryEscapedEnemies.delete(enemyName);
+  },
+  getEscapedEnemyNames: () => {
+    const escapedFromRaids: string[] = [];
+    for (const raid of inMemoryWeeklyRaids.values()) {
+      if (raid.status === 'escaped' && !inMemorySlainEnemies.has(raid.boss.name)) {
+        escapedFromRaids.push(raid.boss.name);
+      }
+    }
+    const combined = new Set([...Array.from(inMemoryEscapedEnemies), ...escapedFromRaids]);
+    return Array.from(combined).filter((e) => !inMemorySlainEnemies.has(e));
+  },
 };
 
 let activeStorageAdapter: WarfrontStorageAdapter = inMemoryWarfrontStorage;
@@ -105,15 +130,31 @@ export function getTodayDateString(d: Date = new Date()): string {
 
 /**
  * Pure generator for 3 daily encounters from date seed and pool.
+ * Named enemies that have been defeated/slain are excluded from generation.
+ * Enemies that escaped remain eligible in the pool.
  */
 export function generateDailyRotationFromPool(
   targetDate: string,
   recentIds: string[] = [],
-  catalog: EncounterTemplate[] = allEncounterTemplates
+  catalog: EncounterTemplate[] = allEncounterTemplates,
+  slainEnemyNames: string[] = []
 ): DailyRotationRecord {
-  let pool = catalog.filter((enc) => !recentIds.includes(enc.id));
+  const slainSet = new Set(slainEnemyNames.map((n) => n.trim().toLowerCase()));
+
+  // Filter pool excluding recent encounters and named enemies that have been slain
+  let pool = catalog.filter((enc) => {
+    if (recentIds.includes(enc.id)) return false;
+    if (enc.enemyName && slainSet.has(enc.enemyName.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
   if (pool.length < 3) {
-    pool = [...catalog];
+    pool = catalog.filter((enc) => !enc.enemyName || !slainSet.has(enc.enemyName.toLowerCase()));
+    if (pool.length < 3) {
+      pool = [...catalog];
+    }
   }
 
   // Seeded deterministic PRNG using target date string
@@ -159,6 +200,8 @@ export function generateDailyRotationFromPool(
  * Guarantees:
  * - Refresh-Proof: Persisted to storage; restarting or re-rendering NEVER rerolls today's board.
  * - History Buffer: Excludes templates offered in the last 14 days where possible.
+ * - Slain Enemy Exclusion: Slain named adversaries are permanently excluded.
+ * - Escaped Creature Retention: Adversaries that escaped are retained as valid targets.
  * - Deterministic: If generated anew, selection is strictly seeded by date string.
  */
 export function getOrCreateDailyRotation(
@@ -174,8 +217,16 @@ export function getOrCreateDailyRotation(
   const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
   const cutoffDateStr = getTodayDateString(new Date(targetTime - fourteenDaysMs));
   const recentIds = activeStorageAdapter.getRecentEncounterIds(cutoffDateStr);
+  const slainEnemyNames = activeStorageAdapter.getSlainEnemyNames
+    ? activeStorageAdapter.getSlainEnemyNames()
+    : [];
 
-  const newRecord = generateDailyRotationFromPool(targetDate, recentIds);
+  const newRecord = generateDailyRotationFromPool(
+    targetDate,
+    recentIds,
+    allEncounterTemplates,
+    slainEnemyNames
+  );
 
   activeStorageAdapter.saveDailyRotation(newRecord);
   activeStorageAdapter.recordRecentEncounters(newRecord.offeredEncounterIds, targetDate);
@@ -474,11 +525,20 @@ export function getOrCreateWeeklyRaid(options?: {
     ? activeStorageAdapter.getRecentRaidBossKeys(12)
     : [];
 
-  // Generate boss procedurally from cycle timing and recent history
+  const slainEnemyNames = activeStorageAdapter.getSlainEnemyNames
+    ? activeStorageAdapter.getSlainEnemyNames()
+    : [];
+  const escapedEnemyNames = activeStorageAdapter.getEscapedEnemyNames
+    ? activeStorageAdapter.getEscapedEnemyNames()
+    : [];
+
+  // Generate boss procedurally from cycle timing, recent history, and immersion filters
   const boss = generateProceduralBoss(timing.cycleId, {
     targetFactionId: options?.targetFactionId,
     recentBossKeys: recentKeys,
     forceDifficulty: options?.forceDifficulty,
+    slainEnemyNames,
+    escapedEnemyNames,
   });
 
   if (activeStorageAdapter.recordRecentRaidBoss) {
@@ -523,6 +583,7 @@ export function getOrCreateWeeklyRaid(options?: {
     isRewardClaimed: false,
     contributions: {},
     updatedAt: now.toISOString(),
+    isReturningNemesis: boss.isReturningNemesis,
   };
 
   activeStorageAdapter.saveWeeklyRaid(newRaid);
@@ -531,7 +592,8 @@ export function getOrCreateWeeklyRaid(options?: {
 
 /**
  * Idempotently applies combat damage to the active weekly raid boss.
- * Automatically transitions boss phases and archives to Battle History on victory.
+ * Automatically transitions boss phases, marks boss permanently slain on victory,
+ * and archives to Battle History.
  */
 export function applyDamageToWeeklyRaid(
   cycleId: string,
@@ -549,6 +611,14 @@ export function applyDamageToWeeklyRaid(
 
   if (raid.currentHp === 0) {
     raid.status = 'defeated';
+    if (activeStorageAdapter.recordSlainEnemy) {
+      activeStorageAdapter.recordSlainEnemy(
+        raid.boss.name,
+        raid.boss.bossKey,
+        raid.boss.factionId,
+        raid.cycleId
+      );
+    }
   }
 
   // Update participant contributions
@@ -578,6 +648,26 @@ export function applyDamageToWeeklyRaid(
 
   activeStorageAdapter.saveWeeklyRaid(raid);
   return raid;
+}
+
+/**
+ * Checks whether a named enemy has been permanently slain/defeated.
+ */
+export function isEnemySlain(enemyName: string): boolean {
+  const slainNames = activeStorageAdapter.getSlainEnemyNames
+    ? activeStorageAdapter.getSlainEnemyNames()
+    : [];
+  return slainNames.some((n) => n.trim().toLowerCase() === enemyName.trim().toLowerCase());
+}
+
+/**
+ * Checks whether an enemy is currently recorded as escaped (eligible to return).
+ */
+export function isEnemyEscaped(enemyName: string): boolean {
+  const escapedNames = activeStorageAdapter.getEscapedEnemyNames
+    ? activeStorageAdapter.getEscapedEnemyNames()
+    : [];
+  return escapedNames.some((n) => n.trim().toLowerCase() === enemyName.trim().toLowerCase());
 }
 
 /**

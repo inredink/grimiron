@@ -115,6 +115,20 @@ export function recordBattleHistory(record: BattleRecord): void {
       );
     }
   }
+
+  // If outcome was victory and enemy has a name, permanently record as slain
+  if (record.outcome === 'victory' && record.enemyName && record.enemyName.trim().length > 0) {
+    try {
+      db.runSync(
+        `INSERT OR REPLACE INTO slain_named_enemies (
+          enemy_name, enemy_id, faction_id, slain_at, battle_id
+        ) VALUES (?, ?, ?, datetime('now'), ?)`,
+        [record.enemyName.trim(), record.enemyId || null, record.enemyFaction || null, record.id]
+      );
+    } catch {
+      // Table may not exist yet in unmigrated test DBs
+    }
+  }
 }
 
 /**

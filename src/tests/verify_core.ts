@@ -129,6 +129,8 @@ import {
   getCurrentBossPhase,
   createBattleRecordFromWeeklyRaid,
   archiveWeeklyRaidToBattleHistory,
+  isEnemySlain,
+  isEnemyEscaped,
 } from '../services/progression/warfrontEngine';
 
 function assert(condition: boolean, message: string) {
@@ -2378,6 +2380,122 @@ assert(escapedBattleRecord.outcome === 'escaped', 'Battle record outcome is "esc
 assert(escapedBattleRecord.totalDamage === 900, 'Preserved 900 damage dealt in battle record');
 assert(escapedBattleRecord.enemyRemainingHp === 1500, 'Remaining HP recorded accurately');
 assert(escapedBattleRecord.snapshot.timeline.some((t) => t.eventType === 'tactical_retreat'), 'Timeline records tactical retreat');
+
+// ============================================================================
+// 18. VERIFY PERMANENT ELIMINATION OF SLAIN ENEMIES & RETENTION OF ESCAPED CREATURES
+// ============================================================================
+console.log('\n--- 18. VERIFY SLAIN ENEMY ELIMINATION & ESCAPED ENEMY RETENTION ---');
+
+// 18.1 Procedural Boss Generator excludes slain enemy names
+console.log('Testing Procedural Boss Generator rejection of slain enemy names...');
+const baseSeed = 'cycle_2026_w44_test';
+const initialOrkBoss = generateProceduralBoss(baseSeed, 'orks');
+assert(initialOrkBoss.name.length > 0, `Generated initial Ork boss: ${initialOrkBoss.name}`);
+
+// Mark initial Ork boss as slain
+inMemoryWarfrontStorage.recordSlainEnemy!(initialOrkBoss.name, 'boss_ork_01', 'orks');
+assert(isEnemySlain(initialOrkBoss.name), `Enemy "${initialOrkBoss.name}" is recorded as permanently slain`);
+
+// Generate next boss with slainEnemyNames list
+const nextOrkBoss = generateProceduralBoss(`${baseSeed}_next`, {
+  targetFactionId: 'orks',
+  slainEnemyNames: inMemoryWarfrontStorage.getSlainEnemyNames!(),
+});
+assert(
+  nextOrkBoss.name !== initialOrkBoss.name,
+  `Procedural generator never re-selects slain enemy "${initialOrkBoss.name}" (produced "${nextOrkBoss.name}")`
+);
+
+// 18.2 Escaped Adversary Retention
+console.log('Testing Retention of Escaped Enemies...');
+const escapedCreatureName = 'Gorgon the Unbroken';
+inMemoryWarfrontStorage.saveWeeklyRaid({
+  cycleId: '2026_W43_escaped_nemesis',
+  scope: 'individual',
+  boss: {
+    ...generateProceduralBoss('seed_escaped_nemesis', 'heretic-astartes'),
+    name: escapedCreatureName,
+  },
+  maxHp: 2400,
+  currentHp: 800,
+  status: 'escaped',
+  spawnDay: 'saturday',
+  startedAt: '2026-10-10T00:00:00.000Z',
+  expiresAt: '2026-10-17T00:00:00.000Z',
+  isRewardClaimed: false,
+  contributions: {},
+  updatedAt: '2026-10-17T00:00:00.000Z',
+});
+
+// Verify escaped enemy is NOT marked slain and is present in escaped pool
+assert(!isEnemySlain(escapedCreatureName), `Escaped creature "${escapedCreatureName}" is NOT marked slain`);
+assert(isEnemyEscaped(escapedCreatureName), `Escaped creature "${escapedCreatureName}" is recorded as an escaped adversary`);
+const escapedList = inMemoryWarfrontStorage.getEscapedEnemyNames!();
+assert(escapedList.includes(escapedCreatureName), `Escaped list includes "${escapedCreatureName}"`);
+
+// 18.3 Returning Nemesis Generation & Thematic Flavor
+console.log('Testing Returning Nemesis Generation...');
+const returningNemesisBoss = generateProceduralBoss('seed_returning_cycle', {
+  targetFactionId: 'heretic-astartes',
+  escapedEnemyNames: [escapedCreatureName],
+  returningBossName: escapedCreatureName,
+});
+assert(returningNemesisBoss.name === escapedCreatureName, `Boss identity preserved for returning nemesis: ${returningNemesisBoss.name}`);
+assert(returningNemesisBoss.isReturningNemesis === true, 'Boss has isReturningNemesis flag set to true');
+assert(
+  returningNemesisBoss.taunts.some((t) => t.includes('escaped') || t.includes('survived')),
+  `Returning nemesis has customized returning taunt: "${returningNemesisBoss.taunts[0]}"`
+);
+assert(
+  returningNemesisBoss.loreDescription.includes('escaped') || returningNemesisBoss.loreDescription.includes('retreated'),
+  'Lore description notes previous escape from imperial forces'
+);
+
+// 18.4 Defeating Returning Nemesis Transitions to Permanently Slain
+console.log('Testing Defeating Returning Nemesis Transitions to Permanently Slain...');
+const returningRaidCycle: WeeklyRaidCycle = {
+  cycleId: '2026_W45_returning_nemesis_active',
+  scope: 'individual',
+  boss: returningNemesisBoss,
+  maxHp: 2400,
+  currentHp: 2400,
+  status: 'active',
+  spawnDay: 'saturday',
+  startedAt: '2026-10-24T00:00:00.000Z',
+  expiresAt: '2026-10-31T00:00:00.000Z',
+  isRewardClaimed: false,
+  contributions: {},
+  updatedAt: '2026-10-24T00:00:00.000Z',
+  isReturningNemesis: true,
+};
+inMemoryWarfrontStorage.saveWeeklyRaid(returningRaidCycle);
+
+// Deal lethal damage
+const defeatedReturningRaid = applyDamageToWeeklyRaid(
+  returningRaidCycle.cycleId,
+  'user_terminator_01',
+  'Brother Gaius',
+  'adeptus-astartes',
+  2400,
+  10
+);
+assert(defeatedReturningRaid !== null && defeatedReturningRaid.status === 'defeated', 'Returning nemesis raid defeated');
+assert(isEnemySlain(escapedCreatureName), `Returning nemesis "${escapedCreatureName}" is now permanently marked as slain`);
+assert(!isEnemyEscaped(escapedCreatureName), `Slain nemesis is removed from escaped pool`);
+assert(!inMemoryWarfrontStorage.getEscapedEnemyNames!().includes(escapedCreatureName), 'Escaped list no longer contains slain enemy');
+
+// 18.5 Daily Encounter Rotation Filters Out Slain Named Enemies
+console.log('Testing Daily Encounter Rotation exclusion of slain named enemies...');
+const dailyEncounterToSlay = allEncounterTemplates[0]; // has enc.enemyName, e.g. "Speed Freak Warbikers"
+inMemoryWarfrontStorage.recordSlainEnemy!(dailyEncounterToSlay.enemyName);
+assert(isEnemySlain(dailyEncounterToSlay.enemyName), `Daily encounter enemy "${dailyEncounterToSlay.enemyName}" recorded as slain`);
+
+const dailyRotation = getOrCreateDailyRotation('2026-11-20');
+assert(
+  !dailyRotation.offeredEncounterIds.includes(dailyEncounterToSlay.id),
+  `Daily rotation excludes permanently slain enemy encounter "${dailyEncounterToSlay.enemyName}"`
+);
+assert(dailyRotation.offeredEncounterIds.length === 3, `Daily rotation maintains complete 3-encounter board`);
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
