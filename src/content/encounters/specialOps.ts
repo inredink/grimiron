@@ -57,7 +57,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
         color: '#D32F2F',
       },
     ],
-    iconName: 'crosshair',
+    iconName: 'locate',
     primaryColor: '#263238',
     accentColor: '#FF5252',
     tauntQuote: 'Target acquired. Calculating wind drift and bone density.',

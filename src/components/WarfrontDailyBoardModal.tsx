@@ -13,6 +13,7 @@ import {
   EncounterCategory,
   EncounterTemplate,
 } from '../types/warfront';
+import { getSafeIoniconsName } from '../utils/iconHelper';
 import {
   getEncounterById,
   getEncountersByCategory,
@@ -149,7 +150,7 @@ export const WarfrontDailyBoardModal: React.FC<WarfrontDailyBoardModalProps> = (
                     <View style={styles.cardHeaderRow}>
                       <View style={styles.categoryBadge}>
                         <Ionicons
-                          name={encounter.iconName as any}
+                          name={getSafeIoniconsName(encounter.iconName, 'shield-outline')}
                           size={14}
                           color={encounter.accentColor}
                         />
@@ -199,7 +200,7 @@ export const WarfrontDailyBoardModal: React.FC<WarfrontDailyBoardModalProps> = (
                         {encounter.modifiers.map((mod) => (
                           <View key={mod.id} style={styles.modifierPill}>
                             <Ionicons
-                              name={mod.iconName as any}
+                              name={getSafeIoniconsName(mod.iconName, 'flash')}
                               size={12}
                               color={mod.color}
                               style={styles.modIcon}

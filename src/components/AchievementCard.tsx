@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
 import { Badge } from './Badge';
 import { ProgressBar } from './ProgressBar';
+import { getSafeIoniconsName } from '../utils/iconHelper';
 import {
   AchievementAward,
   AchievementDefinition,
@@ -66,7 +67,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
           ]}
         >
           <Ionicons
-            name={(definition.icon as any) || 'trophy-outline'}
+            name={getSafeIoniconsName(definition.icon, 'trophy-outline')}
             size={24}
             color={isUnlocked ? tierColor : THEME.colors.textMuted}
           />

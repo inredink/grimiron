@@ -363,7 +363,7 @@ export const reconEncounters: EncounterTemplate[] = [
         id: 'mod_hellgun_drill',
         name: 'Overcharged Hot-Shot Drills',
         description: 'Intense mental focus required through relentless firing volleys.',
-        iconName: 'crosshair-outline',
+        iconName: 'locate-outline',
         color: '#388E3C',
       },
     ],

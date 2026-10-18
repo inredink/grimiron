@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WeeklyRaidCycle, RaidSpawnDay } from '../types/warfront';
+import { getSafeIoniconsName } from '../utils/iconHelper';
 
 interface WeeklyRaidModalProps {
   visible: boolean;
@@ -157,7 +158,7 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
               {/* Boss Visual Icon & Identity */}
               <View style={styles.bossIdentityRow}>
                 <View style={[styles.bossIconCircle, { backgroundColor: boss.primaryColor }]}>
-                  <Ionicons name={boss.glyph as any} size={36} color="#FFFFFF" />
+                  <Ionicons name={getSafeIoniconsName(boss.glyph, 'skull')} size={36} color="#FFFFFF" />
                 </View>
                 <View style={styles.bossIdentityInfo}>
                   <Text style={styles.bossHonorific}>{boss.honorific}</Text>

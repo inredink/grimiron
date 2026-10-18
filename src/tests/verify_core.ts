@@ -85,6 +85,7 @@ import {
   CampaignNode,
   CampaignTelemetryContext,
 } from '../types/campaign';
+import { getSafeIoniconsName } from '../utils/iconHelper';
 import {
   evaluateCampaignRequirement,
   evaluateCampaignNode,
@@ -1931,6 +1932,49 @@ const wfCombatState = computeCombatState(
 assert(wfCombatState.attacks.length === 2, '2 attacks generated from completed sets');
 assert(wfCombatState.totalDamage > 0, `Total combat damage applied (${wfCombatState.totalDamage})`);
 assert(wfCombatState.currentHealth === Math.max(0, convertedEnemy.baseHealth - wfCombatState.totalDamage), 'Enemy health decremented accurately');
+
+// ============================================================================
+// TEST SUITE 15: Ionicons Icon Integrity & Defensive Fallback
+// ============================================================================
+console.log('\n--- TEST SUITE 15: Ionicons Icon Integrity & Defensive Sanitization ---');
+
+// 15.1 Safe Icon Alias Sanitization
+assert(getSafeIoniconsName('award-outline') === 'medal-outline', 'award-outline sanitized to medal-outline');
+assert(getSafeIoniconsName('award') === 'medal', 'award sanitized to medal');
+assert(getSafeIoniconsName('crosshair-outline') === 'locate-outline', 'crosshair-outline sanitized to locate-outline');
+assert(getSafeIoniconsName('crosshair') === 'locate', 'crosshair sanitized to locate');
+assert(getSafeIoniconsName('cpu') === 'hardware-chip', 'cpu sanitized to hardware-chip');
+assert(getSafeIoniconsName('zap') === 'flash', 'zap sanitized to flash');
+assert(getSafeIoniconsName('box') === 'cube', 'box sanitized to cube');
+assert(getSafeIoniconsName(undefined, 'trophy-outline') === 'trophy-outline', 'undefined falls back cleanly');
+assert(getSafeIoniconsName('', 'trophy') === 'trophy', 'empty string falls back cleanly');
+
+// 15.2 Verify Achievement Catalog (Zero invalid icons)
+for (const ach of ACHIEVEMENT_CATALOG) {
+  assert(ach.icon !== 'award-outline', `Achievement "${ach.id}" does not use invalid award-outline`);
+  assert(ach.icon !== 'crosshair-outline', `Achievement "${ach.id}" does not use invalid crosshair-outline`);
+  assert(Boolean(ach.icon && ach.icon.length > 0), `Achievement "${ach.id}" has non-empty icon`);
+}
+
+// 15.3 Verify Faction Mission Catalog
+for (const mis of FACTION_MISSION_CATALOG) {
+  assert(mis.iconName !== 'crosshair-outline', `Mission "${mis.id}" does not use invalid crosshair-outline`);
+  assert(Boolean(mis.iconName && mis.iconName.length > 0), `Mission "${mis.id}" has non-empty iconName`);
+}
+
+// 15.4 Verify Warfront Encounters & Modifiers
+for (const enc of allEncounterTemplates) {
+  assert(enc.iconName !== 'crosshair' && enc.iconName !== 'crosshair-outline', `Encounter "${enc.id}" iconName is valid`);
+  for (const mod of enc.modifiers) {
+    assert(mod.iconName !== 'crosshair' && mod.iconName !== 'crosshair-outline', `Modifier "${mod.id}" iconName is valid`);
+  }
+}
+
+// 15.5 Verify Warhammer 40k Factions
+for (const faction of warhammer40kUniverse.factions) {
+  const invalidFeatherNames = ['crosshair', 'cpu', 'award', 'zap', 'box', 'activity', 'feather', 'circle', 'smile', 'target', 'user-check', 'hexagon'];
+  assert(!invalidFeatherNames.includes(faction.iconName), `Faction "${faction.id}" uses valid Ionicons iconName "${faction.iconName}"`);
+}
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

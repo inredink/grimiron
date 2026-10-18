@@ -17,6 +17,7 @@ import {
   AchievementProgress,
 } from '../types/achievements';
 import { TIER_COLORS } from './AchievementCard';
+import { getSafeIoniconsName } from '../utils/iconHelper';
 
 interface AchievementDetailModalProps {
   visible: boolean;
@@ -84,7 +85,7 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
                 ]}
               >
                 <Ionicons
-                  name={(definition.icon as any) || 'trophy'}
+                  name={getSafeIoniconsName(definition.icon, 'trophy')}
                   size={48}
                   color={isUnlocked ? tierColor : THEME.colors.textMuted}
                 />

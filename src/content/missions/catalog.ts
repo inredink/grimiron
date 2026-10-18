@@ -198,7 +198,7 @@ export const FACTION_MISSION_CATALOG: FactionMissionDefinition[] = [
     ],
     isCanonical: true,
     sourceNote: 'The Imperial Infantryman\'s Uplifting Primer',
-    iconName: 'crosshair-outline',
+    iconName: 'locate-outline',
   },
   {
     id: 'mis_am_trench_hold',

@@ -264,7 +264,7 @@ const FACTION_BOSS_POOLS: Record<string, FactionBossPool> = {
     honorifics: ['The Unyielding Trenchmaster', 'Hero of the Imperium', 'Shield of the Trillions'],
     weapons: ['Bionic Power Claw', 'Master-Crafted Bolt Pistol', 'Officer\'s Sabre of Honour', 'Plasma Pistol of Cadia'],
     traits: ['Take Aim! (Pinpoint ballistic focus)', 'Fix Bayonets! (Aggressive charge)', 'Cadia Stands (Indomitable grit)'],
-    glyphs: ['crosshair', 'shield-half', 'car-sport', 'alert-circle'],
+    glyphs: ['locate', 'shield-half', 'car-sport', 'alert-circle'],
     primaryColor: '#2E7D32',
     accentColor: '#81C784',
     loreTemplates: [

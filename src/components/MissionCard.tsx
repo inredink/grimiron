@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../constants/theme';
 import { Badge } from './Badge';
 import { ProgressBar } from './ProgressBar';
+import { getSafeIoniconsName } from '../utils/iconHelper';
 import {
   ActiveMissionRecord,
   FactionMissionDefinition,
@@ -80,7 +81,7 @@ export const MissionCard: React.FC<MissionCardProps> = ({
             ]}
           >
             <Ionicons
-              name={(mission.iconName as any) || 'flag-outline'}
+              name={getSafeIoniconsName(mission.iconName, 'flag-outline')}
               size={20}
               color={
                 status === 'completed'

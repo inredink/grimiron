@@ -13,6 +13,7 @@ import { THEME } from '../constants/theme';
 import { Badge } from './Badge';
 import { ProgressBar } from './ProgressBar';
 import { TerminalButton } from './TerminalButton';
+import { getSafeIoniconsName } from '../utils/iconHelper';
 import {
   ActiveMissionRecord,
   FactionMissionDefinition,
@@ -97,7 +98,7 @@ export const MissionDetailModal: React.FC<MissionDetailModalProps> = ({
             <View style={styles.bannerRow}>
               <View style={styles.iconCircle}>
                 <Ionicons
-                  name={(mission.iconName as any) || 'flag'}
+                  name={getSafeIoniconsName(mission.iconName, 'flag')}
                   size={32}
                   color={THEME.colors.primary}
                 />
