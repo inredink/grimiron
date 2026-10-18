@@ -161,9 +161,57 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
                   <Ionicons name={getSafeIoniconsName(boss.glyph, 'skull')} size={36} color="#FFFFFF" />
                 </View>
                 <View style={styles.bossIdentityInfo}>
+                  <View style={styles.tierAndSubfactionRow}>
+                    <View
+                      style={[
+                        styles.tierBadge,
+                        boss.difficultyTier === 'legendary'
+                          ? styles.tierLegendary
+                          : boss.difficultyTier === 'challenging'
+                          ? styles.tierChallenging
+                          : styles.tierStandard,
+                      ]}
+                    >
+                      <Text style={styles.tierBadgeText}>
+                        {boss.difficultyTier?.toUpperCase() || 'STANDARD'} THREAT
+                      </Text>
+                    </View>
+                    {boss.subfactionName ? (
+                      <View style={styles.subfactionBadge}>
+                        <Text style={styles.subfactionBadgeText}>{boss.subfactionName}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text style={styles.bossHonorific}>{boss.honorific}</Text>
                   <Text style={styles.bossName}>{boss.name}</Text>
                   <Text style={styles.bossTitle}>{boss.title}</Text>
+                  <View style={styles.roleAndArchetypeRow}>
+                    <Text style={styles.roleText}>{boss.combatRole || 'Hostile Commander'}</Text>
+                    <Text style={styles.dotSeparator}>•</Text>
+                    <Text style={styles.archetypeText}>{boss.archetype || 'Crusade Boss'}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Schedule and Timezone Metadata */}
+              <View style={styles.scheduleInfoRow}>
+                <View style={styles.scheduleInfoItem}>
+                  <Ionicons name="time-outline" size={13} color="#90A4AE" />
+                  <Text style={styles.scheduleInfoText}>
+                    Expires: {new Date(weeklyRaid.expiresAt).toLocaleDateString()}
+                  </Text>
+                </View>
+                <View style={styles.scheduleInfoItem}>
+                  <Ionicons name="globe-outline" size={13} color="#90A4AE" />
+                  <Text style={styles.scheduleInfoText}>
+                    Zone: {weeklyRaid.timezone || 'Local'}
+                  </Text>
+                </View>
+                <View style={styles.scheduleInfoItem}>
+                  <Ionicons name="shield-outline" size={13} color="#90A4AE" />
+                  <Text style={styles.scheduleInfoText}>
+                    Spawn: {weeklyRaid.spawnDay.toUpperCase()}
+                  </Text>
                 </View>
               </View>
 
@@ -203,16 +251,67 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
                 </View>
               </View>
 
-              {/* Active Phase Card */}
-              <View style={[styles.phaseDossier, { borderLeftColor: activePhase.visualColor }]}>
-                <View style={styles.phaseDossierHeader}>
-                  <Ionicons name="flash" size={14} color={activePhase.visualColor} />
-                  <Text style={[styles.phaseDossierTitle, { color: activePhase.visualColor }]}>
-                    {activePhase.title.toUpperCase()}
-                  </Text>
-                </View>
-                <Text style={styles.phaseDossierDesc}>{activePhase.description}</Text>
-                <Text style={styles.phaseDossierTaunt}>"{activePhase.taunt}"</Text>
+              {/* Dynamic Phases Overview */}
+              <View style={styles.phasesSection}>
+                <Text style={styles.phasesSectionTitle}>COMBAT PHASES & TACTICAL SHIFTS</Text>
+                {boss.phases.map((ph, idx) => {
+                  const isPassed = (idx === 0 && hpPercent <= 66) || (idx === 1 && hpPercent <= 33);
+                  const isCurrent = idx === currentPhaseIndex;
+                  const isUpcoming = !isPassed && !isCurrent;
+
+                  return (
+                    <View
+                      key={ph.phaseNumber}
+                      style={[
+                        styles.phaseItem,
+                        isCurrent && {
+                          borderColor: ph.visualColor,
+                          borderWidth: 1.5,
+                          backgroundColor: '#1E2533',
+                        },
+                        isPassed && { opacity: 0.6 },
+                      ]}
+                    >
+                      <View style={styles.phaseItemHeader}>
+                        <View style={styles.phaseItemTitleRow}>
+                          <Ionicons
+                            name={
+                              isPassed
+                                ? 'checkmark-circle'
+                                : isCurrent
+                                ? 'radio-button-on'
+                                : 'lock-closed-outline'
+                            }
+                            size={14}
+                            color={isPassed ? '#00E676' : isCurrent ? ph.visualColor : '#78909C'}
+                          />
+                          <Text
+                            style={[
+                              styles.phaseItemTitle,
+                              isCurrent && { color: ph.visualColor, fontWeight: '800' },
+                            ]}
+                          >
+                            {ph.title}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.phaseStatusBadge,
+                            isPassed && styles.phaseStatusCleared,
+                            isCurrent && { backgroundColor: ph.visualColor },
+                            isUpcoming && styles.phaseStatusUpcoming,
+                          ]}
+                        >
+                          <Text style={styles.phaseStatusBadgeText}>
+                            {isPassed ? 'CLEARED' : isCurrent ? 'ENGAGED' : 'UPCOMING'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.phaseItemDesc}>{ph.description}</Text>
+                      {isCurrent && <Text style={styles.phaseItemTaunt}>"{ph.taunt}"</Text>}
+                    </View>
+                  );
+                })}
               </View>
 
               {/* Weapon & Trait Details */}
@@ -517,6 +616,142 @@ const styles = StyleSheet.create({
   },
   bossIdentityInfo: {
     flex: 1,
+  },
+  tierAndSubfactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  tierBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  tierStandard: {
+    backgroundColor: 'rgba(0, 230, 118, 0.2)',
+  },
+  tierChallenging: {
+    backgroundColor: 'rgba(255, 183, 77, 0.25)',
+  },
+  tierLegendary: {
+    backgroundColor: 'rgba(229, 57, 53, 0.25)',
+  },
+  tierBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#ECEFF1',
+    letterSpacing: 0.5,
+  },
+  subfactionBadge: {
+    backgroundColor: '#263238',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  subfactionBadgeText: {
+    color: '#B0BEC5',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  roleAndArchetypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  roleText: {
+    color: '#80DEEA',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  dotSeparator: {
+    color: '#546E7A',
+    fontSize: 10,
+  },
+  archetypeText: {
+    color: '#B0BEC5',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  scheduleInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#181C24',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 12,
+  },
+  scheduleInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  scheduleInfoText: {
+    color: '#90A4AE',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  phasesSection: {
+    marginBottom: 14,
+    gap: 8,
+  },
+  phasesSectionTitle: {
+    color: '#ECEFF1',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  phaseItem: {
+    backgroundColor: '#1A1E26',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#2C3440',
+  },
+  phaseItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  phaseItemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  phaseItemTitle: {
+    color: '#CFD8DC',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  phaseStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  phaseStatusCleared: {
+    backgroundColor: 'rgba(0, 230, 118, 0.2)',
+  },
+  phaseStatusUpcoming: {
+    backgroundColor: '#263238',
+  },
+  phaseStatusBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  phaseItemDesc: {
+    color: '#B0BEC5',
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  phaseItemTaunt: {
+    color: '#FFB74D',
+    fontSize: 10,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   bossHonorific: {
     color: '#FFB74D',

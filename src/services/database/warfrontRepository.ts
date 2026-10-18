@@ -172,7 +172,7 @@ export function getWarfrontSettings(): WarfrontSettings {
   }>('SELECT preferred_spawn_day FROM warfront_settings WHERE id = 1');
 
   return {
-    preferredSpawnDay: row?.preferred_spawn_day || 'friday',
+    preferredSpawnDay: row?.preferred_spawn_day || 'saturday',
     categoryFilter: 'all',
   };
 }
@@ -183,6 +183,31 @@ export function updatePreferredSpawnDay(spawnDay: RaidSpawnDay): void {
     'UPDATE warfront_settings SET preferred_spawn_day = ?, updated_at = datetime("now") WHERE id = 1',
     [spawnDay]
   );
+}
+
+export function recordRecentRaidBoss(
+  cycleId: string,
+  bossKey: string,
+  archetypeId: string,
+  factionId: string,
+  bossName: string
+): void {
+  const db = getDatabase();
+  db.runSync(
+    `INSERT OR REPLACE INTO recent_raid_bosses (
+      cycle_id, boss_key, archetype_id, faction_id, boss_name, created_at
+    ) VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    [cycleId, bossKey, archetypeId, factionId, bossName]
+  );
+}
+
+export function getRecentRaidBossKeys(limit: number = 12): string[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<{ boss_key: string }>(
+    'SELECT boss_key FROM recent_raid_bosses ORDER BY created_at DESC LIMIT ?',
+    [limit]
+  );
+  return rows.map((r) => r.boss_key);
 }
 
 import { WarfrontStorageAdapter } from '../progression/warfrontEngine';
@@ -196,4 +221,6 @@ export const sqliteWarfrontStorage: WarfrontStorageAdapter = {
   saveWeeklyRaid: saveWeeklyRaidRecord,
   getAllWeeklyRaids: getAllWeeklyRaids,
   getPreferredSpawnDay: () => getWarfrontSettings().preferredSpawnDay,
+  getRecentRaidBossKeys: getRecentRaidBossKeys,
+  recordRecentRaidBoss: recordRecentRaidBoss,
 };

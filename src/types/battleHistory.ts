@@ -1,7 +1,7 @@
 import { AttackEvent, EnemyDifficulty } from './combat';
 
-export type BattleOutcome = 'victory' | 'defeat' | 'abandoned' | 'in_progress';
-export type EncounterMode = 'solo' | 'coop';
+export type BattleOutcome = 'victory' | 'defeat' | 'abandoned' | 'in_progress' | 'escaped';
+export type EncounterMode = 'solo' | 'coop' | 'weekly_raid';
 
 export interface BattleParticipantContribution {
   userId: string;

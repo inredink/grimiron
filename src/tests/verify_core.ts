@@ -108,6 +108,8 @@ import {
   DailyRotationRecord,
   WeeklyRaidCycle,
   GeneratedBossIdentity,
+  BossDifficultyTier,
+  BossPhaseDefinition,
 } from '../types/warfront';
 import {
   createDeterministicPrng,
@@ -123,6 +125,10 @@ import {
   applyDamageToWeeklyRaid,
   claimWeeklyRaidRewards,
   inMemoryWarfrontStorage,
+  calculateBossPhase,
+  getCurrentBossPhase,
+  createBattleRecordFromWeeklyRaid,
+  archiveWeeklyRaidToBattleHistory,
 } from '../services/progression/warfrontEngine';
 
 function assert(condition: boolean, message: string) {
@@ -2155,6 +2161,223 @@ assert(syncedProfile.characterName === 'Captain Ventris', 'Character name update
 assert(syncedProfile.totalXp === 12500, 'Character XP preserved during cloud sync');
 assert(syncedProfile.currentLevel === 5, 'Character level preserved during cloud sync');
 assert(syncedProfile.subfactionId === 'ultramarines', 'Subfaction preserved during cloud sync');
+
+// ----------------------------------------------------
+// TEST SUITE 17: Procedural Boss Generation, Weekly Raid Cycles & Cooperative Crusade Progression
+// ----------------------------------------------------
+console.log('\n--- TEST SUITE 17: Procedural Boss Generation, Weekly Raid Cycles & Cooperative Crusade Progression ---');
+
+// 17.1 Procedural Boss Catalog Breadth across all 20 Factions
+console.log('Testing 20-Faction Procedural Boss Generation & Non-Canonical Originality...');
+const canonDisallowedNames = [
+  'Marneus Calgar',
+  'Roboute Guilliman',
+  'Eldrad Ulthran',
+  'Ursarkar E. Creed',
+  'Saint Celestine',
+  'Mortarion',
+  'Magnus the Red',
+  'Angron',
+  'Ghazghkull Thraka',
+  'The Swarmlord',
+  'Commander Farsight',
+  'Belisarius Cawl',
+  'Trajann Valoris',
+  'Kaldor Draigo',
+  'Abaddon the Despoiler',
+];
+
+for (const faction of warhammer40kFactions) {
+  const seed = `cycle_2026_w43_${faction.id}`;
+  const boss = generateProceduralBoss(seed, faction.id);
+
+  assert(boss.factionId === faction.id, `Boss faction matches "${faction.name}"`);
+  assert(boss.name.length > 3, `Boss has valid procedural name: "${boss.name}"`);
+  assert(boss.title.length > 3, `Boss has valid faction title: "${boss.title}"`);
+  assert(boss.archetype.length > 0, `Boss has archetypical combat role: "${boss.archetype}"`);
+  assert(boss.signatureWeapon.length > 0, `Boss has signature weapon: "${boss.signatureWeapon}"`);
+  assert(boss.combatTrait.length > 0, `Boss has combat trait: "${boss.combatTrait}"`);
+  assert(boss.phases.length === 3, `Boss defines exactly 3 dynamic combat phases`);
+  assert(boss.baseHealth >= 2400, `Boss base health properly scaled (${boss.baseHealth})`);
+
+  // Ensure no direct plagiarism of canonical main characters
+  const isCanon = canonDisallowedNames.some(
+    (canon) => boss.name.toLowerCase() === canon.toLowerCase()
+  );
+  assert(!isCanon, `Generated boss "${boss.name}" is original and avoids canonical named characters`);
+}
+
+// 17.2 Deterministic PRNG Seed Verification
+console.log('Testing Deterministic Seed Reproducibility...');
+const testSeedA = '2026_W42_saturday';
+const bossSeedA1 = generateProceduralBoss(testSeedA);
+const bossSeedA2 = generateProceduralBoss(testSeedA);
+assert(bossSeedA1.bossKey === bossSeedA2.bossKey, 'Deterministic bossKey matches across identical seeds');
+assert(bossSeedA1.name === bossSeedA2.name, 'Deterministic boss name matches across identical seeds');
+assert(bossSeedA1.title === bossSeedA2.title, 'Deterministic boss title matches across identical seeds');
+assert(bossSeedA1.signatureWeapon === bossSeedA2.signatureWeapon, 'Deterministic weapon matches across identical seeds');
+
+// 17.3 12-Cycle Duplicate Avoidance Buffer
+console.log('Testing 12-Cycle Duplicate Avoidance Buffer...');
+const orkBossFirst = generateProceduralBoss('cycle_seed_ork_01', 'orks');
+const recentBossKeys = [
+  orkBossFirst.bossKey,
+  `raid_orks_${orkBossFirst.archetype.toLowerCase().replace(/\s+/g, '_')}_old`,
+];
+
+const orkBossSecond = generateProceduralBoss('cycle_seed_ork_02', {
+  targetFactionId: 'orks',
+  recentBossKeys,
+});
+assert(orkBossSecond.bossKey !== orkBossFirst.bossKey, 'Duplicate avoidance produced distinct bossKey');
+
+// 17.4 Saturday Default Spawn Day & Weekly Cycle Timing
+console.log('Testing Saturday Default Spawn Day & Timing...');
+const satDefaultTiming = calculateWeeklyCycleTiming(new Date('2026-10-18T12:00:00Z'));
+assert(satDefaultTiming.cycleId.includes('_saturday'), `Default timing uses Saturday: ${satDefaultTiming.cycleId}`);
+
+const cycleStartMs = new Date(satDefaultTiming.startedAt).getTime();
+const cycleExpireMs = new Date(satDefaultTiming.expiresAt).getTime();
+const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+assert(cycleExpireMs - cycleStartMs === sevenDaysMs, 'Weekly cycle window spans exactly 7 days');
+
+// 17.5 Future-Cycle Schedule Policy (Non-disruption of active cycle)
+console.log('Testing Future-Cycle Schedule Change Policy...');
+const nowTime = new Date('2026-11-14T10:00:00Z'); // Saturday in November 2026
+const activeSaturdayRaid = getOrCreateWeeklyRaid({
+  now: nowTime,
+  preferredSpawnDay: 'saturday',
+  targetFactionId: 'necrons',
+});
+assert(activeSaturdayRaid.spawnDay === 'saturday', 'Active raid spawned with Saturday schedule');
+assert(activeSaturdayRaid.status === 'active', 'Raid is in active status');
+
+// User changes preferred spawn day to Friday mid-week
+const subsequentLookup = getOrCreateWeeklyRaid({
+  now: new Date('2026-11-16T10:00:00Z'), // Monday, still within the active week
+  preferredSpawnDay: 'friday',
+});
+assert(
+  subsequentLookup.cycleId === activeSaturdayRaid.cycleId,
+  'Future-cycle policy upheld: active weekly raid preserved without mid-week reset when settings change'
+);
+assert(
+  subsequentLookup.spawnDay === 'saturday',
+  'Active weekly raid keeps its Saturday schedule until the 7-day cycle finishes'
+);
+
+// 17.6 Dynamic 3-Phase Health Transitions
+console.log('Testing Dynamic Combat Phase Thresholds & Transitions...');
+const samplePhases: BossPhaseDefinition[] = activeSaturdayRaid.boss.phases;
+
+// Phase 1 (100% -> 67%)
+const phaseAtFull = calculateBossPhase(2400, 2400, samplePhases);
+assert(phaseAtFull.phaseNumber === 1, '100% HP is Phase 1');
+assert(phaseAtFull.hpThresholdPercent === 100, 'Phase 1 threshold is 100%');
+
+// Phase 2 (66% -> 34%)
+const phaseAtHalf = calculateBossPhase(1400, 2400, samplePhases); // 58% HP
+assert(phaseAtHalf.phaseNumber === 2, '58% HP transitions to Phase 2');
+assert(phaseAtHalf.hpThresholdPercent === 66, 'Phase 2 threshold is 66%');
+assert(phaseAtHalf.taunt.length > 0, 'Phase 2 provides tactical warlord taunt');
+
+// Phase 3 (33% -> 0%)
+const phaseAtLow = calculateBossPhase(600, 2400, samplePhases); // 25% HP
+assert(phaseAtLow.phaseNumber === 3, '25% HP transitions to Phase 3: Desperate Last Stand');
+assert(phaseAtLow.hpThresholdPercent === 33, 'Phase 3 threshold is 33%');
+
+// 17.7 Health Scaling & Difficulty Tiers
+console.log('Testing Scope & Difficulty Tier Health Scaling...');
+const standardSolo = getOrCreateWeeklyRaid({
+  now: new Date('2026-10-25T12:00:00Z'),
+  forceDifficulty: 'standard',
+});
+assert(standardSolo.maxHp === 2400, `Standard solo raid scales to 2,400 HP (${standardSolo.maxHp})`);
+
+const standardSquad = getOrCreateWeeklyRaid({
+  now: new Date('2026-10-25T12:00:00Z'),
+  squadId: 'squad_crusade_alpha',
+  squadName: 'Alpha Crusade',
+  forceDifficulty: 'standard',
+});
+assert(standardSquad.maxHp === 7500, `Standard squad raid scales to 7,500 HP (${standardSquad.maxHp})`);
+
+const challengingSquad = getOrCreateWeeklyRaid({
+  now: new Date('2026-11-01T12:00:00Z'),
+  squadId: 'squad_crusade_beta',
+  squadName: 'Beta Crusade',
+  forceDifficulty: 'challenging',
+});
+assert(challengingSquad.maxHp === 9000, `Challenging squad raid scales to 9,000 HP (1.2x) (${challengingSquad.maxHp})`);
+
+const legendarySquad = getOrCreateWeeklyRaid({
+  now: new Date('2026-11-08T12:00:00Z'),
+  squadId: 'squad_crusade_gamma',
+  squadName: 'Gamma Crusade',
+  forceDifficulty: 'legendary',
+});
+assert(legendarySquad.maxHp === 10500, `Legendary squad raid scales to 10,500 HP (1.4x) (${legendarySquad.maxHp})`);
+
+// 17.8 Battle History Archival: Victory Record
+console.log('Testing Battle History Archival on Boss Defeat...');
+// Land fatal strike on standard solo
+const victoryRaid = applyDamageToWeeklyRaid(
+  standardSolo.cycleId,
+  'user_slayer_01',
+  'Captain Titus',
+  'adeptus-astartes',
+  2400,
+  12
+);
+assert(victoryRaid !== null && victoryRaid.status === 'defeated', 'Raid defeated by assault damage');
+
+const victoryRecord = createBattleRecordFromWeeklyRaid(victoryRaid!);
+assert(victoryRecord.id === `bh_raid_${victoryRaid!.cycleId}`, 'Battle history ID correctly formatted');
+assert(victoryRecord.outcome === 'victory', 'Outcome recorded as victory');
+assert(victoryRecord.totalDamage === 2400, 'Total damage dealt matches maxHp');
+assert(victoryRecord.snapshot.participants.length === 1, 'Participant recorded in battle snapshot');
+assert(victoryRecord.snapshot.participants[0].damageSharePercent === 100, 'Solo participant has 100% damage share');
+assert(victoryRecord.snapshot.timeline.some((t) => t.eventType === 'enemy_slain'), 'Timeline records enemy_slain event');
+
+// 17.9 Battle History Archival: Escaped Warlord Resolution (No False Defeat)
+console.log('Testing Unresolved Boss Resolution (Escaped Warlord Policy)...');
+const uncompletedRaid: WeeklyRaidCycle = {
+  cycleId: '2026_W41_escaped_demo',
+  scope: 'individual',
+  boss: generateProceduralBoss('2026_W41_escaped_demo', 'tyranids'),
+  maxHp: 2400,
+  currentHp: 1500, // 900 damage dealt, but survived
+  status: 'active',
+  spawnDay: 'saturday',
+  startedAt: '2026-10-03T00:00:00.000Z',
+  expiresAt: '2026-10-10T00:00:00.000Z',
+  isRewardClaimed: false,
+  contributions: {
+    user_survivor: {
+      userId: 'user_survivor',
+      callsign: 'Sergeant Chronus',
+      factionId: 'adeptus-astartes',
+      damage: 900,
+      attacksCount: 6,
+      workoutsCount: 1,
+      lastContributedAt: '2026-10-05T12:00:00.000Z',
+    },
+  },
+  updatedAt: '2026-10-05T12:00:00.000Z',
+};
+
+inMemoryWarfrontStorage.saveWeeklyRaid(uncompletedRaid);
+reconcileExpiredRaids(new Date('2026-10-15T00:00:00.000Z')); // After expiry
+
+const archivedEscapedRaid = inMemoryWarfrontStorage.getWeeklyRaid(uncompletedRaid.cycleId);
+assert(archivedEscapedRaid !== null, 'Found archived raid');
+assert(archivedEscapedRaid!.status === 'escaped', 'Unresolved raid marked as "escaped" (never falsely marked defeated)');
+
+const escapedBattleRecord = createBattleRecordFromWeeklyRaid(archivedEscapedRaid!);
+assert(escapedBattleRecord.outcome === 'escaped', 'Battle record outcome is "escaped"');
+assert(escapedBattleRecord.totalDamage === 900, 'Preserved 900 damage dealt in battle record');
+assert(escapedBattleRecord.enemyRemainingHp === 1500, 'Remaining HP recorded accurately');
+assert(escapedBattleRecord.snapshot.timeline.some((t) => t.eventType === 'tactical_retreat'), 'Timeline records tactical retreat');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

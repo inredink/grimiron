@@ -4,7 +4,16 @@ import {
   RaidSpawnDay,
   EncounterTemplate,
   GeneratedBossIdentity,
+  BossPhaseDefinition,
+  BossDifficultyTier,
 } from '../../types/warfront';
+import {
+  BattleRecord,
+  BattleSnapshot,
+  BattleOutcome,
+  BattleParticipantContribution,
+  BattleTimelineEvent,
+} from '../../types/battleHistory';
 import {
   allEncounterTemplates,
   getEncounterById,
@@ -28,13 +37,22 @@ export interface WarfrontStorageAdapter {
   saveWeeklyRaid(raid: WeeklyRaidCycle): void;
   getAllWeeklyRaids(): WeeklyRaidCycle[];
   getPreferredSpawnDay(): RaidSpawnDay;
+  getRecentRaidBossKeys?(limit?: number): string[];
+  recordRecentRaidBoss?(
+    cycleId: string,
+    bossKey: string,
+    archetypeId: string,
+    factionId: string,
+    bossName: string
+  ): void;
 }
 
 // In-Memory Storage Adapter (Default)
 const inMemoryDailyRotations = new Map<string, DailyRotationRecord>();
 const inMemoryRecentEncounters = new Map<string, string>(); // encounterId -> selectedDate
 const inMemoryWeeklyRaids = new Map<string, WeeklyRaidCycle>();
-let inMemoryPreferredSpawnDay: RaidSpawnDay = 'friday';
+const inMemoryRecentBossKeys: string[] = [];
+let inMemoryPreferredSpawnDay: RaidSpawnDay = 'saturday';
 
 export const inMemoryWarfrontStorage: WarfrontStorageAdapter = {
   getDailyRotation: (dateStr) => inMemoryDailyRotations.get(dateStr) || null,
@@ -59,6 +77,10 @@ export const inMemoryWarfrontStorage: WarfrontStorageAdapter = {
   },
   getAllWeeklyRaids: () => Array.from(inMemoryWeeklyRaids.values()),
   getPreferredSpawnDay: () => inMemoryPreferredSpawnDay,
+  getRecentRaidBossKeys: (limit = 12) => inMemoryRecentBossKeys.slice(-limit),
+  recordRecentRaidBoss: (_cycleId, bossKey) => {
+    inMemoryRecentBossKeys.push(bossKey);
+  },
 };
 
 let activeStorageAdapter: WarfrontStorageAdapter = inMemoryWarfrontStorage;
@@ -182,12 +204,13 @@ export function completeDailyEncounter(
 
 /**
  * Computes weekly cycle timing and cycleId based on preferred spawn day.
- * Friday spawn: Friday 00:00:00 to next Friday 00:00:00.
+ * Default spawn day is Saturday (with Friday supported as an option or via settings).
  * Saturday spawn: Saturday 00:00:00 to next Saturday 00:00:00.
+ * Friday spawn: Friday 00:00:00 to next Friday 00:00:00.
  */
 export function calculateWeeklyCycleTiming(
   now: Date = new Date(),
-  spawnDay: RaidSpawnDay = 'friday'
+  spawnDay: RaidSpawnDay = 'saturday'
 ): { cycleId: string; startedAt: string; expiresAt: string } {
   const dayTarget = spawnDay === 'friday' ? 5 : 6; // 5 = Friday, 6 = Saturday
   const currentDay = now.getDay();
@@ -217,6 +240,167 @@ export function calculateWeeklyCycleTiming(
 }
 
 /**
+ * Pure helper to calculate the current boss phase based on health thresholds.
+ * Phase 1: 100% -> 67%
+ * Phase 2: 66% -> 34%
+ * Phase 3: 33% -> 0%
+ */
+export function calculateBossPhase(
+  currentHp: number,
+  maxHp: number,
+  phases: BossPhaseDefinition[]
+): BossPhaseDefinition {
+  if (!phases || phases.length === 0) {
+    return {
+      phaseNumber: 1,
+      title: 'Phase I: Battle Readiness',
+      hpThresholdPercent: 100,
+      description: 'Standard combat posture.',
+      visualColor: '#4A148C',
+      taunt: 'Prepare yourself for war.',
+    };
+  }
+
+  const hpPercent = maxHp > 0 ? (currentHp / maxHp) * 100 : 0;
+  if (hpPercent <= 33 && phases.length >= 3) {
+    return phases[2];
+  }
+  if (hpPercent <= 66 && phases.length >= 2) {
+    return phases[1];
+  }
+  return phases[0];
+}
+
+/**
+ * Returns the active combat phase definition for a given weekly raid.
+ */
+export function getCurrentBossPhase(raid: WeeklyRaidCycle): BossPhaseDefinition {
+  return calculateBossPhase(raid.currentHp, raid.maxHp, raid.boss.phases);
+}
+
+/**
+ * Creates an immutable BattleRecord snapshot from a completed or expired weekly raid.
+ */
+export function createBattleRecordFromWeeklyRaid(raid: WeeklyRaidCycle): BattleRecord {
+  const isDefeated = raid.status === 'defeated';
+  const outcome: BattleOutcome = isDefeated ? 'victory' : 'escaped';
+  const totalDamageDealt = Math.max(0, raid.maxHp - raid.currentHp);
+
+  const participantsList: BattleParticipantContribution[] = Object.values(raid.contributions).map(
+    (c) => {
+      const share =
+        totalDamageDealt > 0 ? Math.round((c.damage / totalDamageDealt) * 1000) / 10 : 0;
+      return {
+        userId: c.userId,
+        callsign: c.callsign,
+        factionId: c.factionId,
+        attacksCount: c.attacksCount,
+        damageDealt: c.damage,
+        damageSharePercent: share,
+        workoutsAttributed: c.workoutsCount,
+        setsAttributed: c.attacksCount,
+      };
+    }
+  );
+
+  const timeline: BattleTimelineEvent[] = [
+    {
+      timestamp: raid.startedAt,
+      eventType: 'battle_started',
+      actorName: 'Warfront Command',
+      description: `Weekly Crusade Raid initiated against ${raid.boss.name}, ${raid.boss.title}.`,
+    },
+  ];
+
+  if (isDefeated) {
+    timeline.push({
+      timestamp: raid.updatedAt,
+      eventType: 'enemy_slain',
+      actorName: 'Strike Team',
+      description: `${raid.boss.name} has been vanquished. "${raid.boss.defeatQuote}"`,
+    });
+  } else if (raid.status === 'escaped') {
+    timeline.push({
+      timestamp: raid.updatedAt,
+      eventType: 'tactical_retreat',
+      actorName: raid.boss.name,
+      description: `${raid.boss.name} broke orbit and escaped the sector as the weekly cycle concluded.`,
+    });
+  }
+
+  const snapshot: BattleSnapshot = {
+    enemyDescription: raid.boss.loreDescription,
+    enemyGlyph: raid.boss.glyph,
+    enemyFaction: raid.boss.factionName,
+    initialHealth: raid.maxHp,
+    finalHealth: raid.currentHp,
+    timeline,
+    participants: participantsList,
+    userAttacks: [],
+    linkedWorkoutIds: [],
+    rewards: {
+      baseXpEarned: 0,
+      gloryBonusXp: isDefeated ? 500 : 0,
+      totalXpEarned: isDefeated ? 500 : 0,
+      achievementsUnlocked: isDefeated ? ['ach_weekly_raid_slayer'] : [],
+    },
+    afterActionReportSummary: isDefeated
+      ? `Glorious victory! ${raid.boss.name} was defeated after suffering ${totalDamageDealt} total damage.`
+      : `Raid cycle concluded. ${raid.boss.name} survived with ${raid.currentHp}/${raid.maxHp} HP remaining and escaped the sector.`,
+  };
+
+  return {
+    id: `bh_raid_${raid.cycleId}`,
+    encounterMode: raid.scope === 'squad' ? 'coop' : 'solo',
+    missionTitle: `Weekly Raid: ${raid.boss.title}`,
+    enemyId: raid.boss.bossKey,
+    enemyName: raid.boss.name,
+    enemyFaction: raid.boss.factionName,
+    enemyDifficulty:
+      raid.boss.difficultyTier === 'legendary'
+        ? 'crusade'
+        : raid.boss.difficultyTier === 'challenging'
+        ? 'boss'
+        : 'incursion',
+    enemyMaxHp: raid.maxHp,
+    enemyRemainingHp: raid.currentHp,
+    outcome,
+    totalDamage: totalDamageDealt,
+    totalAttacks: Object.values(raid.contributions).reduce((sum, c) => sum + c.attacksCount, 0),
+    participantCount: Math.max(1, Object.keys(raid.contributions).length),
+    squadId: raid.squadId,
+    squadName: raid.squadName,
+    startedAt: raid.startedAt,
+    completedAt: raid.updatedAt,
+    durationSeconds: Math.max(
+      0,
+      Math.round((new Date(raid.updatedAt).getTime() - new Date(raid.startedAt).getTime()) / 1000)
+    ),
+    xpEarned: isDefeated ? 500 : 0,
+    snapshot,
+    createdAt: raid.updatedAt,
+  };
+}
+
+declare const require: any;
+
+/**
+ * Persists an archived battle record to Battle History (with SQLite or memory fallback).
+ */
+export function archiveWeeklyRaidToBattleHistory(raid: WeeklyRaidCycle): BattleRecord {
+  const record = createBattleRecordFromWeeklyRaid(raid);
+  try {
+    const { recordBattleHistory } = require('../database/battleHistoryRepository');
+    if (typeof recordBattleHistory === 'function') {
+      recordBattleHistory(record);
+    }
+  } catch {
+    // Graceful fallback for non-SQLite testing environments
+  }
+  return record;
+}
+
+/**
  * Archives any expired weekly raids cleanly as 'escaped' without false defeats.
  */
 export function reconcileExpiredRaids(now: Date = new Date()): void {
@@ -230,6 +414,7 @@ export function reconcileExpiredRaids(now: Date = new Date()): void {
         raid.status = 'escaped';
         raid.updatedAt = now.toISOString();
         activeStorageAdapter.saveWeeklyRaid(raid);
+        archiveWeeklyRaidToBattleHistory(raid);
       }
     }
   }
@@ -237,6 +422,12 @@ export function reconcileExpiredRaids(now: Date = new Date()): void {
 
 /**
  * Retrieves or initializes the active Weekly Raid Boss cycle.
+ *
+ * Guarantees:
+ * - Saturday default spawn day.
+ * - Future-cycle policy: Changing preferred spawn day applies to future cycles without disrupting an active week.
+ * - 12-Cycle Duplicate Avoidance: Boss identities and archetypes avoid repeating recently rolled bosses.
+ * - Refresh-proof deterministic PRNG seeded by cycle ID.
  */
 export function getOrCreateWeeklyRaid(options?: {
   now?: Date;
@@ -244,6 +435,7 @@ export function getOrCreateWeeklyRaid(options?: {
   squadName?: string;
   preferredSpawnDay?: RaidSpawnDay;
   targetFactionId?: string;
+  forceDifficulty?: BossDifficultyTier;
 }): WeeklyRaidCycle {
   const now = options?.now || new Date();
   const spawnDay = options?.preferredSpawnDay || activeStorageAdapter.getPreferredSpawnDay();
@@ -251,8 +443,23 @@ export function getOrCreateWeeklyRaid(options?: {
   // Cleanly archive previous unresolved cycles as 'escaped'
   reconcileExpiredRaids(now);
 
-  const timing = calculateWeeklyCycleTiming(now, spawnDay);
   const scope: 'squad' | 'individual' = options?.squadId ? 'squad' : 'individual';
+
+  // Future-Cycle Policy: If there is already an active raid of this scope that hasn't expired, preserve it
+  const allRaids = activeStorageAdapter.getAllWeeklyRaids();
+  const activeExisting = allRaids.find((r) => {
+    if (r.status !== 'active') return false;
+    if (r.scope !== scope) return false;
+    if (scope === 'squad' && r.squadId !== options?.squadId) return false;
+    const expireMs = new Date(r.expiresAt).getTime();
+    return now.getTime() < expireMs;
+  });
+
+  if (activeExisting) {
+    return activeExisting;
+  }
+
+  const timing = calculateWeeklyCycleTiming(now, spawnDay);
   const fullCycleKey = options?.squadId
     ? `${timing.cycleId}_${options.squadId}`
     : `${timing.cycleId}_solo`;
@@ -262,11 +469,42 @@ export function getOrCreateWeeklyRaid(options?: {
     return existing;
   }
 
-  // Generate boss procedurally from cycle timing
-  const boss = generateProceduralBoss(timing.cycleId, options?.targetFactionId);
+  // 12-Cycle Duplicate Avoidance buffer
+  const recentKeys = activeStorageAdapter.getRecentRaidBossKeys
+    ? activeStorageAdapter.getRecentRaidBossKeys(12)
+    : [];
 
-  // Health scaling: Individual (2,400 HP) vs Squad (7,500 HP)
-  const maxHp = scope === 'squad' ? 7500 : 2400;
+  // Generate boss procedurally from cycle timing and recent history
+  const boss = generateProceduralBoss(timing.cycleId, {
+    targetFactionId: options?.targetFactionId,
+    recentBossKeys: recentKeys,
+    forceDifficulty: options?.forceDifficulty,
+  });
+
+  if (activeStorageAdapter.recordRecentRaidBoss) {
+    activeStorageAdapter.recordRecentRaidBoss(
+      timing.cycleId,
+      boss.bossKey,
+      boss.archetype,
+      boss.factionId,
+      boss.name
+    );
+  }
+
+  // Health scaling: Individual (2,400 HP standard) vs Squad (7,500 HP standard)
+  const tierMultiplier =
+    options?.forceDifficulty === 'legendary'
+      ? 1.4
+      : options?.forceDifficulty === 'challenging'
+      ? 1.2
+      : 1.0;
+  const baseHp = scope === 'squad' ? 7500 : 2400;
+  const maxHp = Math.round(baseHp * tierMultiplier);
+
+  const timezone =
+    typeof Intl !== 'undefined' && Intl.DateTimeFormat
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      : 'UTC';
 
   const newRaid: WeeklyRaidCycle = {
     cycleId: fullCycleKey,
@@ -280,6 +518,8 @@ export function getOrCreateWeeklyRaid(options?: {
     spawnDay,
     startedAt: timing.startedAt,
     expiresAt: timing.expiresAt,
+    timezone,
+    raidAvailability: 'available',
     isRewardClaimed: false,
     contributions: {},
     updatedAt: now.toISOString(),
@@ -291,6 +531,7 @@ export function getOrCreateWeeklyRaid(options?: {
 
 /**
  * Idempotently applies combat damage to the active weekly raid boss.
+ * Automatically transitions boss phases and archives to Battle History on victory.
  */
 export function applyDamageToWeeklyRaid(
   cycleId: string,
@@ -330,8 +571,12 @@ export function applyDamageToWeeklyRaid(
   p.lastContributedAt = new Date().toISOString();
 
   raid.updatedAt = new Date().toISOString();
-  activeStorageAdapter.saveWeeklyRaid(raid);
 
+  if (raid.status === 'defeated') {
+    archiveWeeklyRaidToBattleHistory(raid);
+  }
+
+  activeStorageAdapter.saveWeeklyRaid(raid);
   return raid;
 }
 

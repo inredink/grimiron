@@ -61,12 +61,19 @@ export interface BossPhaseDefinition {
   taunt: string;
 }
 
+export type BossDifficultyTier = 'standard' | 'challenging' | 'legendary';
+
 export interface GeneratedBossIdentity {
   bossKey: string;
   name: string;
   title: string;
   factionId: string;
   factionName: string;
+  subfactionId?: string;
+  subfactionName?: string;
+  archetype: string;
+  combatRole: string;
+  difficultyTier: BossDifficultyTier;
   honorific: string;
   signatureWeapon: string;
   combatTrait: string;
@@ -79,10 +86,13 @@ export interface GeneratedBossIdentity {
   phases: BossPhaseDefinition[];
   taunts: string[];
   defeatQuote: string;
+  generationSeed?: string;
+  version?: string;
 }
 
 export type RaidSpawnDay = 'friday' | 'saturday';
 export type RaidStatus = 'active' | 'defeated' | 'escaped';
+export type RaidAvailability = 'available' | 'locked' | 'concluded';
 
 export interface RaidParticipantContribution {
   userId: string;
@@ -95,7 +105,7 @@ export interface RaidParticipantContribution {
 }
 
 export interface WeeklyRaidCycle {
-  cycleId: string; // e.g. "2026_W42"
+  cycleId: string; // e.g. "2026_W42_saturday"
   scope: 'squad' | 'individual';
   squadId?: string;
   squadName?: string;
@@ -106,6 +116,8 @@ export interface WeeklyRaidCycle {
   spawnDay: RaidSpawnDay;
   startedAt: string;
   expiresAt: string;
+  timezone?: string;
+  raidAvailability?: RaidAvailability;
   isRewardClaimed: boolean;
   contributions: Record<string, RaidParticipantContribution>;
   updatedAt: string;

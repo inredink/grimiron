@@ -424,6 +424,26 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
     db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (9, datetime('now'));");
   }
 
+  // Migration 10: Weekly Raid Boss History & Saturday Spawn Day Preference
+  if (!appliedMigrations.includes(10)) {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS recent_raid_bosses (
+        cycle_id TEXT PRIMARY KEY,
+        boss_key TEXT NOT NULL,
+        archetype_id TEXT NOT NULL,
+        faction_id TEXT NOT NULL,
+        boss_name TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+
+      UPDATE warfront_settings
+      SET preferred_spawn_day = 'saturday', updated_at = datetime('now')
+      WHERE id = 1 AND preferred_spawn_day = 'friday';
+    `);
+
+    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (10, datetime('now'));");
+  }
+
   return db;
 }
 

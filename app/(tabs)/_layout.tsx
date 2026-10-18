@@ -36,6 +36,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="raid"
+        options={{
+          title: 'RAIDS',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="skull-outline" size={size} color={color ? (color as string) : THEME.colors.primary} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="workout"
         options={{
           title: 'LOG WORKOUT',
