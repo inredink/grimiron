@@ -80,11 +80,18 @@ export function buildAfterActionReport(
   workoutSession: WorkoutSession,
   baseXpEarned: number,
   prevProgression: CharacterProgression,
-  newProgression: CharacterProgression
+  newProgression: CharacterProgression,
+  xpCapInfo?: {
+    isCapped: boolean;
+    requestedXp: number;
+    creditedXp: number;
+    spilloverXp: number;
+  }
 ): CombatAfterActionReport {
   // If enemy was defeated, award the mission's Glory Bonus XP!
   const gloryBonusXp = combatState.isDefeated ? mission.gloryBonusXp : 0;
-  const totalXpEarned = baseXpEarned + gloryBonusXp;
+  const rawTotalXp = baseXpEarned + gloryBonusXp;
+  const totalXpEarned = xpCapInfo ? xpCapInfo.creditedXp : rawTotalXp;
 
   // Calculate total tonnage volume in kg
   let totalVolumeKg = 0;
@@ -149,5 +156,9 @@ export function buildAfterActionReport(
     newRank: newProgression.currentRankTitle,
     progressPercent: newProgression.progressPercent,
     achievementsUnlocked: achievements,
+    isCapped: xpCapInfo?.isCapped,
+    requestedXp: xpCapInfo?.requestedXp,
+    creditedXp: xpCapInfo?.creditedXp,
+    spilloverXp: xpCapInfo?.spilloverXp,
   };
 }

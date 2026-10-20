@@ -1,5 +1,18 @@
 import { XP_CONFIG, calculateWorkoutXp, normalizeToKg } from '../services/progression/xpCalculator';
 import { getCumulativeXpForLevel, getLevelFromTotalXp, calculateProgression } from '../services/progression/rankEngine';
+import {
+  RANK_CURVE_CONFIG,
+  getRankTierMinXp,
+  STANDARD_RANK_THRESHOLDS,
+  simulateProgression,
+} from '../services/progression/rankCurve';
+import {
+  XP_ECONOMY_CONFIG,
+  awardXp,
+  getCalendarDay,
+  InMemoryXpStorage,
+  setXpStorageAdapter,
+} from '../services/progression/xpService';
 import { warhammer40kUniverse, getFactionById, getSubfactionById, getRankForXp } from '../content/warhammer40k';
 import {
   CustomSubfactionRecord,
@@ -3403,6 +3416,168 @@ assert(cloudSync1.localResult === true, 'Cloud account completed state propagate
 const cloudSync2 = syncCloudOnboardingState(true, false);
 assert(cloudSync2.localResult === true, 'Local completed state not overwritten by pending cloud metadata');
 assert(cloudSync2.pushToCloud === true, 'Local completed state pushed to cloud user metadata');
+
+// ----------------------------------------------------
+// TEST SUITE 21: XP Economy Rebalance, Daily XP Caps & Long-Term Rank Progression
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 21: XP Economy Rebalance, Daily XP Caps & Long-Term Rank Progression]');
+
+console.log('Testing Exponential Rank Curve & Successive Scaling...');
+assert(RANK_CURVE_CONFIG.BASE_PROMOTION_XP === 3500, 'Base promotion requires 3,500 XP (~2-3 weeks)');
+assert(RANK_CURVE_CONFIG.GROWTH_FACTOR === 2.25, 'Exponential growth factor configured to 2.25x');
+
+assert(getRankTierMinXp(1) === 0, 'Tier 1 Initiate recruit requires 0 XP');
+assert(getRankTierMinXp(2) === 3500, 'Tier 2 promotion requires exactly 3,500 XP');
+assert(getRankTierMinXp(3) >= 7800 && getRankTierMinXp(3) <= 8200, `Tier 3 Veteran requires ~8,000 XP (got ${getRankTierMinXp(3)})`);
+assert(getRankTierMinXp(4) >= 17500 && getRankTierMinXp(4) <= 18500, `Tier 4 Sergeant requires ~18,000 XP (got ${getRankTierMinXp(4)})`);
+assert(getRankTierMinXp(5) >= 39000 && getRankTierMinXp(5) <= 41000, `Tier 5 Lieutenant requires ~40,000 XP (got ${getRankTierMinXp(5)})`);
+assert(getRankTierMinXp(6) >= 89000 && getRankTierMinXp(6) <= 91000, `Tier 6 Captain requires ~90,000 XP (got ${getRankTierMinXp(6)})`);
+assert(getRankTierMinXp(7) >= 195000 && getRankTierMinXp(7) <= 205000, `Tier 7 Chapter Master requires ~200,000 XP (got ${getRankTierMinXp(7)})`);
+
+// Verify strict exponential monotonicity: each successive rank requires more additional XP than the previous
+for (let t = 3; t <= 7; t++) {
+  const currentDelta = getRankTierMinXp(t) - getRankTierMinXp(t - 1);
+  const previousDelta = getRankTierMinXp(t - 1) - getRankTierMinXp(t - 2);
+  assert(
+    currentDelta > previousDelta,
+    `Rank Tier ${t} delta (${currentDelta} XP) is greater than Tier ${t - 1} delta (${previousDelta} XP)`
+  );
+}
+
+console.log('Testing Faction Symmetry across all 20 Warhammer 40,000 Factions...');
+assert(warhammer40kFactions.length === 20, 'Catalog contains 20 factions');
+for (const fac of warhammer40kFactions) {
+  assert(fac.ranks.length === 7, `Faction ${fac.name} has exactly 7 rank tiers`);
+  assert(fac.ranks[0].minXp === 0, `Faction ${fac.name} Tier 1 starts at 0 XP`);
+  assert(fac.ranks[1].minXp === 3500, `Faction ${fac.name} Tier 2 unlocks at 3,500 XP`);
+  assert(fac.ranks[6].minXp === STANDARD_RANK_THRESHOLDS[7], `Faction ${fac.name} Tier 7 apex unlocks at calibrated threshold`);
+}
+
+console.log('Testing Multi-Frequency Workout Habit Progression Simulations...');
+const sim3 = simulateProgression(3);
+assert(sim3.timeToTierWeeks[2] >= 1.5 && sim3.timeToTierWeeks[2] <= 2.5, `3 workouts/wk: Tier 2 takes ~1.8 weeks (${sim3.timeToTierWeeks[2]} weeks)`);
+assert(sim3.timeToTierWeeks[3] >= 3.5 && sim3.timeToTierWeeks[3] <= 5.0, `3 workouts/wk: Tier 3 takes ~4.1 weeks (${sim3.timeToTierWeeks[3]} weeks)`);
+assert(sim3.timeToTierWeeks[7] >= 90, `3 workouts/wk: Tier 7 apex takes ~2 years of consistent training (${sim3.timeToTierWeeks[7]} weeks)`);
+
+const sim5 = simulateProgression(5);
+assert(sim5.timeToTierWeeks[2] >= 1.0 && sim5.timeToTierWeeks[2] <= 1.8, `5 workouts/wk: Tier 2 takes ~1.3 weeks (${sim5.timeToTierWeeks[2]} weeks)`);
+assert(sim5.timeToTierWeeks[7] >= 65, `5 workouts/wk: Tier 7 apex takes ~1.4 years of heavy training (${sim5.timeToTierWeeks[7]} weeks)`);
+
+console.log('Testing Centralized XP Service & Atomic Daily Cap Enforcement...');
+const testStorage = new InMemoryXpStorage();
+setXpStorageAdapter(testStorage);
+
+// Test Calendar Day extraction
+const day1 = '2026-10-20';
+const day2 = '2026-10-21';
+
+// Initial state
+assert(testStorage.getDailyXpCredited(day1) === 0, 'Fresh calendar day has 0 credited XP');
+
+// Award 1: 450 XP (within 1,000 XP cap)
+const award1 = awardXp({
+  amount: 450,
+  sourceType: 'workout_completion',
+  targetDate: new Date(`${day1}T10:00:00Z`),
+  reason: 'Morning Crusade Session',
+});
+assert(award1.creditedAmount === 450, 'Awards full 450 XP when within daily cap');
+assert(award1.isCapped === false, 'Award 1 is not capped');
+assert(award1.dailyCreditedAfter === 450, 'Daily credited updates to 450 XP');
+assert(award1.dailyAllowanceRemaining === 550, 'Daily allowance remaining is 550 XP');
+assert(award1.totalXpNow === 450, 'Character total XP is 450');
+
+// Award 2: 50 Recovery XP (within allowance)
+const award2 = awardXp({
+  amount: 50,
+  sourceType: 'recovery_day',
+  targetDate: new Date(`${day1}T14:00:00Z`),
+  reason: 'Scheduled rest day mobility protocol',
+});
+assert(award2.creditedAmount === 50, 'Recovery awards full 50 XP');
+assert(award2.isCapped === false, 'Award 2 is not capped');
+assert(award2.dailyCreditedAfter === 500, 'Daily credited updates to 500 XP');
+assert(award2.dailyAllowanceRemaining === 500, 'Daily allowance remaining is 500 XP');
+
+// Award 3: 600 XP (exceeds 500 XP remaining allowance -> partial cap)
+const award3 = awardXp({
+  amount: 600,
+  sourceType: 'workout_completion',
+  targetDate: new Date(`${day1}T18:00:00Z`),
+  reason: 'Heavy Evening Leg Battle',
+});
+assert(award3.requestedAmount === 600, 'Requested amount is 600 XP');
+assert(award3.creditedAmount === 500, 'Credited amount clamped to remaining 500 XP allowance');
+assert(award3.spilloverAmount === 100, 'Spillover amount accurately recorded as 100 XP');
+assert(award3.isCapped === true, 'Award 3 is marked isCapped: true');
+assert(award3.dailyCreditedAfter === 1000, 'Daily credited reaches hard cap of 1,000 XP');
+assert(award3.dailyAllowanceRemaining === 0, 'Remaining daily allowance is 0 XP');
+assert(award3.totalXpNow === 1000, 'Character total XP is exactly 1,000 XP');
+
+// Award 4: 200 XP when already at cap (allowance = 0 -> 0 credited)
+const award4 = awardXp({
+  amount: 200,
+  sourceType: 'mission_reward',
+  targetDate: new Date(`${day1}T20:00:00Z`),
+  reason: 'Bonus Mission Completion',
+});
+assert(award4.requestedAmount === 200, 'Requested amount is 200 XP');
+assert(award4.creditedAmount === 0, 'Credited amount is 0 XP when cap is already exhausted');
+assert(award4.spilloverAmount === 200, 'Spillover is 200 XP');
+assert(award4.isCapped === true, 'Award 4 is marked isCapped: true');
+assert(award4.totalXpNow === 1000, 'Character total XP is not inflated beyond cap');
+
+// Award 5: Next day automatically resets daily cap
+const award5 = awardXp({
+  amount: 400,
+  sourceType: 'workout_completion',
+  targetDate: new Date(`${day2}T09:00:00Z`),
+  reason: 'Next Day Morning Crusade Session',
+});
+assert(award5.creditedAmount === 400, 'New calendar day awards full 400 XP without interference from yesterday');
+assert(award5.isCapped === false, 'Award 5 is not capped on new calendar day');
+assert(award5.dailyAllowanceRemaining === 600, 'New calendar day has 600 XP remaining allowance');
+assert(award5.totalXpNow === 1400, 'Character cumulative total XP is 1,400 XP');
+
+console.log('Testing Strict Idempotency & Replay Protection...');
+// Submit with stable idempotency key
+const awardIdemp1 = awardXp({
+  amount: 250,
+  sourceType: 'workout_completion',
+  targetDate: new Date(`${day2}T12:00:00Z`),
+  idempotencyKey: 'workout_session_unique_xyz123',
+  reason: 'First submission of session xyz123',
+});
+assert(awardIdemp1.isDuplicate === false, 'First submission is not a duplicate');
+assert(awardIdemp1.creditedAmount === 250, 'First submission awards 250 XP');
+const xpAfterFirst = testStorage.getCharacterTotalXp();
+
+// Re-submit identical idempotency key (simulating network retry or double-tap)
+const awardIdemp2 = awardXp({
+  amount: 250,
+  sourceType: 'workout_completion',
+  targetDate: new Date(`${day2}T12:00:00Z`),
+  idempotencyKey: 'workout_session_unique_xyz123',
+  reason: 'Accidental retry of session xyz123',
+});
+assert(awardIdemp2.isDuplicate === true, 'Re-submission is identified as duplicate');
+assert(awardIdemp2.creditedAmount === 250, 'Duplicate returns the original credited amount');
+assert(testStorage.getCharacterTotalXp() === xpAfterFirst, 'Duplicate does NOT increment character total XP again');
+assert(awardIdemp2.dailyAllowanceRemaining === awardIdemp1.dailyAllowanceRemaining, 'Duplicate does NOT deduct from daily cap twice');
+
+console.log('Testing Configurable Daily Cap from Settings...');
+// Test custom cap of 1,500 XP
+const customCapStorage = new InMemoryXpStorage();
+setXpStorageAdapter(customCapStorage);
+const customAward = awardXp({
+  amount: 1200,
+  sourceType: 'workout_completion',
+  targetDate: new Date(`${day1}T10:00:00Z`),
+  dailyCap: 1500,
+});
+assert(customAward.creditedAmount === 1200, 'With custom 1,500 XP cap, 1,200 XP is credited without capping');
+assert(customAward.isCapped === false, 'Custom cap allows larger volume when configured');
+assert(customAward.dailyAllowanceRemaining === 300, '300 XP allowance remaining for the day');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

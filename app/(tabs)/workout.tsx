@@ -33,6 +33,7 @@ import { ScheduledProgramSession } from '../../src/types/program';
 import { EncounterTemplate, WeeklyRaidCycle } from '../../src/types/warfront';
 import { getMissionById } from '../../src/content/missions/catalog';
 import { MissionObjectiveDefinition } from '../../src/types/mission';
+import { XpAwardResult } from '../../src/services/progression/xpService';
 import { calculateWorkoutXp } from '../../src/services/progression/xpCalculator';
 import { WorkoutExercise, ExerciseSet, XpBreakdown, WorkoutSession } from '../../src/types/workout';
 import { ExerciseDefinition } from '../../src/types/exercise';
@@ -107,6 +108,7 @@ export default function WorkoutScreen() {
   const [finishResult, setFinishResult] = useState<{
     xpEarned: number;
     breakdown: XpBreakdown;
+    xpAward?: XpAwardResult;
   } | null>(null);
 
   // Current Target Hostile
@@ -1043,6 +1045,14 @@ export default function WorkoutScreen() {
                   <Text style={styles.rewardItemLabel}>Tonnage / Volume Factor:</Text>
                   <Text style={styles.rewardItemValue}>+{finishResult.breakdown.volumeXp} XP</Text>
                 </View>
+                {finishResult.xpAward?.isCapped && (
+                  <View style={styles.dailyCapNoticeBox}>
+                    <Ionicons name="information-circle-outline" size={16} color={THEME.colors.warning} />
+                    <Text style={styles.dailyCapNoticeText}>
+                      Daily Training Quota Reached: Credited {finishResult.xpAward.creditedAmount} of {finishResult.xpAward.requestedAmount} XP ({finishResult.xpAward.spilloverAmount} XP spillover). Training log preserved.
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -1525,5 +1535,23 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: THEME.colors.primary,
     borderRadius: 2,
+  },
+  dailyCapNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 170, 0, 0.12)',
+    borderWidth: 1,
+    borderColor: THEME.colors.warning,
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 10,
+    gap: 6,
+  },
+  dailyCapNoticeText: {
+    flex: 1,
+    color: THEME.colors.warning,
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 14,
   },
 });

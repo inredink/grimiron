@@ -63,6 +63,7 @@ export interface AppSettings {
   rpg_notify_raid_boss_defeated: boolean;
   rpg_battle_summary_detail: BattleSummaryDetail;
   rpg_squad_contribution_visibility: SquadContributionVisibility;
+  rpg_daily_xp_cap: number; // Configurable daily XP limit (default: 1000 XP)
 
   // Category 4: Notifications & Reminders
   notif_workout_reminders: boolean;
@@ -140,6 +141,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   rpg_notify_raid_boss_defeated: true,
   rpg_battle_summary_detail: 'detailed',
   rpg_squad_contribution_visibility: 'full_summary',
+  rpg_daily_xp_cap: 1000,
 
   // Category 4: Notifications & Reminders
   notif_workout_reminders: true,

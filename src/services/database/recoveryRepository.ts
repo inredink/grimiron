@@ -1,9 +1,9 @@
 import { getDatabase } from './db';
-import { addCharacterXp } from './characterRepository';
 import {
   RecoveryStorageAdapter,
   setRecoveryStorageAdapter,
 } from '../progression/recoveryEngine';
+import { awardXp } from '../progression/xpService';
 
 export const sqliteRecoveryStorage: RecoveryStorageAdapter = {
   hasAlreadyReceivedRecoveryXp: (dateStr: string): boolean => {
@@ -12,8 +12,8 @@ export const sqliteRecoveryStorage: RecoveryStorageAdapter = {
       const row = db.getFirstSync<{ count: number }>(
         `SELECT COUNT(*) as count FROM xp_transactions
          WHERE source_type = 'recovery_day'
-         AND details_json LIKE ?;`,
-        [`%"date":"${dateStr}"%`]
+         AND (calendar_day = ? OR idempotency_key = ? OR details_json LIKE ?);`,
+        [dateStr, `recovery_${dateStr}`, `%"date":"${dateStr}"%`]
       );
       return (row?.count || 0) > 0;
     } catch (err) {
@@ -28,13 +28,21 @@ export const sqliteRecoveryStorage: RecoveryStorageAdapter = {
     detailsJson: string,
     createdAt: string
   ): void => {
-    const db = getDatabase();
-    addCharacterXp(amount);
-    db.runSync(
-      `INSERT INTO xp_transactions (id, session_id, amount, source_type, details_json, created_at)
-       VALUES (?, NULL, ?, 'recovery_day', ?, ?);`,
-      [txId, amount, detailsJson, createdAt]
-    );
+    let dateStr = '';
+    try {
+      const parsed = JSON.parse(detailsJson);
+      dateStr = parsed.date || '';
+    } catch {}
+
+    awardXp({
+      transactionId: txId,
+      amount,
+      sourceType: 'recovery_day',
+      idempotencyKey: dateStr ? `recovery_${dateStr}` : txId,
+      reason: `Honored planned recovery window on ${dateStr}`,
+      details: { detailsJson },
+      targetDate: createdAt ? new Date(createdAt) : new Date(),
+    });
   },
 };
 

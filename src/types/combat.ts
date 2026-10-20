@@ -113,4 +113,8 @@ export interface CombatAfterActionReport {
   newRank: string;
   progressPercent: number;
   achievementsUnlocked: string[];
+  isCapped?: boolean;
+  requestedXp?: number;
+  creditedXp?: number;
+  spilloverXp?: number;
 }

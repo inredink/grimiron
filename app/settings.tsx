@@ -1155,6 +1155,46 @@ export default function SettingsScreen() {
               <Text style={styles.sectionTitle}>RPG, FACTION & CAMPAIGN SETTINGS</Text>
             </View>
 
+            {/* Daily XP Hard Cap */}
+            <View style={styles.settingCard}>
+              <Text style={styles.settingLabel}>DAILY TRAINING XP HARD CAP</Text>
+              <Text style={[styles.settingDescription, { marginBottom: 10 }]}>
+                Maximum XP credited per calendar day across repeatable workouts, recovery days, and missions. Prevents overtraining exploits while preserving all physical training logs.
+              </Text>
+              <View style={styles.segmentedControl}>
+                {[
+                  { value: 750, label: '750 XP' },
+                  { value: 1000, label: '1,000 XP (STD)' },
+                  { value: 1500, label: '1,500 XP' },
+                  { value: 2000, label: '2,000 XP' },
+                ].map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => {
+                      triggerHaptic.selection();
+                      updateSetting('rpg_daily_xp_cap', opt.value);
+                    }}
+                    style={[
+                      styles.segmentButton,
+                      (settings.rpg_daily_xp_cap || 1000) === opt.value && {
+                        backgroundColor: activeAccent,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentButtonText,
+                        (settings.rpg_daily_xp_cap || 1000) === opt.value &&
+                          styles.segmentButtonTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             {/* G8: Raid Spawn Day */}
             <View style={styles.settingCard}>
               <Text style={styles.settingLabel}>WEEKLY RAID SPAWN DAY</Text>

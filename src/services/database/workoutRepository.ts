@@ -7,16 +7,29 @@ import {
   SetClassification,
 } from '../../types/workout';
 import { syncTotalXpFromHistory } from './characterRepository';
+import { awardXp, XpAwardResult } from '../progression/xpService';
 
 export function saveCompletedWorkout(
   session: WorkoutSession,
   xpEarned: number,
-  breakdown: XpBreakdown
-): void {
+  breakdown: XpBreakdown,
+  dailyCap?: number
+): XpAwardResult {
   const db = getDatabase();
 
+  // 1. Centrally award XP with strict idempotency and daily cap enforcement
+  const awardResult = awardXp({
+    amount: xpEarned,
+    sourceType: 'workout_completion',
+    sessionId: session.id,
+    idempotencyKey: `workout_${session.id}`,
+    reason: session.title || 'Crusade Training',
+    details: { breakdown },
+    dailyCap,
+  });
+
   db.withTransactionSync(() => {
-    // 1. Insert or update session
+    // 2. Insert or update session, saving credited amount as total_xp_earned
     db.runSync(
       `INSERT OR REPLACE INTO workout_sessions (
         id, title, started_at, finished_at, notes, total_xp_earned, is_completed
@@ -27,14 +40,14 @@ export function saveCompletedWorkout(
         session.startedAt,
         session.finishedAt || new Date().toISOString(),
         session.notes || '',
-        xpEarned,
+        awardResult.creditedAmount,
       ]
     );
 
-    // 2. Clean old exercises/sets for this session if updating
+    // 3. Clean old exercises/sets for this session if updating
     db.runSync('DELETE FROM workout_exercises WHERE session_id = ?', [session.id]);
 
-    // 3. Insert exercises and their sets
+    // 4. Insert exercises and their sets
     for (let i = 0; i < session.exercises.length; i++) {
       const exercise = session.exercises[i];
       db.runSync(
@@ -69,19 +82,9 @@ export function saveCompletedWorkout(
         );
       }
     }
-
-    // 4. Record XP transaction
-    const txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    db.runSync(
-      `INSERT INTO xp_transactions (
-        id, session_id, amount, source_type, details_json, created_at
-      ) VALUES (?, ?, ?, 'workout_completion', ?, datetime('now'))`,
-      [txId, session.id, xpEarned, JSON.stringify(breakdown)]
-    );
   });
 
-  // 5. Update character XP from history
-  syncTotalXpFromHistory();
+  return awardResult;
 }
 
 export function getAllWorkouts(): WorkoutSession[] {

@@ -190,11 +190,20 @@ import {
 import { initializeRecoverySqliteStorage } from '../services/database/recoveryRepository';
 import { initializeNotificationSqliteStorage } from '../services/database/notificationRepository';
 import { initializeDiagnosticsSqliteProvider } from '../services/database/diagnosticsRepository';
+import { initializeXpSqliteStorage } from '../services/database/xpRepository';
+import {
+  awardXp,
+  getDailyXpCredited,
+  getDailyXpRemaining,
+  XP_ECONOMY_CONFIG,
+  XpAwardResult,
+} from '../services/progression/xpService';
 
 export interface FinishWorkoutResult {
   xpEarned: number;
   breakdown: XpBreakdown;
   report?: CombatAfterActionReport;
+  xpAward?: XpAwardResult;
 }
 
 export interface PendingNotificationItem {
@@ -291,6 +300,9 @@ interface AppContextValue {
   resendVerificationEmailAction: (email: string) => Promise<{ success: boolean; message: string }>;
   signOutAction: () => Promise<{ success: boolean; message: string }>;
   deleteAccountAction: () => Promise<{ success: boolean; message: string }>;
+  dailyXpCredited: number;
+  dailyXpRemaining: number;
+  dailyXpCap: number;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -355,10 +367,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [customSubfactions, setCustomSubfactions] = useState<CustomSubfactionRecord[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
+  const [dailyXpCredited, setDailyXpCredited] = useState<number>(0);
+  const [dailyXpRemaining, setDailyXpRemaining] = useState<number>(1000);
 
   const loadData = useCallback(() => {
     try {
       initializeDatabase();
+      initializeXpSqliteStorage();
       initializeRecoverySqliteStorage();
       initializeNotificationSqliteStorage();
       initializeDiagnosticsSqliteProvider();
@@ -387,6 +402,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         setSettings(userSettings);
         setHapticsEnabled(userSettings.haptics_enabled);
+
+        const creditedToday = getDailyXpCredited();
+        const cap = userSettings.rpg_daily_xp_cap || XP_ECONOMY_CONFIG.DEFAULT_DAILY_XP_CAP;
+        setDailyXpCredited(creditedToday);
+        setDailyXpRemaining(Math.max(0, cap - creditedToday));
       } catch (settingsErr) {
         console.warn('Error loading settings:', settingsErr);
       }
@@ -871,11 +891,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const claimWeeklyRaidRewardsAction = useCallback((cycleId: string): boolean => {
     const result = claimWeeklyRaidRewards(cycleId);
     if (result.success) {
+      if (result.gloryXpAwarded > 0) {
+        awardXp({
+          amount: result.gloryXpAwarded,
+          sourceType: 'raid_boss_defeat',
+          idempotencyKey: `raid_${cycleId}`,
+          reason: result.message,
+          dailyCap: settings.rpg_daily_xp_cap,
+        });
+      }
       loadData();
       return true;
     }
     return false;
-  }, [loadData]);
+  }, [loadData, settings.rpg_daily_xp_cap]);
 
   const finishActiveWorkout = (
     encounterState?: CombatEncounterState,
@@ -897,7 +926,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       totalXpEarned: totalXp,
     };
 
-    saveCompletedWorkout(completedSession, totalXp, breakdown);
+    const xpAward = saveCompletedWorkout(
+      completedSession,
+      totalXp,
+      breakdown,
+      settings.rpg_daily_xp_cap
+    );
 
     let report: CombatAfterActionReport | undefined;
     let battleRecordId: string | undefined;
@@ -905,9 +939,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (encounterState && mission) {
       saveCombatEncounter(completedSession.id, encounterState);
       const newProg = calculateProgression(
-        character.totalXp + totalXp,
+        xpAward.totalXpNow,
         currentFaction
       );
+      const xpCapInfo = {
+        isCapped: xpAward.isCapped,
+        requestedXp: xpAward.requestedAmount,
+        creditedXp: xpAward.creditedAmount,
+        spilloverXp: xpAward.spilloverAmount,
+      };
       report = buildAfterActionReport(
         mission,
         encounterState.enemy,
@@ -915,7 +955,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         completedSession,
         breakdown.totalXp,
         progression,
-        newProg
+        newProg,
+        xpCapInfo
       );
 
       // Record immutable Battle History record
@@ -1005,7 +1046,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         startedAt: completedSession.startedAt,
         completedAt: completedSession.finishedAt,
         durationSeconds,
-        xpEarned: totalXp,
+        xpEarned: xpAward.creditedAmount,
         snapshot: {
           enemyDescription: encounterState.enemy.loreDescription,
           enemyGlyph: encounterState.enemy.visual.iconName,
@@ -1019,7 +1060,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           rewards: {
             baseXpEarned: breakdown.totalXp,
             gloryBonusXp: gloryBonus,
-            totalXpEarned: totalXp,
+            totalXpEarned: xpAward.creditedAmount,
           },
           afterActionReportSummary: encounterState.isDefeated
             ? `Victory achieved against ${encounterState.enemy.name}.`
@@ -1144,7 +1185,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (questResult.newlyCompletedQuests.length > 0) {
           currentAcadEnrollment.completedQuestIds = questResult.updatedCompletedQuestIds;
           if (questResult.totalXpAwarded > 0) {
-            addCharacterXp(questResult.totalXpAwarded);
+            awardXp({
+              amount: questResult.totalXpAwarded,
+              sourceType: 'campaign_quest',
+              idempotencyKey: `quest_batch_${currentAcadEnrollment.id}_${questResult.newlyCompletedQuests.map((q) => q.id).join('_')}`,
+              reason: `Academy Quests: ${questResult.newlyCompletedQuests.map((q) => q.title).join(', ')}`,
+              dailyCap: settings.rpg_daily_xp_cap,
+            });
           }
         }
 
@@ -1184,7 +1231,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Asynchronously flush any buffered offline attacks in the background
     coopService.flushOfflineQueue().catch(() => {});
 
-    return { xpEarned: totalXp, breakdown, report };
+    return { xpEarned: xpAward.creditedAmount, breakdown, report, xpAward };
   };
 
   const logRestDaySessionAction = useCallback(
@@ -1340,8 +1387,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           createdAt: new Date().toISOString(),
         };
 
+        const xpAward = awardXp({
+          amount: gloryBonusXp,
+          sourceType: 'chapter_boss_defeat',
+          idempotencyKey: `boss_${battleId}`,
+          reason: `Crusade victory achieved! ${boss.name} was slain.`,
+          dailyCap: settings.rpg_daily_xp_cap,
+        });
+
+        battleRecord.xpEarned = xpAward.creditedAmount;
         recordBattleHistory(battleRecord);
-        addCharacterXp(gloryBonusXp);
 
         // Trigger achievement evaluation dynamically
         try {
@@ -1437,7 +1492,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (phaseNumber === 3) updated.phase3ReportClaimed = true;
         saveAcademyEnrollment(updated);
         setActiveAcademyEnrollment(updated);
-        addCharacterXp(report.xpEarned);
+        awardXp({
+          amount: report.xpEarned,
+          sourceType: 'phase_report',
+          idempotencyKey: `phase_report_${activeAcademyEnrollment.id}_p${phaseNumber}`,
+          reason: `Campaign Academy Phase ${phaseNumber} Complete`,
+          dailyCap: settings.rpg_daily_xp_cap,
+        });
         loadData();
         return report;
       } catch (err) {
@@ -1445,7 +1506,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return null;
       }
     },
-    [activeAcademyEnrollment, activeAcademyCampaign, character, loadData]
+    [activeAcademyEnrollment, activeAcademyCampaign, character, loadData, settings.rpg_daily_xp_cap]
   );
 
   const claimAcademyFinalDossier = useCallback((): FinalCampaignDossier | null => {
@@ -1457,14 +1518,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const updated = { ...activeAcademyEnrollment, finalDossierClaimed: true };
       saveAcademyEnrollment(updated);
       setActiveAcademyEnrollment(updated);
-      addCharacterXp(dossier.totalGloryXpAwarded);
+      awardXp({
+        amount: dossier.totalGloryXpAwarded,
+        sourceType: 'final_dossier',
+        idempotencyKey: `final_dossier_${activeAcademyEnrollment.id}`,
+        reason: `Final Campaign Dossier: ${activeAcademyCampaign.title}`,
+        dailyCap: settings.rpg_daily_xp_cap,
+      });
       loadData();
       return dossier;
     } catch (err) {
       console.warn('Error claiming final campaign dossier:', err);
       return null;
     }
-  }, [activeAcademyEnrollment, activeAcademyCampaign, character, loadData]);
+  }, [activeAcademyEnrollment, activeAcademyCampaign, character, loadData, settings.rpg_daily_xp_cap]);
 
   const deployChapterBossBattle = useCallback(
     (chapter: CampaignChapter) => {
@@ -1649,6 +1716,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resendVerificationEmailAction,
         signOutAction,
         deleteAccountAction,
+        dailyXpCredited,
+        dailyXpRemaining,
+        dailyXpCap: settings.rpg_daily_xp_cap || XP_ECONOMY_CONFIG.DEFAULT_DAILY_XP_CAP,
       }}
     >
       {children}

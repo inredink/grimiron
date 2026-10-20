@@ -125,10 +125,19 @@ export function addCharacterXp(xpGained: number): CharacterProfile {
 
 export function syncTotalXpFromHistory(): CharacterProfile {
   const db = getDatabase();
-  const row = db.getFirstSync<{ total: number | null }>(
-    'SELECT SUM(total_xp_earned) as total FROM workout_sessions WHERE is_completed = 1'
+  const txRow = db.getFirstSync<{ total: number | null }>(
+    'SELECT COALESCE(SUM(amount), 0) as total FROM xp_transactions'
   );
-  const calculatedTotalXp = row?.total || 0;
+  let calculatedTotalXp = txRow?.total || 0;
+  if (calculatedTotalXp === 0) {
+    const legacyRow = db.getFirstSync<{ total: number | null }>(
+      'SELECT COALESCE(SUM(total_xp_earned), 0) as total FROM workout_sessions WHERE is_completed = 1'
+    );
+    if ((legacyRow?.total || 0) > 0) {
+      calculatedTotalXp = legacyRow!.total!;
+    }
+  }
+
   const newLevel = getLevelFromTotalXp(calculatedTotalXp);
   const now = new Date().toISOString();
 
@@ -144,6 +153,7 @@ export function syncTotalXpFromHistory(): CharacterProfile {
 
 export function getUserCareerStats(): UserStats {
   const db = getDatabase();
+  const charProfile = getCharacterProfile();
 
   const sessionRow = db.getFirstSync<{ count: number; total_xp: number | null }>(
     'SELECT COUNT(*) as count, SUM(total_xp_earned) as total_xp FROM workout_sessions WHERE is_completed = 1'
@@ -177,6 +187,6 @@ export function getUserCareerStats(): UserStats {
     totalSets: setRow?.count || 0,
     totalReps: setRow?.total_reps || 0,
     totalVolumeKg: Math.round(totalVolumeKg),
-    totalXpEarned: sessionRow?.total_xp || 0,
+    totalXpEarned: charProfile.totalXp,
   };
 }

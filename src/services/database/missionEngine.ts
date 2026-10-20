@@ -20,6 +20,7 @@ import {
   getMissionsForFaction,
 } from '../../content/missions/catalog';
 import { queueAchievementNotification } from './achievementRepository';
+import { awardXp } from '../progression/xpService';
 import { WorkoutSession } from '../../types/workout';
 import { CombatAfterActionReport } from '../../types/combat';
 
@@ -168,20 +169,16 @@ export function updateActiveMissions(
         return r.type === 'xp' ? acc + (r.amount || 0) : acc;
       }, 0);
 
-      // Award XP into character profile and transactions
+      // Award XP into character profile and transactions centrally
       if (xpReward > 0) {
         newlyAwardedXp += xpReward;
-        const txId = `tx_mis_${def.id}_${Date.now()}`;
-        db.runSync(
-          `INSERT INTO xp_transactions (id, amount, source_type, details_json, created_at)
-           VALUES (?, ?, 'mission_reward', ?, datetime('now'))`,
-          [txId, xpReward, JSON.stringify({ missionId: def.id, title: def.title })]
-        );
-
-        db.runSync(
-          'UPDATE character_profile SET total_xp = total_xp + ?, updated_at = datetime(\'now\') WHERE id = 1',
-          [xpReward]
-        );
+        awardXp({
+          amount: xpReward,
+          sourceType: 'mission_reward',
+          idempotencyKey: `mission_${def.id}`,
+          reason: `Mission completed: ${def.title}`,
+          details: { missionId: def.id, title: def.title },
+        });
       }
 
       // Queue completion notification

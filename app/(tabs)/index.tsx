@@ -86,6 +86,9 @@ export default function CharacterScreen() {
     signInCloudAccount,
     signUpCloudAccount,
     resendVerificationEmailAction,
+    dailyXpCredited,
+    dailyXpRemaining,
+    dailyXpCap,
   } = useApp();
 
   const [isWalkthroughModalVisible, setIsWalkthroughModalVisible] = useState(false);
@@ -273,7 +276,7 @@ export default function CharacterScreen() {
             title="NEXT PROMOTION TARGET"
             rightAction={
               <Text style={styles.remainingXpText}>
-                {progression.xpNeededForNextRank} XP TO ADVANCE
+                {progression.xpNeededForNextRank.toLocaleString()} XP TO ADVANCE
               </Text>
             }
           >
@@ -296,6 +299,38 @@ export default function CharacterScreen() {
             </View>
           </SciFiCard>
         )}
+
+        {/* Daily Training Quota & Cap Telemetry */}
+        <SciFiCard
+          title="DAILY TRAINING QUOTA"
+          rightAction={
+            <Text style={[styles.dailyQuotaHeaderTag, dailyXpRemaining === 0 ? styles.dailyQuotaHeaderTagCapped : null]}>
+              {dailyXpRemaining === 0 ? 'CAP REACHED' : `${dailyXpRemaining.toLocaleString()} XP REMAINING`}
+            </Text>
+          }
+        >
+          <View style={styles.dailyQuotaSection}>
+            <ProgressBar
+              progress={Math.min(100, Math.round((dailyXpCredited / dailyXpCap) * 100))}
+              label="Today's Credited XP"
+              valueText={`${dailyXpCredited.toLocaleString()} / ${dailyXpCap.toLocaleString()} XP (${Math.min(100, Math.round((dailyXpCredited / dailyXpCap) * 100))}%)`}
+              color={dailyXpRemaining === 0 ? THEME.colors.warning : THEME.colors.primary}
+              height={8}
+            />
+            <View style={styles.dailyQuotaMetaRow}>
+              <Ionicons
+                name={dailyXpRemaining === 0 ? "shield-checkmark" : "time-outline"}
+                size={14}
+                color={dailyXpRemaining === 0 ? THEME.colors.warning : THEME.colors.textMuted}
+              />
+              <Text style={styles.dailyQuotaMetaText}>
+                {dailyXpRemaining === 0
+                  ? 'Daily training cap reached. Full XP earnings refresh at local midnight.'
+                  : `Hard cap: ${dailyXpCap.toLocaleString()} XP/day. Repeatable workouts & missions contribute.`}
+              </Text>
+            </View>
+          </View>
+        </SciFiCard>
 
         {/* Active Mission Operations Card */}
         {activeMissions.length > 0 && (() => {
@@ -842,6 +877,30 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
+  },
+  dailyQuotaHeaderTag: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  dailyQuotaHeaderTagCapped: {
+    color: THEME.colors.warning,
+  },
+  dailyQuotaSection: {
+    gap: 6,
+  },
+  dailyQuotaMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  dailyQuotaMetaText: {
+    flex: 1,
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    lineHeight: 14,
   },
   nextRankRow: {
     flexDirection: 'row',

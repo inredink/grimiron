@@ -70,8 +70,17 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
       source_type TEXT NOT NULL,
       details_json TEXT,
       created_at TEXT NOT NULL,
+      user_id TEXT DEFAULT 'user_main',
+      character_id TEXT DEFAULT 'char_main',
+      requested_amount INTEGER DEFAULT 0,
+      calendar_day TEXT,
+      is_capped INTEGER DEFAULT 1,
+      reason TEXT,
+      idempotency_key TEXT,
       FOREIGN KEY (session_id) REFERENCES workout_sessions (id) ON DELETE CASCADE
     );
+    CREATE INDEX IF NOT EXISTS idx_xp_tx_day ON xp_transactions (calendar_day);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_xp_tx_idempotency ON xp_transactions (idempotency_key) WHERE idempotency_key IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS custom_exercises (
       id TEXT PRIMARY KEY,
@@ -1016,6 +1025,50 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
     `);
 
     db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (13, datetime('now'));");
+  }
+
+  // Migration 14: Centralized XP Transactions, Daily Cap Accounting & Idempotency
+  if (!appliedMigrations.includes(14)) {
+    try {
+      db.execSync("ALTER TABLE xp_transactions ADD COLUMN user_id TEXT DEFAULT 'user_main';");
+    } catch {}
+    try {
+      db.execSync("ALTER TABLE xp_transactions ADD COLUMN character_id TEXT DEFAULT 'char_main';");
+    } catch {}
+    try {
+      db.execSync("ALTER TABLE xp_transactions ADD COLUMN requested_amount INTEGER DEFAULT 0;");
+    } catch {}
+    try {
+      db.execSync("ALTER TABLE xp_transactions ADD COLUMN calendar_day TEXT;");
+    } catch {}
+    try {
+      db.execSync("ALTER TABLE xp_transactions ADD COLUMN is_capped INTEGER DEFAULT 0;");
+    } catch {}
+    try {
+      db.execSync("ALTER TABLE xp_transactions ADD COLUMN reason TEXT;");
+    } catch {}
+    try {
+      db.execSync("ALTER TABLE xp_transactions ADD COLUMN idempotency_key TEXT;");
+    } catch {}
+    try {
+      db.execSync("CREATE INDEX IF NOT EXISTS idx_xp_tx_day ON xp_transactions (calendar_day);");
+    } catch {}
+    try {
+      db.execSync("CREATE UNIQUE INDEX IF NOT EXISTS idx_xp_tx_idempotency ON xp_transactions (idempotency_key) WHERE idempotency_key IS NOT NULL;");
+    } catch {}
+
+    // Backfill legacy transactions safely
+    try {
+      db.execSync(`
+        UPDATE xp_transactions 
+        SET calendar_day = substr(created_at, 1, 10),
+            requested_amount = amount,
+            is_capped = 0
+        WHERE calendar_day IS NULL;
+      `);
+    } catch {}
+
+    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (14, datetime('now'));");
   }
 
   return db;

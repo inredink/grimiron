@@ -169,6 +169,14 @@ export const AfterActionReportModal: React.FC<AfterActionReportModalProps> = ({
                   </Text>
                 </View>
               )}
+              {report.isCapped && (
+                <View style={styles.capNoticeBox}>
+                  <Ionicons name="information-circle-outline" size={16} color={THEME.colors.warning} />
+                  <Text style={styles.capNoticeText}>
+                    Daily Cap Reached: Credited {report.creditedXp} of {report.requestedXp} XP ({report.spilloverXp} XP overflow). Training data and achievements fully recorded.
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Rank & Promotion Progress */}
@@ -367,6 +375,24 @@ const styles = StyleSheet.create({
     color: THEME.colors.textBright,
     fontSize: 11,
     fontWeight: '700',
+  },
+  capNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 170, 0, 0.12)',
+    borderWidth: 1,
+    borderColor: THEME.colors.warning,
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 8,
+    gap: 6,
+  },
+  capNoticeText: {
+    flex: 1,
+    color: THEME.colors.warning,
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 14,
   },
   rankRow: {
     flexDirection: 'row',
