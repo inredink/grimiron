@@ -77,6 +77,7 @@ export default function WorkoutScreen() {
     deployWeeklyRaid,
     claimWeeklyRaidRewardsAction,
     settings,
+    equipmentBonuses,
   } = useApp();
 
   // Exercise Library Modal State
@@ -150,9 +151,10 @@ export default function WorkoutScreen() {
       activeWorkout.exercises,
       lastCompletedSetId,
       currentFaction?.id,
-      currentSubfaction?.id
+      currentSubfaction?.id,
+      equipmentBonuses
     );
-  }, [activeWorkout, currentEnemy, currentMission, lastCompletedSetId, currentFaction?.id, currentSubfaction?.id]);
+  }, [activeWorkout, currentEnemy, currentMission, lastCompletedSetId, currentFaction?.id, currentSubfaction?.id, equipmentBonuses]);
 
   // Live estimated XP
   const currentBreakdown = activeWorkout
@@ -346,7 +348,8 @@ export default function WorkoutScreen() {
           targetEx.name,
           targetEx.exerciseRefId,
           currentFaction?.id,
-          currentSubfaction?.id
+          currentSubfaction?.id,
+          equipmentBonuses
         );
 
         if (attack.isCrit) {

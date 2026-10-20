@@ -1,6 +1,6 @@
 # Project Status: GrimIron
 
-## Current Status: Milestone 10 (Complete Settings System for the Workout RPG) Completed ✅
+## Current Status: Milestone 11 (Dedicated Character Page, Equipment Slots, Faction Gear Progression & Raid Loot) Completed ✅
 
 **Date**: October 2026
 **Framework**: React Native with Expo SDK 57, TypeScript, Expo Router, expo-sqlite, expo-keep-awake, expo-image-picker, expo-file-system, and Supabase (Auth, Postgres, RLS, Realtime).
@@ -9,7 +9,31 @@
 
 ### What Works Right Now
 
-1. **Complete Tactical Settings System (`app/settings.tsx`)**:
+1. **Dedicated Character Page & MMORPG-Style Equipment Arsenal (`app/(tabs)/index.tsx`, `src/components/EquipmentSlotCard.tsx`, `src/components/EquipmentInventoryModal.tsx`)**:
+   - **Tactical Overview & Equipment Integration**: Centralized Character terminal with character callsign, rank title, parent faction, selected subfaction, cumulative XP, daily training cap quota, career statistics, and an MMORPG-style wargear arsenal card.
+   - **Multi-Faction Equipment Slot Configurations (`src/content/equipment/factionArchetypes.ts`)**:
+     - Supports 7 distinct equipment slots: Primary Weapon, Secondary Weapon, Armor, Helmet, Insignia, Tactical Gear, and Exosuit / Platform.
+     - Slot labels and platform types dynamically adapt to the character's faction (e.g. "BATTLESUIT FRAME" for T'au Empire, "TERMINATOR / DREADNOUGHT" for Space Marines, "MEGA-ARMOR RIG" for Orks, "DESTROYER BODY" for Necrons, "CYBERNETICA CHASSIS" for Adeptus Mechanicus).
+   - **Data-Driven Equipment Catalog (`src/content/equipment/catalog.ts`)**:
+     - Multi-tier wargear catalog spanning all 20 Warhammer 40k factions with stable item IDs, lore notes, base combat statistics, and unlock requirements.
+     - Starter wargear for all 20 factions automatically granted upon character creation or allegiance change.
+   - **T'au Empire Pilot Progression Model (Fire Warrior to Battlesuit Pilot)**:
+     - Tier 1: Fire Warrior Strike Team wargear (Pulse Rifle, Combat Armor, Sensor Helmet, Photon Grenades, Bonding Knife, Markerlight Array).
+     - Tier 2 & 3: Shas'ui and Pathfinder upgrades (Pulse Carbine, Reinforced Carapace, Pulse Blaster, Rail Rifle, EMP Grenades).
+     - Tier 4: XV25 Stealth Battlesuit Platform (Level 14+, Rank 4+, Challenging raid requirement) shifting archetype to Stealth Pilot.
+     - Tier 5: XV8 Crisis Battlesuit Chassis (Level 20+, Rank 6+, Legendary raid requirement) shifting archetype to Crisis Battlesuit Pilot with Plasma Arrays and Missile Pods.
+   - **Combat Engine Integration & Anti-Stacking Safeguards (`src/services/combat/damageCalculator.ts`, `src/services/combat/attackEngine.ts`)**:
+     - Workout set attacks factor in equipped weapon damage and armor multipliers without altering actual user workout weights, reps, or session XP.
+     - Strict caps prevent runaway damage inflation: Flat damage bonus clamped to +150, damage multiplier clamped to +35%, and crit chance clamped to +20%.
+   - **Raid Boss Loot Drops & Tables (`src/services/progression/raidLootEngine.ts`, `src/services/progression/warfrontEngine.ts`)**:
+     - Weekly raid boss victories award high-tier wargear matching player faction and rank clearance.
+     - Duplicate-safe delivery recorded in SQLite table `raid_loot_history`.
+     - Low-level players cannot prematurely receive high-tier or platform gear from co-op raids.
+   - **Safe Persistence & Inventory Preservation (Migration 15)**:
+     - SQLite tables `character_inventory`, `character_equipment_loadout`, and `raid_loot_history`.
+     - Changing factions preserves previously earned equipment in inventory while providing the new faction's starter kit.
+
+2. **Complete Tactical Settings System (`app/settings.tsx`)**:
    - **Accessible Navigation**: Quick-access gear icons in the top terminal header on both the Character Home Screen (`app/(tabs)/index.tsx`) and Workout Mission Screen (`app/(tabs)/workout.tsx`), accessible immediately without scrolling.
    - **Centralized Preference Engine (`src/services/database/settingsRepository.ts`, `src/types/settings.ts`)**:
      - Idempotent SQLite key-value persistence in `app_settings` with namespaced keys, typed defaults, and immediate reactivity via `AppContext`.

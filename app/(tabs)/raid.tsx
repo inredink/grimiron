@@ -15,6 +15,9 @@ import { THEME } from '../../src/constants/theme';
 import { getSafeIoniconsName } from '../../src/utils/iconHelper';
 import { RaidSpawnDay } from '../../src/types/warfront';
 import { triggerHaptic } from '../../src/utils/haptics';
+import { BOSS_DIFFICULTY_LOOT_TABLES } from '../../src/services/progression/raidLootEngine';
+import { getEquipmentById } from '../../src/content/equipment/catalog';
+import { RARITY_COLORS } from '../../src/components/EquipmentSlotCard';
 
 export default function RaidScreen() {
   const router = useRouter();
@@ -457,6 +460,39 @@ export default function RaidScreen() {
               );
             })
           )}
+        </View>
+
+        {/* Raid Wargear Loot Table Preview Card */}
+        <View style={styles.lootTableCard}>
+          <View style={styles.lootTableHeader}>
+            <Ionicons name="trophy-outline" size={16} color="#00F0FF" />
+            <Text style={styles.lootTableTitle}>
+              RAID SPOILS // {boss.difficultyTier?.toUpperCase() || 'STANDARD'} REWARD TABLE
+            </Text>
+          </View>
+          <Text style={styles.lootTableSubtitle}>
+            Neutralizing this raid boss grants +500 Glory XP and eligible wargear drops matching your faction rank:
+          </Text>
+          <View style={styles.lootItemsList}>
+            {(BOSS_DIFFICULTY_LOOT_TABLES[boss.difficultyTier || 'standard'] || []).map((itemId) => {
+              const item = getEquipmentById(itemId);
+              if (!item) return null;
+              const color = RARITY_COLORS[item.rarity] || '#FFFFFF';
+              return (
+                <View key={item.id} style={[styles.lootItemRow, { borderLeftColor: color }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.lootItemName, { color }]}>{item.name}</Text>
+                    <Text style={styles.lootItemStats}>
+                      Tier {item.tier} {item.rarity.toUpperCase()} • {item.slot.replace(/_/g, ' ').toUpperCase()}
+                      {item.stats.bonusDamage ? ` • +${item.stats.bonusDamage} DMG` : ''}
+                      {item.stats.damageMultiplier ? ` • +${Math.round(item.stats.damageMultiplier * 100)}% Mult` : ''}
+                      {item.stats.defenseRating ? ` • +${item.stats.defenseRating} DEF` : ''}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         </View>
 
         {/* Action Button Footer */}
@@ -1105,5 +1141,54 @@ const styles = StyleSheet.create({
     color: '#B0BEC5',
     fontSize: 11,
     fontWeight: '700',
+  },
+  lootTableCard: {
+    backgroundColor: '#1E2530',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2C3545',
+    marginBottom: 16,
+  },
+  lootTableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  lootTableTitle: {
+    color: '#00F0FF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  lootTableSubtitle: {
+    color: '#90A4AE',
+    fontSize: 10,
+    lineHeight: 14,
+    marginBottom: 10,
+  },
+  lootItemsList: {
+    gap: 6,
+  },
+  lootItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 6,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#2A3648',
+    borderLeftWidth: 3,
+  },
+  lootItemName: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  lootItemStats: {
+    fontSize: 10,
+    color: '#90A4AE',
+    marginTop: 2,
   },
 });

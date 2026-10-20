@@ -22,6 +22,8 @@ import {
   generateProceduralBoss,
   createDeterministicPrng,
 } from './bossGenerator';
+import { evaluateRaidBossLoot } from './raidLootEngine';
+import { EquipmentDefinition } from '../../types/equipment';
 
 /**
  * Pluggable Storage Adapter for Warfront.
@@ -672,11 +674,19 @@ export function isEnemyEscaped(enemyName: string): boolean {
 
 /**
  * Claims weekly raid spoils if defeated and not previously claimed.
+ * Distributes eligible, faction-appropriate equipment drops from raid loot tables.
  */
-export function claimWeeklyRaidRewards(cycleId: string): {
+export function claimWeeklyRaidRewards(
+  cycleId: string,
+  characterFactionId?: string,
+  characterLevel: number = 1,
+  characterRankTier: number = 1,
+  characterId: string = 'char_main'
+): {
   success: boolean;
   gloryXpAwarded: number;
   message: string;
+  awardedItem?: EquipmentDefinition;
 } {
   const raid = activeStorageAdapter.getWeeklyRaid(cycleId);
   if (!raid) {
@@ -704,9 +714,32 @@ export function claimWeeklyRaidRewards(cycleId: string): {
   activeStorageAdapter.saveWeeklyRaid(raid);
 
   const gloryXpAwarded = 500;
+  let lootMsg = '';
+  let awardedItem: EquipmentDefinition | undefined;
+
+  if (characterFactionId) {
+    try {
+      const lootResult = evaluateRaidBossLoot(
+        cycleId,
+        raid.boss,
+        characterFactionId,
+        characterLevel,
+        characterRankTier,
+        characterId
+      );
+      if (lootResult.awardedItem) {
+        awardedItem = lootResult.awardedItem;
+        lootMsg = ` Loot: ${awardedItem.name} (${awardedItem.rarity.toUpperCase()})!`;
+      }
+    } catch (e) {
+      console.warn('Loot evaluation error:', e);
+    }
+  }
+
   return {
     success: true,
     gloryXpAwarded,
-    message: `Victory! Claimed ${gloryXpAwarded} Glory XP for neutralizing ${raid.boss.name}.`,
+    message: `Victory! Neutralized ${raid.boss.name}. Claimed +${gloryXpAwarded} Glory XP.${lootMsg}`,
+    awardedItem,
   };
 }

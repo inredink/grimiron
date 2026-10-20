@@ -414,6 +414,89 @@ The Custom Subfaction system empowers players to forge their own military identi
 └─────────────────────────────────────────────────────────────┘
 ```
 
+---
+
+## 12. Dedicated Character Arsenal, Equipment Slots, Faction Progression & Raid Loot (Migration 15)
+
+The Equipment and Wargear system introduces an MMORPG-style itemization model where physical training powers combat attacks, while equipped wargear modulates strike damage, precision, and tactical utility.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│             Character Arsenal UI (app/(tabs)/index.tsx)     │
+│  - EquipmentSlotCard: 7-slot MMORPG grid & combat stat sums │
+│  - EquipmentInventoryModal: Filter, Inspect, Equip/Unequip  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Domain Progression Service                  │
+│  src/services/progression/equipmentService.ts               │
+│  - calculateEquipmentBonuses (Hard anti-runaway caps)       │
+│  - isItemEquipEligible (Faction, Level, Rank checks)        │
+│  - Pluggable EquipmentStorageAdapter (Memory vs SQLite)     │
+└──────────────┬──────────────────────────────┬───────────────┘
+               │                              │
+               ▼                              ▼
+┌──────────────────────────────┐ ┌────────────────────────────┐
+│      Combat Engine Bridge    │ │    Raid Boss Loot Engine   │
+│  src/services/combat/        │ │  src/services/progression/ │
+│  - damageCalculator.ts       │ │  - raidLootEngine.ts       │
+│  - attackEngine.ts           │ │  - warfrontEngine.ts       │
+└──────────────┬───────────────┘ └────────────┬───────────────┘
+               │                              │
+               ▼                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│             SQLite Persistence Layer (Migration 15)         │
+│  - character_inventory (Items owned by player)              │
+│  - character_equipment_loadout (Active equipped slots)      │
+│  - raid_loot_history (Idempotent drops per weekly raid)     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 1. Equipment Slot Architecture & Faction Slot Configurations
+Seven equipment slots are supported (`src/types/equipment.ts`):
+- `primary_weapon`
+- `secondary_weapon`
+- `armor`
+- `helmet`
+- `insignia`
+- `tactical`
+- `platform` (Faction-specific Exosuit / Battlesuit / Chassis / Mutation)
+
+The 7th slot dynamically adapts its label and allowed platform archetype to the character's active faction (`src/content/equipment/factionArchetypes.ts`):
+- **T'au Empire**: *"BATTLESUIT FRAME"* (`xv25_stealth_suit`, `xv8_crisis_battlesuit`)
+- **Space Marines / Grey Knights**: *"TERMINATOR / DREADNOUGHT"* (`terminator_armor`, `centurion_warsuit`)
+- **Orks**: *"MEGA-ARMOR RIG"* (`mega_armor_chassis`)
+- **Necrons**: *"DESTROYER BODY"* (`destroyer_chassis`)
+- **Adeptus Mechanicus**: *"CYBERNETICA CHASSIS"* (`kastelan_rig`)
+- **Leagues of Votann**: *"EXOSUIT RIG"* (`exo_frame`)
+- **Tyranids**: *"BIOMORPH MUTATION"* (`tyrant_carapace`)
+
+### 2. Pilot Progression Arc (T'au Empire Reference Model)
+Progression models how a line recruit ascends through military rank and high-tier raids into an elite battlesuit commander:
+- **Tier 1 (Shas'la)**: Standard Fire Warrior wargear (Pulse Rifle, Combat Armor, Sensor Helmet, Photon Grenades).
+- **Tier 2 (Shas'ui)**: Pulse Carbine, Reinforced Carapace.
+- **Tier 3 (Pathfinder / Vanguard)**: Pulse Blaster, Rail Rifle, EMP Grenades.
+- **Tier 4 (Stealth Pilot)**: Level 14+, Rank 4+ (Shas'vre), requires Challenging raid victory. Equips XV25 Stealth Battlesuit (`+45 flat DMG, +12% DMG, +10% Crit`).
+- **Tier 5 (Crisis Battlesuit Pilot)**: Level 20+, Rank 6+ (Shas'el), requires Legendary raid victory. Equips XV8 Crisis Battlesuit with Dual Plasma Rifles and Missile Pods (`+75 flat DMG, +20% DMG, +15% Crit`).
+
+### 3. Combat Damage Integration & Anti-Stacking Safeguards
+Equipment modifiers are fed directly into combat calculations (`calculateSetDamage` and `createAttackFromSet`) without modifying base workout telemetry:
+
+$$\text{Final Damage} = \left(\text{Base Effort} + \text{Equipped Flat DMG}\right) \times \text{Class Multiplier} \times \left(1 + \text{Equipped Mult}\right) \times \text{Crit Multiplier}$$
+
+To prevent power creep and preserve workout effort as the primary driver of victory, strict anti-stacking caps are enforced:
+- **Max Flat Damage Bonus**: `+150`
+- **Max Damage Multiplier**: `+35%` (`0.35`)
+- **Max Precision Crit Chance**: `+20%` (`0.20`)
+
+### 4. Raid Boss Loot Tables & Claim Idempotency
+- Weekly raid boss drops are mapped across three difficulty tiers: `standard`, `challenging`, and `legendary`.
+- Drops match the player's active faction and are filtered by level and rank clearance so underleveled or recruit-tier players cannot bypass progression gates.
+- Every claimed drop is recorded in SQLite table `raid_loot_history(character_id, raid_id, item_id, claimed_at)` with duplicate protection.
+- Inventory is decoupled from faction switches: changing allegiances provisions the new army's basic kit while permanently retaining previously acquired wargear in `character_inventory`.
+
+
 
 
 

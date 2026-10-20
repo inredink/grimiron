@@ -26,6 +26,9 @@ import { WeeklyRaidModal } from '../../src/components/WeeklyRaidModal';
 import { CampaignAcademyModal } from '../../src/components/CampaignAcademyModal';
 import { CustomSubfactionManagerModal } from '../../src/components/CustomSubfactionManagerModal';
 import { TacticalWalkthroughModal } from '../../src/components/TacticalWalkthroughModal';
+import { EquipmentSlotCard } from '../../src/components/EquipmentSlotCard';
+import { EquipmentInventoryModal } from '../../src/components/EquipmentInventoryModal';
+import { EquipmentSlot } from '../../src/types/equipment';
 import { ScheduledProgramSession } from '../../src/types/program';
 import { CampaignNode } from '../../src/types/campaign';
 import { CampaignChapter } from '../../src/types/campaignAcademy';
@@ -89,9 +92,17 @@ export default function CharacterScreen() {
     dailyXpCredited,
     dailyXpRemaining,
     dailyXpCap,
+    inventory,
+    loadout,
+    equippedItems,
+    equipmentBonuses,
+    equipItemAction,
+    unequipItemAction,
   } = useApp();
 
   const [isWalkthroughModalVisible, setIsWalkthroughModalVisible] = useState(false);
+  const [isEquipmentModalVisible, setIsEquipmentModalVisible] = useState(false);
+  const [selectedEquipmentSlot, setSelectedEquipmentSlot] = useState<EquipmentSlot | undefined>(undefined);
 
   useEffect(() => {
     // Only evaluate after the database and settings have finished initializing from SQLite
@@ -270,13 +281,25 @@ export default function CharacterScreen() {
           </View>
         </SciFiCard>
 
+        {/* Equipped Arsenal & Wargear Card */}
+        <EquipmentSlotCard
+          factionId={currentFaction.id}
+          loadout={loadout}
+          equippedItems={equippedItems}
+          equipmentBonuses={equipmentBonuses}
+          onOpenInventory={(slot) => {
+            setSelectedEquipmentSlot(slot);
+            setIsEquipmentModalVisible(true);
+          }}
+        />
+
         {/* Next Rank Horizon */}
         {progression.nextRankTitle && (
           <SciFiCard
             title="NEXT PROMOTION TARGET"
             rightAction={
               <Text style={styles.remainingXpText}>
-                {progression.xpNeededForNextRank.toLocaleString()} XP TO ADVANCE
+                {(progression.xpNeededForNextRank ?? 0).toLocaleString()} XP TO ADVANCE
               </Text>
             }
           >
@@ -478,6 +501,23 @@ export default function CharacterScreen() {
               />
             }
             style={styles.primaryAction}
+          />
+
+          <TerminalButton
+            title={`CRUSADE ARSENAL // WARGEAR (${inventory.length} OWNED)`}
+            onPress={() => {
+              setSelectedEquipmentSlot(undefined);
+              setIsEquipmentModalVisible(true);
+            }}
+            variant="secondary"
+            size="md"
+            icon={
+              <Ionicons
+                name="shield-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
           />
 
           <TerminalButton
@@ -761,6 +801,29 @@ export default function CharacterScreen() {
         visible={isCustomSubfactionModalVisible}
         onClose={() => setIsCustomSubfactionModalVisible(false)}
         defaultParentFactionId={currentFaction.id}
+      />
+
+      {/* Crusade Equipment & Inventory Manager Modal */}
+      <EquipmentInventoryModal
+        visible={isEquipmentModalVisible}
+        onClose={() => {
+          setIsEquipmentModalVisible(false);
+          setSelectedEquipmentSlot(undefined);
+        }}
+        factionId={currentFaction.id}
+        characterLevel={progression.level}
+        characterRankTier={progression.currentRankTier}
+        inventory={inventory}
+        loadout={loadout}
+        equippedItems={equippedItems}
+        equipmentBonuses={equipmentBonuses}
+        initialSelectedSlot={selectedEquipmentSlot}
+        onEquipItem={(slot, itemId) => {
+          equipItemAction(slot, itemId);
+        }}
+        onUnequipItem={(slot) => {
+          unequipItemAction(slot);
+        }}
       />
     </SafeAreaView>
   );

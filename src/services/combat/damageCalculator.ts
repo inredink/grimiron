@@ -1,5 +1,17 @@
 import { ExerciseSet, WeightUnit, SetClassification } from '../../types/workout';
 
+export interface EquipmentCombatBonusInput {
+  bonusDamage?: number;
+  damageMultiplier?: number;
+  critChanceBonus?: number;
+  critMultiplierBonus?: number;
+  // Also supports AggregatedEquipmentBonus property names directly
+  totalBonusDamage?: number;
+  totalDamageMultiplier?: number;
+  totalCritChanceBonus?: number;
+  totalCritMultiplierBonus?: number;
+}
+
 export interface DamageCalculationResult {
   damage: number;
   baseDamage: number;
@@ -8,6 +20,8 @@ export interface DamageCalculationResult {
   classMultiplier: number;
   isCrit: boolean;
   critMultiplier: number;
+  equipmentBonusDamage?: number;
+  equipmentMultiplier?: number;
 }
 
 /**
@@ -59,14 +73,21 @@ function deterministicPseudoRandom(seedString: string): number {
 }
 
 /**
- * Calculates damage dealt by a single workout set.
+ * Calculates damage dealt by a single workout set, with optional equipment bonuses.
  *
  * Formula:
- * D = round((BASE_SET_DAMAGE + (reps * REP_DAMAGE_SCALE) + loadBonus) * classMultiplier * critMultiplier)
+ * 1. Workout Base Effort = BASE_SET_DAMAGE + (reps * REP_DAMAGE_SCALE) + loadBonus
+ * 2. Equipment Flat Bonus = equipBonus.bonusDamage (capped)
+ * 3. Equipment Multiplier = 1.0 + equipBonus.damageMultiplier (capped)
+ * 4. Subtotal = (Workout Base + Equipment Flat) * classMultiplier * Equipment Multiplier
+ * 5. Crit Roll = roll < (BASE_CRIT_CHANCE + equipBonus.critChanceBonus)
+ * 6. Crit Multiplier = BASE_CRIT_MULTIPLIER + equipBonus.critMultiplierBonus
+ * 7. Final Damage = round(Subtotal * Crit Multiplier)
  */
 export function calculateSetDamage(
   set: ExerciseSet,
-  exerciseName?: string
+  exerciseName?: string,
+  equipmentBonus?: EquipmentCombatBonusInput
 ): DamageCalculationResult {
   const reps = Math.max(0, set.reps || 0);
   const rawWeight = Math.max(0, set.weight || 0);
@@ -95,18 +116,28 @@ export function calculateSetDamage(
     Math.round(Math.sqrt(effectiveKg) * DAMAGE_CONFIG.WEIGHT_MULTIPLIER)
   );
 
-  // 4. Set Classification Multiplier
+  // 4. Equipment Combat Modifiers (strictly capped to prevent runaway inflation)
+  const equipFlatBonus = Math.max(0, equipmentBonus?.bonusDamage ?? equipmentBonus?.totalBonusDamage ?? 0);
+  const equipMultiplier = Math.max(0, equipmentBonus?.damageMultiplier ?? equipmentBonus?.totalDamageMultiplier ?? 0);
+
+  // 5. Set Classification Multiplier
   const classMultiplier =
     DAMAGE_CONFIG.CLASSIFICATION_MULTIPLIERS[classification] ?? 1.0;
 
-  // 5. Critical Strike Determination (deterministic based on set.id)
+  // 6. Critical Strike Determination (deterministic based on set.id)
+  const effectiveCritChance = Math.min(
+    0.60,
+    DAMAGE_CONFIG.CRIT_CHANCE + Math.max(0, equipmentBonus?.critChanceBonus ?? equipmentBonus?.totalCritChanceBonus ?? 0)
+  );
   const roll = deterministicPseudoRandom(set.id || `set_${Date.now()}`);
-  const isCrit = roll < DAMAGE_CONFIG.CRIT_CHANCE;
-  const critMultiplier = isCrit ? DAMAGE_CONFIG.CRIT_MULTIPLIER : 1.0;
+  const isCrit = roll < effectiveCritChance;
+  const effectiveCritMultiplier = isCrit
+    ? DAMAGE_CONFIG.CRIT_MULTIPLIER + Math.max(0, equipmentBonus?.critMultiplierBonus ?? equipmentBonus?.totalCritMultiplierBonus ?? 0)
+    : 1.0;
 
   // Final Damage Computation
-  const subtotal = (baseDamage + repBonus + loadBonus) * classMultiplier;
-  const finalDamage = Math.max(10, Math.round(subtotal * critMultiplier));
+  const subtotal = (baseDamage + repBonus + loadBonus + equipFlatBonus) * classMultiplier * (1 + equipMultiplier);
+  const finalDamage = Math.max(10, Math.round(subtotal * effectiveCritMultiplier));
 
   return {
     damage: finalDamage,
@@ -115,6 +146,8 @@ export function calculateSetDamage(
     loadBonus,
     classMultiplier,
     isCrit,
-    critMultiplier,
+    critMultiplier: effectiveCritMultiplier,
+    equipmentBonusDamage: equipFlatBonus,
+    equipmentMultiplier: equipMultiplier,
   };
 }

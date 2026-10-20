@@ -431,6 +431,37 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
       updated_at TEXT NOT NULL
     );
 
+    -- Character Inventory & Equipment Systems
+    CREATE TABLE IF NOT EXISTS character_inventory (
+      id TEXT PRIMARY KEY,
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      item_id TEXT NOT NULL,
+      acquired_at TEXT NOT NULL,
+      acquisition_source TEXT NOT NULL,
+      is_equipped INTEGER NOT NULL DEFAULT 0,
+      equipped_slot TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_char_inv_char ON character_inventory (character_id);
+    CREATE INDEX IF NOT EXISTS idx_char_inv_item ON character_inventory (item_id);
+
+    CREATE TABLE IF NOT EXISTS character_equipment_loadout (
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      slot TEXT NOT NULL,
+      item_id TEXT,
+      equipped_at TEXT NOT NULL,
+      PRIMARY KEY (character_id, slot)
+    );
+
+    CREATE TABLE IF NOT EXISTS raid_loot_history (
+      id TEXT PRIMARY KEY,
+      raid_cycle_id TEXT NOT NULL,
+      user_id TEXT NOT NULL DEFAULT 'user_main',
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      item_id TEXT NOT NULL,
+      rewarded_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_raid_loot_cycle ON raid_loot_history (raid_cycle_id);
+
     -- Essential Unique Constraints & Indexes for ON CONFLICT statements across all migrations
     CREATE UNIQUE INDEX IF NOT EXISTS uq_ach_progress ON achievement_progress (achievement_id, scope, target_id);
     CREATE UNIQUE INDEX IF NOT EXISTS uq_ach_award ON achievement_awards (achievement_id, scope, target_id);
@@ -1069,6 +1100,43 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
     } catch {}
 
     db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (14, datetime('now'));");
+  }
+
+  // Migration 15: Character Inventory, Loadout & Raid Loot History
+  if (!appliedMigrations.includes(15)) {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS character_inventory (
+        id TEXT PRIMARY KEY,
+        character_id TEXT NOT NULL DEFAULT 'char_main',
+        item_id TEXT NOT NULL,
+        acquired_at TEXT NOT NULL,
+        acquisition_source TEXT NOT NULL,
+        is_equipped INTEGER NOT NULL DEFAULT 0,
+        equipped_slot TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_char_inv_char ON character_inventory (character_id);
+      CREATE INDEX IF NOT EXISTS idx_char_inv_item ON character_inventory (item_id);
+
+      CREATE TABLE IF NOT EXISTS character_equipment_loadout (
+        character_id TEXT NOT NULL DEFAULT 'char_main',
+        slot TEXT NOT NULL,
+        item_id TEXT,
+        equipped_at TEXT NOT NULL,
+        PRIMARY KEY (character_id, slot)
+      );
+
+      CREATE TABLE IF NOT EXISTS raid_loot_history (
+        id TEXT PRIMARY KEY,
+        raid_cycle_id TEXT NOT NULL,
+        user_id TEXT NOT NULL DEFAULT 'user_main',
+        character_id TEXT NOT NULL DEFAULT 'char_main',
+        item_id TEXT NOT NULL,
+        rewarded_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_raid_loot_cycle ON raid_loot_history (raid_cycle_id);
+    `);
+
+    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (15, datetime('now'));");
   }
 
   return db;

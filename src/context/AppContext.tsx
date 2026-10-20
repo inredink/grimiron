@@ -131,6 +131,23 @@ import {
   CampaignPhaseNumber,
 } from '../types/campaignAcademy';
 import {
+  EquipmentDefinition,
+  EquipmentSlot,
+  EquippedLoadout,
+  InventoryItemRecord,
+  AggregatedEquipmentBonus,
+} from '../types/equipment';
+import {
+  getCharacterInventory,
+  getCharacterLoadout,
+  getEquippedDefinitions,
+  calculateEquipmentBonuses,
+  equipItem,
+  unequipItem,
+  initializeStarterEquipment,
+  initializeEquipmentSqliteStorage,
+} from '../services/database/equipmentRepository';
+import {
   createCampaignEnrollment,
   evaluateCampaignQuests,
   evaluateChapterBossUnlock,
@@ -229,6 +246,12 @@ interface AppContextValue {
   activeWorkout: WorkoutSession | null;
   workoutHistory: WorkoutSession[];
   pendingNotifications: PendingNotificationItem[];
+  inventory: InventoryItemRecord[];
+  loadout: EquippedLoadout;
+  equippedItems: EquipmentDefinition[];
+  equipmentBonuses: AggregatedEquipmentBonus;
+  equipItemAction: (slot: EquipmentSlot, itemId: string) => { success: boolean; message: string };
+  unequipItemAction: (slot: EquipmentSlot) => { success: boolean; message: string };
   activeMissions: ActiveMissionRecord[];
   activeEnrollment: UserProgramEnrollment | null;
   campaignTelemetry: CampaignTelemetryContext;
@@ -370,10 +393,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [dailyXpCredited, setDailyXpCredited] = useState<number>(0);
   const [dailyXpRemaining, setDailyXpRemaining] = useState<number>(1000);
 
+  // Character Equipment & Inventory State
+  const [inventory, setInventory] = useState<InventoryItemRecord[]>([]);
+  const [loadout, setLoadout] = useState<EquippedLoadout>({});
+  const [equippedItems, setEquippedItems] = useState<EquipmentDefinition[]>([]);
+  const [equipmentBonuses, setEquipmentBonuses] = useState<AggregatedEquipmentBonus>({
+    totalBonusDamage: 0,
+    totalDamageMultiplier: 0,
+    totalCritChanceBonus: 0,
+    totalCritMultiplierBonus: 0,
+    totalDefenseRating: 0,
+    equippedItemIds: [],
+  });
+
   const loadData = useCallback(() => {
     try {
       initializeDatabase();
       initializeXpSqliteStorage();
+      initializeEquipmentSqliteStorage();
       initializeRecoverySqliteStorage();
       initializeNotificationSqliteStorage();
       initializeDiagnosticsSqliteProvider();
@@ -438,6 +475,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (campErr) {
         console.warn('Initial campaign sync skipped:', campErr);
+      }
+
+      // Load character equipment and inventory
+      try {
+        let curInv = getCharacterInventory('char_main');
+        if (curInv.length === 0) {
+          initializeStarterEquipment('char_main', prof.factionId);
+          curInv = getCharacterInventory('char_main');
+        }
+        setInventory(curInv);
+        const curLoadout = getCharacterLoadout('char_main');
+        setLoadout(curLoadout);
+        const curEquipped = getEquippedDefinitions('char_main');
+        setEquippedItems(curEquipped);
+        setEquipmentBonuses(calculateEquipmentBonuses(curEquipped));
+      } catch (equipErr) {
+        console.warn('Equipment loading skipped:', equipErr);
       }
 
       // Restore in-progress workout draft across crashes / app restarts
@@ -889,7 +943,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   const claimWeeklyRaidRewardsAction = useCallback((cycleId: string): boolean => {
-    const result = claimWeeklyRaidRewards(cycleId);
+    const result = claimWeeklyRaidRewards(
+      cycleId,
+      currentFaction.id,
+      progression.level,
+      progression.currentRankTier,
+      'char_main'
+    );
     if (result.success) {
       if (result.gloryXpAwarded > 0) {
         awardXp({
@@ -904,7 +964,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     }
     return false;
-  }, [loadData, settings.rpg_daily_xp_cap]);
+  }, [loadData, settings.rpg_daily_xp_cap, currentFaction.id, progression.level, progression.currentRankTier]);
+
+  const equipItemAction = useCallback(
+    (slot: EquipmentSlot, itemId: string): { success: boolean; message: string } => {
+      const result = equipItem(
+        'char_main',
+        slot,
+        itemId,
+        progression.level,
+        progression.currentRankTier,
+        currentFaction.id
+      );
+      if (result.success) {
+        loadData();
+      }
+      return result;
+    },
+    [progression.level, progression.currentRankTier, currentFaction.id, loadData]
+  );
+
+  const unequipItemAction = useCallback(
+    (slot: EquipmentSlot): { success: boolean; message: string } => {
+      const result = unequipItem('char_main', slot);
+      if (result.success) {
+        loadData();
+      }
+      return result;
+    },
+    [loadData]
+  );
 
   const finishActiveWorkout = (
     encounterState?: CombatEncounterState,
@@ -1554,6 +1643,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = updateFactionAllegiance(factionId, subfactionId);
     setCharacter(updated);
 
+    // Initialize starter equipment for newly chosen faction without erasing existing inventory
+    try {
+      initializeStarterEquipment('char_main', factionId);
+      loadData();
+    } catch (e) {
+      console.warn('Starter equipment sync error:', e);
+    }
+
     if (coopService.isConfigured()) {
       try {
         await coopService.updateMyProfileFaction(factionId);
@@ -1562,7 +1659,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     return updated;
-  }, []);
+  }, [loadData]);
 
   const refreshCustomSubfactions = useCallback(() => {
     try {
@@ -1656,6 +1753,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeWorkout,
         workoutHistory,
         pendingNotifications,
+        inventory,
+        loadout,
+        equippedItems,
+        equipmentBonuses,
+        equipItemAction,
+        unequipItemAction,
         activeMissions,
         activeEnrollment,
         campaignTelemetry,

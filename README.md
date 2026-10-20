@@ -153,6 +153,41 @@ npm run audit
 - **Codex & Dossier Integration**: Appears in the Faction Codex with `[CUSTOM]` badges and "+ FOUND NEW" creation chips, and updates your character terminal upon allegiance pledge.
 - **Lifecycle & Safeguards**: One-tap duplication to create variant warbands, non-destructive archiving, and permanent deletion with confirmation.
 
+### 11. 🛡️ Character Arsenal, Faction Wargear Progression & Raid Loot
+- **MMORPG-Style Equipment Grid**: Accessible directly on the Character page (`app/(tabs)/index.tsx`), displaying 7 tactical equipment slots:
+  - Primary Weapon
+  - Secondary Weapon
+  - Body Armor
+  - Tactical Helmet
+  - Faction Insignia / Relic
+  - Tactical Utility Gear
+  - Exosuit / Platform Frame
+- **Faction-Adaptive Slot Archetypes**: Platform slots and tactical labels adapt dynamically to the player's sworn allegiance:
+  - T'au Empire: *"Battlesuit Frame"*
+  - Space Marines / Grey Knights: *"Terminator / Dreadnought Harness"*
+  - Orks: *"Mega-Armor Rig"*
+  - Necrons: *"Destroyer Body Chassis"*
+  - Adeptus Mechanicus: *"Cybernetica Chassis"*
+  - Leagues of Votann: *"Exosuit Rig"*
+  - Tyranids: *"Biomorph Mutation"*
+- **Canonical T'au Empire Pilot Progression Arc**:
+  - Tier 1: Fire Warrior Strike Team wargear (Pulse Rifle, Combat Armor, Sensor Helmet, Photon Grenades, Bonding Knife, Markerlight Array).
+  - Tier 2 & 3: Shas'ui and Pathfinder upgrades (Pulse Carbine, Reinforced Carapace, Pulse Blaster, Rail Rifle, EMP Grenades).
+  - Tier 4: XV25 Stealth Battlesuit Platform (Level 14+, Rank 4+, Challenging raid requirement) shifting role to Stealth Pilot.
+  - Tier 5: XV8 Crisis Battlesuit Chassis (Level 20+, Rank 6+, Legendary raid requirement) shifting role to Crisis Battlesuit Pilot with Plasma Arrays and Missile Pods.
+- **Combat Damage Integration & Anti-Stacking Safeguards**:
+  - Equipped wargear flat damage bonuses and percentage multipliers directly augment workout-driven combat strikes in solo encounters and raid boss battles.
+  - Strict caps prevent runaway damage inflation: Flat damage clamped at `+150`, damage multiplier clamped at `+35%`, and precision crit chance clamped at `+20%`.
+  - User lifting weight, repetitions, and earned XP are completely untouched and never distorted by equipment stats.
+- **Weekly Raid Boss Loot Drops & Gated Progression**:
+  - Slaying weekly raid commanders drops powerful high-tier wargear filtered by difficulty tier (Standard, Challenging, Legendary) and matched to the player's active faction.
+  - Tier gating requires appropriate level and military rank clearance before legendary wargear can be claimed or equipped.
+  - Duplicate-safe delivery recorded in SQLite table `raid_loot_history`.
+- **Zero Image Generator Dependency**: Equipment slots, item cards, and inventory drawers use high-contrast sci-fi badges, rarity colors, stats chips, and lore typography without requiring unstable AI portrait or weapon generation.
+- **Persistent SQLite Inventory (Migration 15)**:
+  - All collected items, loadouts, and loot drop logs are stored locally in `character_inventory`, `character_equipment_loadout`, and `raid_loot_history`.
+  - Switching allegiances grants the new faction's starter gear while permanently preserving previously earned items in inventory.
+
 ---
 
 ## 📂 Project Architecture
@@ -178,6 +213,8 @@ grimiron/
 │   │   ├── CampaignAcademyModal.tsx
 │   │   ├── CampaignMapModal.tsx
 │   │   ├── CoopRaidModal.tsx
+│   │   ├── EquipmentInventoryModal.tsx
+│   │   ├── EquipmentSlotCard.tsx
 │   │   ├── MissionCenterModal.tsx
 │   │   ├── PlaceholderPortrait.tsx
 │   │   ├── ProgressBar.tsx
@@ -193,6 +230,7 @@ grimiron/
 │   │   ├── campaignAcademy/        # 8 periodized training programs & 90-day crusades
 │   │   ├── combat/                 # Thematic faction attacks & strike styles
 │   │   ├── encounters/             # 110+ lore-accurate encounter templates
+│   │   ├── equipment/              # Wargear catalog & faction archetype slot configurations
 │   │   ├── missions/               # 63 faction-specific narrative operations
 │   │   ├── types.ts                # Universe-agnostic content interfaces
 │   │   └── warhammer40k/           # Data-driven 40K armies, ranks, and subfactions
@@ -200,11 +238,11 @@ grimiron/
 │   │   └── AppContext.tsx          # Global state combining SQLite with active sessions
 │   ├── services/
 │   │   ├── combat/                 # Combat engine, damage calculators, and attack resolution
-│   │   ├── database/               # SQLite persistence via expo-sqlite (10 migrations)
-│   │   └── progression/            # XP formulas, achievements, programs, and procedural bosses
+│   │   ├── database/               # SQLite persistence via expo-sqlite (15 migrations)
+│   │   └── progression/            # XP formulas, achievements, equipment, and raid loot
 │   ├── tests/
 │   │   └── verify_core.ts          # Comprehensive test suite covering all domains
-│   ├── types/                      # Domain models for Workouts, Sets, Characters, and Raids
+│   ├── types/                      # Domain models for Workouts, Equipment, and Raids
 │   └── utils/
 │       └── haptics.ts              # Physical haptic feedback engine with graceful web fallback
 ├── scripts/

@@ -7,6 +7,7 @@ import {
   CombatAfterActionReport,
 } from '../../types/combat';
 import { createAttackFromSet } from './attackEngine';
+import { EquipmentCombatBonusInput } from './damageCalculator';
 import { CharacterProgression } from '../../types/character';
 
 /**
@@ -25,7 +26,8 @@ export function computeCombatState(
   exercises: WorkoutExercise[],
   lastCompletedSetId?: string,
   factionId?: string,
-  subfactionId?: string
+  subfactionId?: string,
+  equipmentBonus?: EquipmentCombatBonusInput
 ): CombatEncounterState {
   const attacks: AttackEvent[] = [];
   const seenSetIds = new Set<string>();
@@ -40,7 +42,8 @@ export function computeCombatState(
           exercise.name,
           exercise.exerciseRefId,
           factionId,
-          subfactionId
+          subfactionId,
+          equipmentBonus
         );
         attacks.push(attack);
       }

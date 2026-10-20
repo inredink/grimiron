@@ -56,6 +56,41 @@ import {
 } from '../types/achievements';
 import { formatCriterionRequirement } from '../utils/achievementFormatter';
 import {
+  EquipmentDefinition,
+  EquipmentSlot,
+  EquippedLoadout,
+  InventoryItemRecord,
+  AggregatedEquipmentBonus,
+} from '../types/equipment';
+import {
+  EQUIPMENT_CATALOG,
+  getEquipmentById,
+  getStarterEquipmentForFaction,
+  getEquipmentForSlot,
+} from '../content/equipment/catalog';
+import {
+  FACTION_SLOT_CONFIGS,
+  getFactionSlotConfig,
+} from '../content/equipment/factionArchetypes';
+import {
+  InMemoryEquipmentStorage,
+  setEquipmentStorageAdapter,
+  getCharacterInventory,
+  getCharacterLoadout,
+  grantInventoryItem,
+  initializeStarterEquipment,
+  equipItem,
+  unequipItem,
+  getEquippedDefinitions,
+  calculateEquipmentBonuses,
+  isItemEquipEligible,
+  recordRaidLootDrop,
+} from '../services/progression/equipmentService';
+import {
+  BOSS_DIFFICULTY_LOOT_TABLES,
+  evaluateRaidBossLoot,
+} from '../services/progression/raidLootEngine';
+import {
   BattleRecord,
   BattleSnapshot,
   BattleParticipantContribution,
@@ -3979,6 +4014,253 @@ const isRestrictedForForeignFaction = Boolean(
 
 assert(isRestrictedForUserFaction === false, 'Matching faction is NOT restricted');
 assert(isRestrictedForForeignFaction === true, 'Mismatched faction is correctly flagged as FACTION LOCKED');
+
+// ----------------------------------------------------
+// TEST SUITE 23: Character Equipment, Faction Progression & Raid Loot
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 23: Character Equipment, Faction Progression & Raid Loot]');
+
+console.log('Testing Multi-Faction Starter Wargear & Slot Configurations across all 20 Factions...');
+for (const fac of warhammer40kFactions) {
+  const starters = getStarterEquipmentForFaction(fac.id);
+  assert(
+    starters.length >= 4,
+    `Faction ${fac.name} (${fac.id}) has at least 4 starter wargear items (found ${starters.length})`
+  );
+
+  for (const item of starters) {
+    assert(Boolean(item.id), `Starter item ${item.name} has valid id`);
+    assert(item.tier === 1, `Starter item ${item.name} is Tier 1`);
+    assert(item.rarity === 'common', `Starter item ${item.name} is Common rarity`);
+    assert(item.isStarterItem === true, `Starter item ${item.name} is flagged as starter`);
+    assert(Boolean(item.iconName), `Starter item ${item.name} has placeholder icon`);
+  }
+
+  const slotConfig = getFactionSlotConfig(fac.id);
+  assert(slotConfig.allowedSlots.length >= 6, `Faction ${fac.name} supports all primary wargear slots`);
+  assert(Boolean(slotConfig.platformSlotLabel), `Faction ${fac.name} defines lore-appropriate platform slot label`);
+}
+
+console.log('Testing Character Starting Equipment Initialization & Auto-Equip...');
+const testEquipStorage = new InMemoryEquipmentStorage();
+setEquipmentStorageAdapter(testEquipStorage);
+
+const astartesCharId = 'char_astartes_test_01';
+initializeStarterEquipment(astartesCharId, 'adeptus-astartes');
+
+const astartesInv = getCharacterInventory(astartesCharId);
+assert(astartesInv.length >= 6, 'Astartes warrior receives at least 6 starter wargear items in inventory');
+assert(astartesInv.some((i) => i.itemId === 'astartes_boltgun'), 'Inventory contains Godwyn-Pattern Boltgun');
+assert(astartesInv.some((i) => i.itemId === 'astartes_power_armor'), 'Inventory contains Mark X Tacticus Power Armor');
+
+const astartesLoadout = getCharacterLoadout(astartesCharId);
+assert(astartesLoadout.primary_weapon === 'astartes_boltgun', 'Primary weapon slot auto-equipped with boltgun');
+assert(astartesLoadout.armor === 'astartes_power_armor', 'Armor slot auto-equipped with power armor');
+assert(astartesLoadout.helmet === 'astartes_tactical_helm', 'Helmet slot auto-equipped with tactical helm');
+assert(astartesLoadout.insignia === 'astartes_chapter_crux', 'Insignia slot auto-equipped with crux insignia');
+assert(astartesLoadout.secondary_weapon === 'astartes_bolt_pistol', 'Secondary weapon auto-equipped with bolt pistol');
+assert(astartesLoadout.tactical === 'astartes_frag_grenades', 'Tactical slot auto-equipped with frag grenades');
+
+console.log('Testing Equip and Unequip Operations & Validation...');
+// Unequip primary weapon
+const unequipResult = unequipItem(astartesCharId, 'primary_weapon');
+assert(unequipResult.success === true, 'Successfully unequipped primary weapon');
+const loadoutAfterUnequip = getCharacterLoadout(astartesCharId);
+assert(loadoutAfterUnequip.primary_weapon === undefined, 'Primary weapon slot is now empty');
+
+// Re-equip primary weapon
+const reequipResult = equipItem(astartesCharId, 'primary_weapon', 'astartes_boltgun', 1, 1, 'adeptus-astartes');
+assert(reequipResult.success === true, 'Successfully re-equipped boltgun');
+assert(getCharacterLoadout(astartesCharId).primary_weapon === 'astartes_boltgun', 'Primary weapon slot restored');
+
+// Attempt to equip an unowned item
+const unownedResult = equipItem(astartesCharId, 'primary_weapon', 'astartes_master_power_sword', 1, 1, 'adeptus-astartes');
+assert(unownedResult.success === false, 'Cannot equip unowned master power sword');
+
+// Attempt to equip item into the wrong slot
+const wrongSlotResult = equipItem(astartesCharId, 'helmet', 'astartes_boltgun', 1, 1, 'adeptus-astartes');
+assert(wrongSlotResult.success === false, 'Cannot equip boltgun into helmet slot');
+
+console.log('Testing Faction & Rank/Level Compatibility Restrictions...');
+// Attempt to equip T'au Pulse Rifle on Space Marine
+grantInventoryItem(astartesCharId, 'tau_pulse_rifle', 'cheat_grant');
+const incompatibleFactionResult = equipItem(astartesCharId, 'primary_weapon', 'tau_pulse_rifle', 1, 1, 'adeptus-astartes');
+assert(incompatibleFactionResult.success === false, 'Space Marine cannot equip T\'au Pulse Rifle');
+assert(
+  incompatibleFactionResult.message.includes('Faction restricted'),
+  'Rejection includes clear faction restriction message'
+);
+
+// Rank and Level restrictions on T'au Crisis Battlesuit
+const crisisDef = getEquipmentById('tau_xv8_crisis_battlesuit')!;
+const lowLevelCheck = isItemEquipEligible(crisisDef, 'tau-empire', 2, 1);
+assert(lowLevelCheck.eligible === false, 'Level 2, Rank 1 T\'au warrior cannot equip Crisis Battlesuit');
+assert(Boolean(lowLevelCheck.reason?.includes('Level 20')), 'Eligibility failure notes Level 20 requirement');
+
+const highLevelCheck = isItemEquipEligible(crisisDef, 'tau-empire', 20, 6);
+assert(highLevelCheck.eligible === true, 'Level 20, Rank 6 T\'au veteran is fully eligible for Crisis Battlesuit');
+
+console.log('Testing T\'au Fire Warrior to Battlesuit Progression Path...');
+const tauCharId = 'char_tau_test_01';
+initializeStarterEquipment(tauCharId, 'tau-empire');
+
+const tauInv = getCharacterInventory(tauCharId);
+assert(tauInv.some((i) => i.itemId === 'tau_pulse_rifle'), 'T\'au starter kit includes Pulse Rifle');
+assert(tauInv.some((i) => i.itemId === 'tau_combat_armor'), 'T\'au starter kit includes Fire Caste Combat Armor');
+assert(tauInv.some((i) => i.itemId === 'tau_sensor_helmet'), 'T\'au starter kit includes Targeting Sensor Helmet');
+assert(tauInv.some((i) => i.itemId === 'tau_bonding_knife'), 'T\'au starter kit includes Bonding Knife');
+
+// Grant and equip mid-tier Breacher equipment at Rank Tier 3 / Level 10
+grantInventoryItem(tauCharId, 'tau_breacher_pulse_blaster', 'raid_drop');
+const equipBreacher = equipItem(tauCharId, 'primary_weapon', 'tau_breacher_pulse_blaster', 10, 3, 'tau-empire');
+assert(equipBreacher.success === true, 'Level 10 Shas\'ui equips Pulse Blaster');
+assert(getCharacterLoadout(tauCharId).primary_weapon === 'tau_breacher_pulse_blaster', 'Pulse Blaster equipped');
+
+// Progress to Stealth Battlesuit Candidate at Rank Tier 4 / Level 15
+grantInventoryItem(tauCharId, 'tau_xv25_stealth_suit', 'raid_drop');
+const equipStealthSuit = equipItem(tauCharId, 'platform', 'tau_xv25_stealth_suit', 15, 4, 'tau-empire');
+assert(equipStealthSuit.success === true, 'Level 15 warrior equips XV25 Stealth Battlesuit');
+assert(getCharacterLoadout(tauCharId).platform === 'tau_xv25_stealth_suit', 'Stealth Suit platform equipped');
+const stealthDef = getEquipmentById('tau_xv25_stealth_suit')!;
+assert(stealthDef.changesArchetypeTo === 'Stealth Battlesuit Pilot', 'Stealth platform changes archetype to pilot');
+
+// Progress to Apex XV8 Crisis Battlesuit at Rank Tier 6 / Level 20
+grantInventoryItem(tauCharId, 'tau_xv8_crisis_battlesuit', 'legendary_raid_drop');
+const equipCrisisSuit = equipItem(tauCharId, 'platform', 'tau_xv8_crisis_battlesuit', 20, 6, 'tau-empire');
+assert(equipCrisisSuit.success === true, 'Level 20 Shas\'o equips XV8 Crisis Battlesuit');
+assert(getCharacterLoadout(tauCharId).platform === 'tau_xv8_crisis_battlesuit', 'XV8 Crisis Battlesuit platform equipped');
+assert(crisisDef.changesArchetypeTo === 'Crisis Battlesuit Pilot', 'XV8 platform changes archetype to Crisis Battlesuit Pilot');
+
+console.log('Testing Combat Damage Calculations with Equipment Modifiers...');
+const testWorkoutSet: ExerciseSet = {
+  id: 'set_equip_test_01',
+  exerciseId: 'ex_bench_01',
+  setNumber: 1,
+  reps: 10,
+  weight: 60,
+  unit: 'kg',
+  isCompleted: true,
+  setClassification: 'working',
+};
+
+// 1. Base unequipped damage
+const unequippedResult = calculateSetDamage(testWorkoutSet, 'Flat Barbell Bench Press');
+assert(unequippedResult.damage > 0, 'Unequipped set produces base damage');
+assert(unequippedResult.equipmentBonusDamage === 0, 'No equipment bonus damage when unequipped');
+
+// 2. Equipped with starter gear (+12 flat DMG, +2% mult)
+const equippedStarterResult = calculateSetDamage(
+  testWorkoutSet,
+  'Flat Barbell Bench Press',
+  { bonusDamage: 12, damageMultiplier: 0.02 }
+);
+assert(
+  equippedStarterResult.damage > unequippedResult.damage,
+  `Equipped starter gear deals higher damage (${equippedStarterResult.damage} vs ${unequippedResult.damage})`
+);
+assert(equippedStarterResult.equipmentBonusDamage === 12, 'Equipment flat bonus recorded cleanly');
+assert(equippedStarterResult.equipmentMultiplier === 0.02, 'Equipment multiplier recorded cleanly');
+
+// 3. Equipped with Crisis Battlesuit & Plasma Array (+135 flat DMG, +30% mult)
+const equippedApexResult = calculateSetDamage(
+  testWorkoutSet,
+  'Flat Barbell Bench Press',
+  { bonusDamage: 135, damageMultiplier: 0.30 }
+);
+assert(
+  equippedApexResult.damage > equippedStarterResult.damage,
+  `Apex wargear significantly improves set strike output (${equippedApexResult.damage} vs ${equippedStarterResult.damage})`
+);
+
+// 4. Anti-stacking runaway protection: verify capping prevents infinite exploit numbers
+const extremeBonuses = calculateEquipmentBonuses([
+  crisisDef,
+  crisisDef,
+  crisisDef,
+  crisisDef,
+  crisisDef,
+]);
+assert(extremeBonuses.totalBonusDamage === 150, 'Total flat bonus damage is hard-capped at 150');
+assert(extremeBonuses.totalDamageMultiplier === 0.35, 'Total damage multiplier is hard-capped at +35%');
+assert(extremeBonuses.totalCritChanceBonus === 0.20, 'Total crit chance bonus is hard-capped at +20%');
+
+// 5. Workout integrity safeguard: ensure actual user reps, weight, and session XP formulas are NEVER mutated by gear
+assert(testWorkoutSet.reps === 10, 'Set repetition count is unmodified');
+assert(testWorkoutSet.weight === 60, 'Set weight is unmodified');
+
+console.log('Testing Raid Boss Loot Drop Evaluation & Duplicate Protection...');
+const mockStandardBoss = {
+  bossKey: 'boss_ork_standard_01',
+  name: 'Gorzod Iron-Teeth',
+  title: 'Warlord of da Ironjawz',
+  factionId: 'orks',
+  factionName: 'Orks',
+  archetype: 'mega_warlord',
+  combatRole: 'Frontline Bruiser',
+  difficultyTier: 'standard' as const,
+  honorific: 'Da Meanest',
+  signatureWeapon: 'Power Klaw',
+  combatTrait: 'Ferocity',
+  tacticalDescription: 'Heavily armored brute.',
+  loreDescription: 'Ork warboss.',
+  baseHealth: 5000,
+  glyph: 'hammer',
+  primaryColor: '#4CAF50',
+  accentColor: '#FF9800',
+  phases: [],
+  taunts: [],
+  defeatQuote: 'Waaagh...',
+};
+
+// Player claiming standard raid loot as Level 5 T'au
+const raidCycle1 = '2026_W42_standard';
+const lootResult1 = evaluateRaidBossLoot(raidCycle1, mockStandardBoss, 'tau-empire', 5, 2, tauCharId);
+assert(Boolean(lootResult1.awardedItem), 'Standard raid victory awards eligible wargear drop');
+assert(lootResult1.isGuaranteed === true, 'First claim grants guaranteed spoils');
+assert(
+  lootResult1.awardedItem?.tier === 2 || lootResult1.awardedItem?.tier === 3,
+  'Standard raid yields Tier 2 or 3 wargear'
+);
+
+// Duplicate claim prevention on same raid cycle
+const lootResult2 = evaluateRaidBossLoot(raidCycle1, mockStandardBoss, 'tau-empire', 5, 2, tauCharId);
+assert(lootResult2.message.includes('already collected'), 'Re-claim is detected as already collected');
+
+// Rank-gating exploit prevention: Level 2 player participating in legendary raid
+const mockLegendaryBoss = {
+  ...mockStandardBoss,
+  bossKey: 'boss_daemon_prince_01',
+  difficultyTier: 'legendary' as const,
+};
+const raidCycleLegendary = '2026_W42_legendary';
+const lowLevelRaidResult = evaluateRaidBossLoot(
+  raidCycleLegendary,
+  mockLegendaryBoss,
+  'tau-empire',
+  2, // Level 2
+  1, // Rank Tier 1
+  'tau_low_level_char'
+);
+assert(
+  lowLevelRaidResult.awardedItem?.id !== 'tau_xv8_crisis_battlesuit',
+  'Low level player does NOT prematurely receive Crisis Battlesuit platform from legendary raid'
+);
+
+console.log('Testing Inventory Preservation Across Faction Allegiance Swearing...');
+const multiFactionCharId = 'char_multifaction_test_01';
+initializeStarterEquipment(multiFactionCharId, 'adeptus-astartes');
+const initialAstartesCount = getCharacterInventory(multiFactionCharId).length;
+assert(initialAstartesCount >= 6, 'Initial Space Marine inventory loaded');
+
+// Player swears allegiance to T'au Empire
+initializeStarterEquipment(multiFactionCharId, 'tau-empire');
+const updatedInv = getCharacterInventory(multiFactionCharId);
+assert(
+  updatedInv.length >= initialAstartesCount + 6,
+  'Switching allegiance appends new faction gear without deleting existing inventory'
+);
+assert(updatedInv.some((i) => i.itemId === 'astartes_boltgun'), 'Past Space Marine boltgun is preserved');
+assert(updatedInv.some((i) => i.itemId === 'tau_pulse_rifle'), 'New T\'au pulse rifle is added to inventory');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

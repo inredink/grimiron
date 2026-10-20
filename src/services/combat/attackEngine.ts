@@ -1,7 +1,7 @@
 import { ExerciseDefinition, MovementPattern } from '../../types/exercise';
 import { ExerciseSet } from '../../types/workout';
 import { AttackCategory, AttackEvent, FactionAttackDefinition } from '../../types/combat';
-import { calculateSetDamage } from './damageCalculator';
+import { calculateSetDamage, EquipmentCombatBonusInput } from './damageCalculator';
 import { EXERCISE_CATALOG } from '../../content/exercises/catalog';
 import {
   resolveFactionAttack,
@@ -183,7 +183,8 @@ export function createAttackFromSet(
   exerciseName: string,
   exerciseRefId?: string,
   factionId?: string,
-  subfactionId?: string
+  subfactionId?: string,
+  equipmentBonus?: EquipmentCombatBonusInput
 ): AttackEvent {
   const style = getAttackStyleForExercise(
     exerciseName,
@@ -192,7 +193,7 @@ export function createAttackFromSet(
     subfactionId,
     set.id
   );
-  const damageResult = calculateSetDamage(set, exerciseName);
+  const damageResult = calculateSetDamage(set, exerciseName, equipmentBonus);
 
   // Format thematic attack name: e.g. "Pulse Rifle Volley [Bench Press]" or "CRITICAL BOLTER BURST [Bench Press]"
   const cleanExercise = exerciseName.replace(/(Barbell|Dumbbell|Resistance Band|Cable|Machine)\s+/i, '');
