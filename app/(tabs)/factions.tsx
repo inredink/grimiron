@@ -27,7 +27,7 @@ type AllegianceFilter = 'all' | 'imperium' | 'chaos' | 'xenos';
 
 export default function FactionsScreen() {
   const insets = useSafeAreaInsets();
-  const { character, changeFaction, refreshData, customSubfactions } = useApp();
+  const { character, changeFaction, customSubfactions } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<AllegianceFilter>('all');
   const [expandedFactionId, setExpandedFactionId] = useState<string | null>(character.factionId);
@@ -78,10 +78,20 @@ export default function FactionsScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Pledge Allegiance',
-          onPress: () => {
+          onPress: async () => {
             triggerHaptic.success();
-            changeFaction(faction.id, chosenSubfactionId);
-            refreshData();
+            await changeFaction(faction.id, chosenSubfactionId);
+            setSelectedSubfactionByFaction((prev) => ({
+              ...prev,
+              [faction.id]: chosenSubfactionId,
+            }));
+            setExpandedFactionId(faction.id);
+            const sub = faction.subfactions.find((s) => s.id === chosenSubfactionId);
+            Alert.alert(
+              'Allegiance Sworn',
+              `You are now pledged to ${faction.name}${sub ? ` (${sub.name})` : ''}!\n\nYour rank, badges, and training telemetry have been successfully updated.`,
+              [{ text: 'For the Crusade!', style: 'default' }]
+            );
           },
         },
       ]
@@ -460,10 +470,15 @@ export default function FactionsScreen() {
                   ) : activeSubfactionId !== character.subfactionId ? (
                     <TerminalButton
                       title="UPDATE SUBFACTION ALLEGIANCE"
-                      onPress={() => {
+                      onPress={async () => {
                         triggerHaptic.success();
-                        changeFaction(faction.id, activeSubfactionId);
-                        refreshData();
+                        await changeFaction(faction.id, activeSubfactionId);
+                        const sub = faction.subfactions.find((s) => s.id === activeSubfactionId);
+                        Alert.alert(
+                          'Doctrine Updated',
+                          `Your chapter doctrine is now set to ${sub ? sub.name : 'selected subfaction'}!`,
+                          [{ text: 'Affirmative', style: 'default' }]
+                        );
                       }}
                       variant="primary"
                       size="md"

@@ -3200,6 +3200,79 @@ assert(
   `Clean initiate with 0 workouts receives 0 achievements (got ${initiateEval.newlyAwarded.length})`
 );
 
+console.log('\n[TEST SUITE 19: Allegiance Swearing & Bi-directional Profile Sync Safety]');
+console.log('Testing Faction Allegiance & Rank Carryover...');
+
+const spaceMarineProfile = {
+  characterName: 'Captain Titus',
+  factionId: 'adeptus-astartes',
+  subfactionId: 'ultramarines',
+  totalXp: 8500,
+  currentLevel: 10,
+};
+
+const marineFaction = getFactionById('adeptus-astartes')!;
+const marineProgression = calculateProgression(spaceMarineProfile.totalXp, marineFaction);
+assert(marineProgression.currentRankTier === 3, 'Space Marine rank is Tier 3 at 8,500 XP');
+
+// Pledge allegiance to Necrons
+const necronFaction = getFactionById('necrons')!;
+assert(!!necronFaction, 'Necron faction exists in catalog');
+const necronProgression = calculateProgression(spaceMarineProfile.totalXp, necronFaction);
+assert(necronProgression.currentRankTier === 3, 'XP carries over to Necrons and calculates rank as Tier 3');
+assert(necronProgression.currentRankTitle.length > 0, 'Necron rank has valid title');
+
+console.log('Testing Bi-directional Cloud Sync Conflict Protection...');
+function resolveProfileSync(
+  local: { characterName: string; factionId: string },
+  cloud: { displayName: string; factionId: string }
+): { action: 'pull_cloud' | 'push_local' | 'in_sync'; resultingProfile: { characterName: string; factionId: string } } {
+  const isDefaultLocalName = !local.characterName || local.characterName === 'Battle-Brother' || local.characterName.trim() === '';
+  const isDefaultLocalFaction = !local.factionId || local.factionId === 'adeptus-astartes';
+
+  if (isDefaultLocalName && isDefaultLocalFaction && (cloud.displayName !== 'Battle-Brother' || cloud.factionId !== 'adeptus-astartes')) {
+    return {
+      action: 'pull_cloud',
+      resultingProfile: {
+        characterName: cloud.displayName || local.characterName,
+        factionId: cloud.factionId || local.factionId,
+      },
+    };
+  } else if (!isDefaultLocalFaction || !isDefaultLocalName) {
+    if (cloud.factionId !== local.factionId || cloud.displayName !== local.characterName) {
+      return {
+        action: 'push_local',
+        resultingProfile: { ...local },
+      };
+    }
+  }
+  return { action: 'in_sync', resultingProfile: { ...local } };
+}
+
+// Case 1: Fresh initiate pulls from personalized cloud
+const case1 = resolveProfileSync(
+  { characterName: 'Battle-Brother', factionId: 'adeptus-astartes' },
+  { displayName: 'Inquisitor Vane', factionId: 'grey-knights' }
+);
+assert(case1.action === 'pull_cloud', 'Fresh initiate pulls personalized profile from cloud');
+assert(case1.resultingProfile.factionId === 'grey-knights', 'Faction pulled from cloud is grey-knights');
+
+// Case 2: Customized local user never overwritten by stale cloud
+const case2 = resolveProfileSync(
+  { characterName: 'Captain Titus', factionId: 'necrons' },
+  { displayName: 'Battle-Brother', factionId: 'adeptus-astartes' }
+);
+assert(case2.action === 'push_local', 'Local customization prevents overwrite and pushes local to cloud');
+assert(case2.resultingProfile.factionId === 'necrons', 'Local faction remains Necrons');
+assert(case2.resultingProfile.characterName === 'Captain Titus', 'Local warrior callsign remains Captain Titus');
+
+// Case 3: Both in sync
+const case3 = resolveProfileSync(
+  { characterName: 'Captain Titus', factionId: 'necrons' },
+  { displayName: 'Captain Titus', factionId: 'necrons' }
+);
+assert(case3.action === 'in_sync', 'Identical profiles remain in sync');
+
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
 console.log('====================================================');

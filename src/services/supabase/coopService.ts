@@ -93,6 +93,43 @@ export const coopService = {
     };
   },
 
+  async updateMyProfile(updates: {
+    displayName?: string;
+    factionId?: string;
+    avatarGlyph?: string;
+  }): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+    const user = (await client.auth.getUser()).data.user;
+    if (!user) return false;
+
+    const payload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.displayName !== undefined) payload.display_name = updates.displayName.trim();
+    if (updates.factionId !== undefined) payload.faction_id = updates.factionId;
+    if (updates.avatarGlyph !== undefined) payload.avatar_glyph = updates.avatarGlyph;
+
+    const { error } = await client
+      .from('profiles')
+      .update(payload)
+      .eq('id', user.id);
+
+    if (error) {
+      console.warn('coopService.updateMyProfile error:', error.message);
+      return false;
+    }
+    return true;
+  },
+
+  async updateMyProfileFaction(factionId: string): Promise<boolean> {
+    return this.updateMyProfile({ factionId });
+  },
+
+  async updateMyProfileDisplayName(displayName: string): Promise<boolean> {
+    return this.updateMyProfile({ displayName });
+  },
+
   async createSquad(groupName: string): Promise<{ groupId: string; name: string; inviteCode: string } | null> {
     const client = getSupabaseClient();
     if (!client) throw new Error('Supabase is not configured.');

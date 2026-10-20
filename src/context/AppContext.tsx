@@ -258,7 +258,7 @@ interface AppContextValue {
     subfactionId?: string;
   }) => void;
   repeatWorkout: (sessionId: string) => boolean;
-  changeFaction: (factionId: string, subfactionId?: string) => void;
+  changeFaction: (factionId: string, subfactionId?: string) => Promise<any> | void;
   refreshData: () => void;
   activeAcademyEnrollment: UserCampaignEnrollment | null;
   academyEnrollments: UserCampaignEnrollment[];
@@ -283,7 +283,7 @@ interface AppContextValue {
   updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   resetSettings: () => void;
   claimRecoveryXpAction: () => { awarded: boolean; xpEarned: number; reason: string };
-  updateCharacterNameAction: (name: string) => void;
+  updateCharacterNameAction: (name: string) => Promise<any> | void;
   accountInfo: AccountInfo | null;
   refreshAccountInfo: () => Promise<AccountInfo>;
   signInCloudAccount: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
@@ -435,11 +435,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           .getMyProfile()
           .then((cloudProf) => {
             if (cloudProf) {
-              const synced = syncCharacterProfileFromCloud({
-                displayName: cloudProf.displayName,
-                factionId: cloudProf.factionId,
-              });
-              setCharacter(synced);
+              const currentLocal = getCharacterProfile();
+              const isDefaultLocalName =
+                !currentLocal.characterName ||
+                currentLocal.characterName === 'Battle-Brother' ||
+                currentLocal.characterName.trim() === '';
+              const isDefaultLocalFaction =
+                !currentLocal.factionId ||
+                currentLocal.factionId === 'adeptus-astartes';
+
+              // If local character is untouched default initiate, adopt personalized cloud profile
+              if (
+                isDefaultLocalName &&
+                isDefaultLocalFaction &&
+                (cloudProf.displayName !== 'Battle-Brother' ||
+                  cloudProf.factionId !== 'adeptus-astartes')
+              ) {
+                const synced = syncCharacterProfileFromCloud({
+                  displayName: cloudProf.displayName,
+                  factionId: cloudProf.factionId,
+                });
+                setCharacter(synced);
+              } else if (!isDefaultLocalFaction || !isDefaultLocalName) {
+                // If local has been customized (user chose another faction or name),
+                // make sure cloud profile is kept in sync with local character!
+                if (
+                  cloudProf.factionId !== currentLocal.factionId ||
+                  cloudProf.displayName !== currentLocal.characterName
+                ) {
+                  coopService
+                    .updateMyProfile({
+                      displayName: currentLocal.characterName,
+                      factionId: currentLocal.factionId,
+                    })
+                    .catch(() => {});
+                }
+              }
             }
           })
           .catch(() => {});
@@ -691,9 +722,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return result;
   }, [settings, activeEnrollment, loadData]);
 
-  const updateCharacterNameAction = useCallback((name: string) => {
+  const updateCharacterNameAction = useCallback(async (name: string) => {
     const updated = updateCharacterName(name);
     setCharacter(updated);
+
+    if (coopService.isConfigured()) {
+      try {
+        await coopService.updateMyProfileDisplayName(name);
+      } catch (err) {
+        console.warn('Failed to sync callsign change to cloud:', err);
+      }
+    }
   }, []);
 
   const refreshAccountInfo = useCallback(async () => {
@@ -1410,10 +1449,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     []
   );
 
-  const changeFaction = (factionId: string, subfactionId?: string) => {
+  const changeFaction = useCallback(async (factionId: string, subfactionId?: string) => {
     const updated = updateFactionAllegiance(factionId, subfactionId);
     setCharacter(updated);
-  };
+
+    if (coopService.isConfigured()) {
+      try {
+        await coopService.updateMyProfileFaction(factionId);
+      } catch (err) {
+        console.warn('Failed to sync faction change to cloud:', err);
+      }
+    }
+    return updated;
+  }, []);
 
   const refreshCustomSubfactions = useCallback(() => {
     try {
@@ -1464,7 +1512,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return success;
     },
-    [character.subfactionId, character.factionId, refreshCustomSubfactions]
+    [character.subfactionId, character.factionId, refreshCustomSubfactions, changeFaction]
   );
 
   const deleteCustomSubfactionAction = useCallback(
@@ -1478,18 +1526,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return success;
     },
-    [character.subfactionId, character.factionId, refreshCustomSubfactions]
+    [character.subfactionId, character.factionId, refreshCustomSubfactions, changeFaction]
   );
 
   const selectCustomSubfactionAction = useCallback(
-    (customSubfactionId: string) => {
+    async (customSubfactionId: string) => {
       const subRecord = getCustomSubfactionById(customSubfactionId);
       if (subRecord) {
-        changeFaction(subRecord.parentFactionId, subRecord.id);
-        loadData();
+        await changeFaction(subRecord.parentFactionId, subRecord.id);
       }
     },
-    [loadData]
+    [changeFaction]
   );
 
   return (
