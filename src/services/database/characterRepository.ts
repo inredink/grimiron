@@ -64,6 +64,24 @@ export function updateFactionAllegiance(factionId: string, subfactionId?: string
 }
 
 /**
+ * Updates the user's tactical warrior callsign / character name.
+ */
+export function updateCharacterName(name: string): CharacterProfile {
+  const db = getDatabase();
+  const trimmed = name.trim();
+  if (trimmed.length > 0) {
+    const now = new Date().toISOString();
+    db.runSync(
+      `UPDATE character_profile 
+       SET character_name = ?, updated_at = ? 
+       WHERE id = 1`,
+      [trimmed, now]
+    );
+  }
+  return getCharacterProfile();
+}
+
+/**
  * Syncs the local character profile name, faction, and subfaction from cloud account.
  */
 export function syncCharacterProfileFromCloud(profile: {

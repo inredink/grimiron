@@ -1,6 +1,18 @@
 import { XP_CONFIG, calculateWorkoutXp, normalizeToKg } from '../services/progression/xpCalculator';
 import { getCumulativeXpForLevel, getLevelFromTotalXp, calculateProgression } from '../services/progression/rankEngine';
-import { warhammer40kUniverse, getFactionById, getRankForXp } from '../content/warhammer40k';
+import { warhammer40kUniverse, getFactionById, getSubfactionById, getRankForXp } from '../content/warhammer40k';
+import {
+  CustomSubfactionRecord,
+  CustomSubfactionInput,
+  DoctrineTag,
+  DOCTRINE_TAG_LABELS,
+  toSubfactionView,
+} from '../types/customSubfaction';
+import {
+  validateCustomSubfaction,
+  MAX_SUBFACTION_NAME_LENGTH,
+  ValidationError,
+} from '../utils/customSubfactionValidator';
 import { WorkoutExercise, WorkoutSession, ExerciseSet } from '../types/workout';
 import { EXERCISE_CATALOG } from '../content/exercises/catalog';
 import { ExerciseDefinition } from '../types/exercise';
@@ -148,6 +160,35 @@ import {
   FinalCampaignDossier,
   CampaignPhaseNumber,
 } from '../types/campaignAcademy';
+import {
+  AppSettings,
+  DEFAULT_APP_SETTINGS,
+  ACCENT_COLOR_MAP,
+  WeightUnit,
+  DistanceUnit,
+  DateFormat,
+  TimeFormat,
+} from '../types/settings';
+import {
+  convertWeight,
+  formatWeight,
+  convertDistance,
+  formatDate,
+  formatTime,
+  getStartOfWeek,
+} from '../utils/unitConversion';
+import {
+  isRecoveryDayEligible,
+  hasAlreadyReceivedRecoveryXp,
+} from '../services/progression/recoveryEngine';
+import {
+  isInQuietHours,
+  shouldDispatchNotification,
+} from '../services/notifications/notificationManager';
+import {
+  getAppDiagnostics,
+  formatDiagnosticReport,
+} from '../services/diagnostics/diagnosticsService';
 import {
   createCampaignEnrollment,
   evaluateCampaignQuests,
@@ -1012,8 +1053,8 @@ console.log('\n[TEST SUITE 11: Achievement Catalog & Evaluation Engine]');
 
 // 11.1 Catalog size and requirements
 assert(
-  ACHIEVEMENT_CATALOG.length >= 200,
-  `Catalog contains at least 200 distinct definitions (actual: ${ACHIEVEMENT_CATALOG.length})`
+  ACHIEVEMENT_CATALOG.length >= 350,
+  `Catalog contains at least 350 distinct definitions (actual: ${ACHIEVEMENT_CATALOG.length})`
 );
 
 const expectedCategories: AchievementCategory[] = [
@@ -2722,8 +2763,446 @@ const retrievedDossier = inMemoryAcademyStorage.getFinalDossier(vic6.updatedEnro
 assert(retrievedDossier !== null, 'Final 90-day dossier successfully persisted and retrieved');
 assert(retrievedDossier!.totalGloryXpAwarded === 5000, 'Retrieved dossier glory XP matches');
 
+// ============================================================================
+// TEST SUITE 17: Custom Subfaction Creator & Uploaded Subfaction Icons
+// ============================================================================
+console.log('\n[TEST SUITE 17: Custom Subfaction Creator & Uploaded Subfaction Icons]');
+
+// 1. Validation & Name Sanitization
+console.log('Testing Input Validation & Name Sanitization...');
+const emptyNameResult = validateCustomSubfaction({ name: '', parentFactionId: 'adeptus-astartes' });
+assert(!emptyNameResult.isValid, 'Rejects empty subfaction name');
+assert(emptyNameResult.errors.some((e) => e.field === 'name'), 'Empty name triggers name error');
+
+const whitespaceNameResult = validateCustomSubfaction({ name: '   \t  \n  ', parentFactionId: 'adeptus-astartes' });
+assert(!whitespaceNameResult.isValid, 'Rejects whitespace-only subfaction name');
+
+const longName = 'A'.repeat(MAX_SUBFACTION_NAME_LENGTH + 1);
+const longNameResult = validateCustomSubfaction({ name: longName, parentFactionId: 'adeptus-astartes' });
+assert(!longNameResult.isValid, `Rejects names longer than ${MAX_SUBFACTION_NAME_LENGTH} characters`);
+
+const missingFactionResult = validateCustomSubfaction({ name: 'Valid Name', parentFactionId: '' });
+assert(!missingFactionResult.isValid, 'Rejects missing parent faction ID');
+
+const validSanitized = validateCustomSubfaction({
+  name: '   The Obsidian Spear   ',
+  parentFactionId: 'tau-empire',
+});
+assert(validSanitized.isValid, 'Valid input passes validation');
+assert(validSanitized.sanitizedName === 'The Obsidian Spear', 'Trims extraneous whitespace from name');
+
+// Unicode and legitimate punctuation
+const unicodePunctuation = validateCustomSubfaction({
+  name: "Vior'la Cadre & Forge-Brothers (9th)",
+  parentFactionId: 'tau-empire',
+});
+assert(unicodePunctuation.isValid, 'Preserves apostrophes, ampersands, hyphens, and parenthesis');
+assert(unicodePunctuation.sanitizedName === "Vior'la Cadre & Forge-Brothers (9th)", 'Sanitized name preserves punctuation');
+
+// Duplicate name check within existing collection
+const mockExistingSubfactions: CustomSubfactionRecord[] = [
+  {
+    id: 'cs_101',
+    userId: 'user_main',
+    parentFactionId: 'tau-empire',
+    name: 'The Obsidian Spear',
+    doctrineTags: ['aggressive'],
+    primaryColor: '#00E5FF',
+    secondaryColor: '#1A1D24',
+    accentColor: '#FFD700',
+    iconCropMode: 'contain',
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'cs_102',
+    userId: 'user_main',
+    parentFactionId: 'tau-empire',
+    name: 'Archived Spear',
+    doctrineTags: [],
+    primaryColor: '#DAA520',
+    secondaryColor: '#1A1D24',
+    accentColor: '#E6C200',
+    iconCropMode: 'cover',
+    isArchived: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+const duplicateCheck = validateCustomSubfaction(
+  { name: 'the obsidian spear', parentFactionId: 'tau-empire' },
+  undefined,
+  mockExistingSubfactions
+);
+assert(!duplicateCheck.isValid, 'Rejects case-insensitive duplicate name within active subfactions');
+
+const sameRecordUpdateCheck = validateCustomSubfaction(
+  { name: 'The Obsidian Spear', parentFactionId: 'tau-empire' },
+  'cs_101',
+  mockExistingSubfactions
+);
+assert(sameRecordUpdateCheck.isValid, 'Allows updating an existing subfaction with its own current name');
+
+const archivedDuplicateCheck = validateCustomSubfaction(
+  { name: 'Archived Spear', parentFactionId: 'tau-empire' },
+  undefined,
+  mockExistingSubfactions
+);
+assert(archivedDuplicateCheck.isValid, 'Allows reusing the name of an archived subfaction');
+
+// 2. Minimum Viable Subfaction & View Mapping (toSubfactionView)
+console.log('Testing Minimum Viable Subfaction & View Mapping...');
+const minSubfactionRecord: CustomSubfactionRecord = {
+  id: 'cs_min_01',
+  userId: 'user_main',
+  parentFactionId: 'tau-empire',
+  name: 'The Obsidian Spear',
+  doctrineTags: [],
+  primaryColor: '#DAA520',
+  secondaryColor: '#1A1D24',
+  accentColor: '#E6C200',
+  iconCropMode: 'contain',
+  isArchived: false,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const minView = toSubfactionView(minSubfactionRecord);
+assert(minView.id === 'cs_min_01', 'View id matches record id');
+assert(minView.factionId === 'tau-empire', 'View factionId matches parent faction id');
+assert(minView.name === 'The Obsidian Spear', 'View name matches');
+assert(minView.isCustom === true, 'View has isCustom flag set to true');
+assert(minView.customIconUri === undefined, 'Icon URI is undefined when user does not upload an icon');
+assert(minView.lore.length > 0, 'Generates fallback lore when omitted');
+assert(minView.colorScheme.primary === '#DAA520', 'Uses primary color');
+
+// 3. Optional Fields & Rich Identity
+console.log('Testing Optional Fields & Rich Identity...');
+const richSubfactionRecord: CustomSubfactionRecord = {
+  id: 'cs_rich_01',
+  userId: 'user_main',
+  parentFactionId: 'adeptus-astartes',
+  name: 'The Ashen Wardens',
+  lore: 'Forged in the ash wastes of a shattered fortress-world, standing vigil against the swarm.',
+  motto: 'From Ash We Rise, In Iron We Endure',
+  homeworld: 'Pyros IV (Ash Waste Fortress)',
+  doctrineTags: ['defensive', 'siege_masters', 'disciplined'],
+  primaryColor: '#708090',
+  secondaryColor: '#2F4F4F',
+  accentColor: '#FF4500',
+  iconUri: 'file:///data/user/0/host.exp.exponent/files/subfaction_icons/ashen_wardens.png',
+  iconCropMode: 'cover',
+  isArchived: false,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+const richView = toSubfactionView(richSubfactionRecord);
+assert(richView.lore === richSubfactionRecord.lore, 'Preserves custom narrative lore');
+assert(richView.motto === richSubfactionRecord.motto, 'Preserves battle motto');
+assert(richView.homeworld === 'Pyros IV (Ash Waste Fortress)', 'Preserves custom homeworld');
+assert(richView.doctrineTags.length === 3, 'Preserves all doctrine tags');
+assert(richView.doctrineTags.includes('siege_masters'), 'Includes siege_masters tag');
+assert(Boolean(richView.customIconUri && richView.customIconUri.startsWith('file:///')), 'Preserves uploaded local icon file URI');
+assert(richView.iconCropMode === 'cover', 'Preserves cover crop mode');
+
+// 4. Subfaction Resolution via getSubfactionById
+console.log('Testing Subfaction Resolution & Fallbacks...');
+const allCustomList = [minSubfactionRecord, richSubfactionRecord];
+const resolvedCustom = getSubfactionById('tau-empire', 'cs_min_01', allCustomList);
+assert(resolvedCustom !== undefined, 'Resolves custom subfaction by ID');
+assert(resolvedCustom?.name === 'The Obsidian Spear', 'Resolved custom subfaction name matches');
+assert((resolvedCustom as any)?.isCustom === true, 'Resolved subfaction is recognized as custom');
+
+const resolvedRich = getSubfactionById('adeptus-astartes', 'cs_rich_01', allCustomList);
+assert(resolvedRich !== undefined, 'Resolves rich custom subfaction by ID');
+assert(resolvedRich?.motto === 'From Ash We Rise, In Iron We Endure', 'Resolved subfaction retains motto');
+
+// Official subfaction fallback behavior
+const officialUltramarines = getSubfactionById('adeptus-astartes', 'ultramarines', allCustomList);
+assert(officialUltramarines !== undefined, 'Official subfactions still resolve correctly alongside custom ones');
+assert(officialUltramarines?.name === 'Ultramarines', 'Official name is intact');
+
+// 5. Parent Faction Attack Catalog & Combat Rule Inheritance
+console.log('Testing Parent Faction Attack Inheritance...');
+const tauAttacks = getAttacksForFaction('tau-empire');
+assert(tauAttacks.length > 0, "Parent T'au Empire has attacks defined");
+const resolvedTauAttack = resolveFactionAttack({
+  factionId: 'tau-empire',
+  subfactionId: 'cs_min_01',
+  category: 'ranged',
+});
+assert(resolvedTauAttack.factionId === 'tau-empire', "Custom T'au subfaction inherits attacks with parent factionId");
+assert(resolvedTauAttack.category === 'ranged', "Inherits valid parent ranged combat attack");
+
+const astartesAttacks = getAttacksForFaction('adeptus-astartes');
+assert(astartesAttacks.length > 0, 'Parent Space Marines has attacks defined');
+const resolvedAstartesAttack = resolveFactionAttack({
+  factionId: 'adeptus-astartes',
+  subfactionId: 'cs_rich_01',
+  category: 'melee',
+});
+assert(resolvedAstartesAttack.factionId === 'adeptus-astartes', 'Custom Space Marine subfaction inherits Adeptus Astartes attacks');
+assert(resolvedAstartesAttack.category === 'melee', 'Inherits valid parent melee combat attack');
+
+const orkAttacks = getAttacksForFaction('orks');
+assert(orkAttacks.length > 0, 'Parent Orks has attacks defined');
+const resolvedOrkAttack = resolveFactionAttack({
+  factionId: 'orks',
+  subfactionId: 'cs_ork_custom',
+  category: 'heavy',
+});
+assert(resolvedOrkAttack.factionId === 'orks', 'Custom Ork warband inherits Ork attacks');
+assert(resolvedOrkAttack.category === 'heavy', 'Inherits valid parent heavy combat attack');
+
+const necronAttacks = getAttacksForFaction('necrons');
+assert(necronAttacks.length > 0, 'Parent Necrons has attacks defined');
+const resolvedNecronAttack = resolveFactionAttack({
+  factionId: 'necrons',
+  subfactionId: 'cs_necron_custom',
+  category: 'ranged',
+});
+assert(resolvedNecronAttack.factionId === 'necrons', 'Custom Necron dynasty inherits Necron attacks');
+assert(resolvedNecronAttack.category === 'ranged', 'Inherits valid parent ranged combat attack');
+
+// 6. User-Uploaded Icon Replacement & Removal Lifecycle
+console.log('Testing User Icon Replacement & Removal Lifecycle...');
+let liveRecord: CustomSubfactionRecord = {
+  ...minSubfactionRecord,
+  iconUri: 'file:///subfaction_icons/custom_emblem_v1.png',
+  iconCropMode: 'contain',
+};
+assert(liveRecord.iconUri !== undefined, 'Has initial uploaded icon');
+
+// Replace icon with new image
+liveRecord = {
+  ...liveRecord,
+  iconUri: 'file:///subfaction_icons/custom_emblem_v2_hires.png',
+  iconCropMode: 'cover',
+  updatedAt: new Date().toISOString(),
+};
+assert(liveRecord.iconUri === 'file:///subfaction_icons/custom_emblem_v2_hires.png', 'Icon URI replaced with new path');
+assert(liveRecord.iconCropMode === 'cover', 'Crop mode updated to cover');
+
+// Remove icon (return to parent faction symbol fallback)
+liveRecord = {
+  ...liveRecord,
+  iconUri: undefined,
+  updatedAt: new Date().toISOString(),
+};
+const removedIconView = toSubfactionView(liveRecord);
+assert(removedIconView.customIconUri === undefined, 'Icon URI is undefined after removal');
+assert(removedIconView.name === 'The Obsidian Spear', 'Subfaction identity preserved without icon');
+
+// 7. Duplication & Independence
+console.log('Testing Subfaction Duplication & Independence...');
+const originalRecord: CustomSubfactionRecord = { ...richSubfactionRecord };
+const clonedRecord: CustomSubfactionRecord = {
+  ...originalRecord,
+  id: `cs_${Date.now()}_copy`,
+  name: `${originalRecord.name} (Copy)`,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
+assert(clonedRecord.id !== originalRecord.id, 'Cloned subfaction has a unique ID');
+assert(clonedRecord.name === 'The Ashen Wardens (Copy)', 'Cloned subfaction has copy name');
+assert(clonedRecord.parentFactionId === originalRecord.parentFactionId, 'Clone retains parent faction');
+assert(clonedRecord.motto === originalRecord.motto, 'Clone retains motto');
+assert(clonedRecord.doctrineTags.length === originalRecord.doctrineTags.length, 'Clone retains doctrine tags');
+
+// Modifying the clone does not alter the original
+clonedRecord.name = 'The Iron Wardens';
+clonedRecord.doctrineTags = ['aggressive', 'mechanized_assault'];
+assert(originalRecord.name === 'The Ashen Wardens', 'Original name is untouched after editing clone');
+assert(originalRecord.doctrineTags.includes('defensive'), 'Original doctrine is untouched after editing clone');
+
+// 8. Archiving & Active Filtering
+console.log('Testing Subfaction Archiving & Filtering...');
+const archiveTestList: CustomSubfactionRecord[] = [
+  { ...originalRecord, isArchived: false },
+  { ...clonedRecord, isArchived: true },
+];
+
+const activeOnly = archiveTestList.filter((s) => !s.isArchived);
+assert(activeOnly.length === 1, 'Active filter returns only non-archived subfactions');
+assert(activeOnly[0].id === originalRecord.id, 'Active subfaction matches non-archived record');
+
+// ----------------------------------------------------
+// TEST SUITE 18: Complete Settings System & Behaviors
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 18: Complete Settings System & Behaviors]');
+
+console.log('Testing Default Settings & Stable Schema Keys...');
+assert(DEFAULT_APP_SETTINGS.workout_weight_unit === 'lbs', 'Default weight unit is lbs');
+assert(DEFAULT_APP_SETTINGS.workout_distance_unit === 'miles', 'Default distance unit is miles');
+assert(DEFAULT_APP_SETTINGS.workout_default_rest_duration === 90, 'Default rest timer is 90s');
+assert(DEFAULT_APP_SETTINGS.workout_auto_start_rest_timer === true, 'Auto-start rest timer defaults to enabled');
+assert(DEFAULT_APP_SETTINGS.workout_keep_screen_awake === true, 'Keep screen awake defaults to enabled');
+assert(DEFAULT_APP_SETTINGS.workout_auto_save === true, 'Workout auto-save defaults to enabled');
+assert(DEFAULT_APP_SETTINGS.workout_confirm_finish === true, 'Finish workout confirmation defaults to enabled');
+assert(DEFAULT_APP_SETTINGS.workout_warn_unsaved === true, 'Unsaved changes warning defaults to enabled');
+assert(DEFAULT_APP_SETTINGS.privacy_workout_details === 'private', 'Workout details private by default');
+assert(DEFAULT_APP_SETTINGS.privacy_share_contributions === true, 'Share battle contributions enabled by default');
+
+console.log('Testing Weight & Distance Unit Conversions (W1 & W2)...');
+// 100 kg to lbs
+const weightInLbs = convertWeight(100, 'kg', 'lbs');
+assert(weightInLbs === 220.5, `100 kg correctly converts to 220.5 lbs (got ${weightInLbs})`);
+
+// 220.5 lbs back to kg
+const weightBackInKg = convertWeight(220.5, 'lbs', 'kg');
+assert(weightBackInKg === 100, `220.5 lbs correctly converts back to 100 kg (got ${weightBackInKg})`);
+
+// Identity conversion does not alter or round
+const identityLbs = convertWeight(185.25, 'lbs', 'lbs');
+assert(identityLbs === 185.25, 'Same unit conversion preserves value without rounding errors');
+
+// Formatter preserves stored measurement
+const testSet: ExerciseSet = {
+  id: 'set_w1_test',
+  exerciseId: 'ex_bench',
+  setNumber: 1,
+  reps: 8,
+  weight: 100,
+  unit: 'kg',
+  isCompleted: true,
+};
+const formattedForUsUser = formatWeight(testSet.weight, testSet.unit, 'lbs');
+assert(formattedForUsUser.value === 220.5, 'Display value converted to lbs');
+assert(formattedForUsUser.unit === 'lbs', 'Display unit label is lbs');
+assert(formattedForUsUser.displayString === '220.5 lbs', 'Formatted string matches');
+assert(testSet.weight === 100 && testSet.unit === 'kg', 'Raw recorded set retains 100 kg untouched');
+
+// Distance conversion
+const distanceKm = convertDistance(5, 'miles', 'km');
+assert(distanceKm === 8.05, `5 miles converts to 8.05 km (got ${distanceKm})`);
+const distanceMiles = convertDistance(8.05, 'km', 'miles');
+assert(distanceMiles === 5, `8.05 km converts back to 5 miles (got ${distanceMiles})`);
+
+console.log('Testing Training Schedule, Week Boundaries & Recovery (T1 - T6)...');
+// Week starts on calculation
+const wednesdayDate = new Date(2026, 9, 21); // Wednesday, Oct 21, 2026
+const mondayStart = getStartOfWeek(wednesdayDate, 'monday');
+assert(mondayStart.getDay() === 1, `Monday start returns day 1 (Monday), got day ${mondayStart.getDay()}`);
+const sundayStart = getStartOfWeek(wednesdayDate, 'sunday');
+assert(sundayStart.getDay() === 0, `Sunday start returns day 0 (Sunday), got day ${sundayStart.getDay()}`);
+
+// Recovery day eligibility based on preferred days
+const tuesdayDate = new Date(2026, 9, 20); // Tuesday
+const preferredMonWedFri = ['monday', 'wednesday', 'friday'];
+const tuesdayEligibility = isRecoveryDayEligible(tuesdayDate, preferredMonWedFri);
+assert(tuesdayEligibility.eligible === true, 'Tuesday is recognized as eligible recovery day when training Mon/Wed/Fri');
+
+// Scheduled training day is not eligible for rest bonus unless program prescribes rest
+const mondayDate = new Date(2026, 9, 19); // Monday
+const mondayEligibility = isRecoveryDayEligible(mondayDate, preferredMonWedFri);
+assert(mondayEligibility.eligible === false, 'Monday is not an eligible rest day when scheduled as training day');
+
+// Anti-farming check function exists and accepts date string
+const hasClaimedTest = hasAlreadyReceivedRecoveryXp('2026-10-19');
+assert(typeof hasClaimedTest === 'boolean', 'Anti-farming check returns boolean status');
+
+console.log('Testing Notifications & Quiet Hours Logic (N1 - N10)...');
+// Quiet hours spanning midnight (e.g. 22:00 to 08:00)
+const nightTime = new Date(2026, 9, 19, 23, 30); // 23:30
+const morningTime = new Date(2026, 9, 19, 6, 15); // 06:15
+const afternoonTime = new Date(2026, 9, 19, 14, 0); // 14:00
+
+assert(isInQuietHours(nightTime, '22:00', '08:00') === true, '23:30 correctly identified as inside Quiet Hours (22:00-08:00)');
+assert(isInQuietHours(morningTime, '22:00', '08:00') === true, '06:15 correctly identified as inside Quiet Hours (22:00-08:00)');
+assert(isInQuietHours(afternoonTime, '22:00', '08:00') === false, '14:00 correctly identified as outside Quiet Hours (22:00-08:00)');
+
+// Notification permission checks
+const mockSettings: AppSettings = {
+  ...DEFAULT_APP_SETTINGS,
+  notif_achievements: false,
+  notif_boss_alerts: true,
+  notif_quiet_hours_enabled: true,
+  notif_quiet_hours_start: '22:00',
+  notif_quiet_hours_end: '08:00',
+};
+
+const achCheck = shouldDispatchNotification('achievement', mockSettings, afternoonTime);
+assert(achCheck.allowed === false, 'Achievement notification rejected when toggled off in settings');
+
+const bossCheckDay = shouldDispatchNotification('boss', mockSettings, afternoonTime);
+assert(bossCheckDay.allowed === true, 'Boss notification permitted during daytime');
+
+const bossCheckNight = shouldDispatchNotification('boss', mockSettings, nightTime);
+assert(bossCheckNight.allowed === false, 'Boss notification suppressed during Quiet Hours');
+
+const timerCheckNight = shouldDispatchNotification('rest_timer', mockSettings, nightTime);
+assert(timerCheckNight.allowed === true, 'Active in-workout rest timer is never suppressed by Quiet Hours');
+
+console.log('Testing Appearance, Accents & Date/Time Formats (A1 - A10)...');
+// Accent color palette
+assert(ACCENT_COLOR_MAP.cyan.hex === '#00F0FF', 'Cyan accent maps to #00F0FF');
+assert(ACCENT_COLOR_MAP.gold.hex === '#FFB800', 'Gold accent maps to #FFB800');
+assert(ACCENT_COLOR_MAP.crimson.hex === '#FF3366', 'Crimson accent maps to #FF3366');
+assert(ACCENT_COLOR_MAP.emerald.hex === '#00E676', 'Emerald accent maps to #00E676');
+
+// Date formatting
+const sampleDate = new Date(2026, 9, 25, 14, 30); // Oct 25, 2026
+assert(formatDate(sampleDate, 'YYYY-MM-DD') === '2026-10-25', 'YYYY-MM-DD date formatted correctly');
+assert(formatDate(sampleDate, 'MM/DD/YYYY') === '10/25/2026', 'MM/DD/YYYY date formatted correctly');
+assert(formatDate(sampleDate, 'DD/MM/YYYY') === '25/10/2026', 'DD/MM/YYYY date formatted correctly');
+
+// Time formatting
+assert(formatTime(sampleDate, '24h') === '14:30', '24h time formatted as 14:30');
+assert(formatTime(sampleDate, '12h') === '2:30 PM', '12h time formatted as 2:30 PM');
+
+console.log('Testing Diagnostics & Incident Reporting (H3 & H4)...');
+const report = formatDiagnosticReport('Screen freezes when tapping rest timer', 'bug', true);
+assert(report.includes('GRIMIRON TACTICAL INCIDENT REPORT'), 'Report contains incident header');
+assert(report.includes('Screen freezes when tapping rest timer'), 'Report contains user description');
+assert(report.includes('BUG'), 'Report contains category');
+assert(report.includes('Security: No sensitive tokens or secrets collected'), 'Report disclaims token privacy');
+
+console.log('Testing Zero Achievements for Clean/Purged Initiates...');
+const emptyInitiateContext: AchievementEvaluationContext = {
+  userId: 'user_fresh',
+  characterId: 'char_fresh',
+  characterTotalXp: 0,
+  characterLevel: 1,
+  rankTier: 1,
+  factionId: 'adeptus-astartes',
+  completedWorkoutsCount: 0,
+  completedSetsCount: 0,
+  totalReps: 0,
+  totalVolumeKg: 0,
+  distinctExercisesCount: 0,
+  distinctCategoriesCount: 0,
+  distinctEquipmentCount: 0,
+  personalRecordsBrokenCount: 0,
+  maxSingleLiftWeightKg: 0,
+  maxSingleSetVolumeKg: 0,
+  consecutiveTrainingWeeks: 0,
+  longestRestDaysHonored: 0,
+  totalCombatAttacks: 0,
+  totalCombatCrits: 0,
+  totalCombatDamage: 0,
+  soloBossesDefeatedCount: 0,
+  distinctEnemiesDefeatedCount: 0,
+  coopBossesDefeatedCount: 0,
+  coopAttacksCount: 0,
+  squadSharedDamageDealt: 0,
+  distinctFactionsExploredCount: 0,
+  campaignMissionsCompletedCount: 0,
+  customEquipmentCount: 0,
+};
+
+const initiateEval = evaluateAchievements(emptyInitiateContext);
+assert(
+  initiateEval.newlyAwarded.length === 0,
+  `Clean initiate with 0 workouts receives 0 achievements (got ${initiateEval.newlyAwarded.length})`
+);
+
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
 console.log('====================================================');
+
 
 

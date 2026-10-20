@@ -93,13 +93,16 @@ export function evaluateCriterionMetric(
       return context.rankTier || 1;
 
     case 'distinct_factions_tried':
+      if ((context.completedWorkoutsCount || 0) === 0) {
+        return 0;
+      }
       if (criterion.factionId) {
         return context.factionId === criterion.factionId ? 1 : 0;
       }
       return context.distinctFactionsExploredCount || 1;
 
     case 'custom_equipment_count':
-      return 1;
+      return context.customEquipmentCount || 0;
 
     case 'campaign_missions_completed':
       return context.campaignMissionsCompletedCount || 0;

@@ -9,6 +9,7 @@ import {
 import { ExerciseSet, WeightUnit, SetClassification } from '../types/workout';
 import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { triggerHaptic } from '../utils/haptics';
 
 interface SetRowProps {
   set: ExerciseSet;
@@ -58,6 +59,11 @@ export const SetRow: React.FC<SetRowProps> = ({
 
   const toggleCompleted = () => {
     const nextState = !set.isCompleted;
+    if (nextState) {
+      triggerHaptic.medium();
+    } else {
+      triggerHaptic.light();
+    }
     onUpdate({ ...set, isCompleted: nextState });
     onCompletedChange?.(nextState, set.id);
   };

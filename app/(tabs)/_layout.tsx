@@ -3,19 +3,34 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../../src/constants/theme';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { triggerHaptic } from '../../src/utils/haptics';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+
+  // On Android with 3-button navigation, insets.bottom is typically 48-56dp.
+  // On gesture navigation, insets.bottom is typically 16-24dp.
+  // We compute a dynamic bottom padding so tab buttons are never covered by Android system buttons.
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 14 : 8);
+  const tabHeight = 60 + bottomInset;
+
   return (
     <Tabs
+      screenListeners={{
+        tabPress: () => {
+          triggerHaptic.selection();
+        },
+      }}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
           backgroundColor: THEME.colors.surface,
           borderTopColor: THEME.colors.surfaceBorder,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-          paddingTop: 8,
+          height: tabHeight,
+          paddingBottom: bottomInset,
+          paddingTop: 6,
         },
         tabBarActiveTintColor: THEME.colors.primary,
         tabBarInactiveTintColor: THEME.colors.textMuted,

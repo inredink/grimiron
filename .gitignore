@@ -46,3 +46,7 @@ yarn-error.*
 *.db
 *.sqlite*
 .system_generated/
+
+# python
+__pycache__/
+*.pyc

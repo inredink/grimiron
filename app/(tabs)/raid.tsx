@@ -7,16 +7,18 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../src/context/AppContext';
 import { THEME } from '../../src/constants/theme';
 import { getSafeIoniconsName } from '../../src/utils/iconHelper';
 import { RaidSpawnDay } from '../../src/types/warfront';
+import { triggerHaptic } from '../../src/utils/haptics';
 
 export default function RaidScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const {
     weeklyRaid,
     warfrontSettings,
@@ -59,6 +61,7 @@ export default function RaidScreen() {
   );
 
   const handleDeployStrike = () => {
+    triggerHaptic.medium();
     deployWeeklyRaid(weeklyRaid);
     router.push('/(tabs)/workout');
   };
@@ -66,15 +69,23 @@ export default function RaidScreen() {
   const handleClaimSpoils = () => {
     const success = claimWeeklyRaidRewardsAction(weeklyRaid.cycleId);
     if (success) {
+      triggerHaptic.success();
       Alert.alert('Spoils Claimed', `Awarded +500 Glory XP for neutralizing ${boss.name}!`);
     } else {
+      triggerHaptic.warning();
       Alert.alert('Claim Notice', 'Raid spoils could not be claimed or were already redeemed.');
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: Math.max(60, insets.bottom + 40) },
+        ]}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerTitleRow}>

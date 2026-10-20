@@ -1,0 +1,702 @@
+[
+  {
+    "id": "adeptus-astartes",
+    "name": "Adeptus Astartes (Space Marines)",
+    "symbolId": "ultramarines",
+    "status": "default_fallback",
+    "subfactions": [
+      {
+        "id": "ultramarines",
+        "name": "Ultramarines",
+        "symbolId": "ultramarines",
+        "status": "dedicated"
+      },
+      {
+        "id": "blood-angels",
+        "name": "Blood Angels",
+        "symbolId": "blood-angels",
+        "status": "dedicated"
+      },
+      {
+        "id": "space-wolves",
+        "name": "Space Wolves (Vlka Fenryka)",
+        "symbolId": "space-wolves",
+        "status": "dedicated"
+      },
+      {
+        "id": "dark-angels",
+        "name": "Dark Angels",
+        "symbolId": "dark-angels",
+        "status": "dedicated"
+      },
+      {
+        "id": "imperial-fists",
+        "name": "Imperial Fists",
+        "symbolId": "imperial-fists",
+        "status": "dedicated"
+      },
+      {
+        "id": "black-templars",
+        "name": "Black Templars",
+        "symbolId": "black-templars",
+        "status": "dedicated"
+      },
+      {
+        "id": "salamanders",
+        "name": "Salamanders",
+        "symbolId": "salamanders",
+        "status": "dedicated"
+      },
+      {
+        "id": "iron-hands",
+        "name": "Iron Hands",
+        "symbolId": "iron-hands",
+        "status": "dedicated"
+      },
+      {
+        "id": "raven-guard",
+        "name": "Raven Guard",
+        "symbolId": "raven-guard",
+        "status": "dedicated"
+      },
+      {
+        "id": "white-scars",
+        "name": "White Scars",
+        "symbolId": "white-scars",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "astra-militarum",
+    "name": "Astra Militarum (Imperial Guard)",
+    "symbolId": "astra-militarum",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "cadian-shock-troops",
+        "name": "Cadian Shock Troops",
+        "symbolId": "cadian-shock-troops",
+        "status": "dedicated"
+      },
+      {
+        "id": "death-korps-of-krieg",
+        "name": "Death Korps of Krieg",
+        "symbolId": "astra-militarum",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "catachan-jungle-fighters",
+        "name": "Catachan Jungle Fighters",
+        "symbolId": "catachan-jungle-fighters",
+        "status": "dedicated"
+      },
+      {
+        "id": "armageddon-steel-legion",
+        "name": "Armageddon Steel Legion",
+        "symbolId": "armageddon-steel-legion",
+        "status": "dedicated"
+      },
+      {
+        "id": "tanith-first-and-only",
+        "name": "Tanith First and Only",
+        "symbolId": "tanith-first-and-only",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "adeptus-mechanicus",
+    "name": "Adeptus Mechanicus (Tech-Priests)",
+    "symbolId": "adeptus-mechanicus",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "mars",
+        "name": "Mars",
+        "symbolId": "adeptus-mechanicus",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "lucius",
+        "name": "Lucius",
+        "symbolId": "adeptus-mechanicus",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "ryza",
+        "name": "Ryza",
+        "symbolId": "adeptus-mechanicus",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "metalica",
+        "name": "Metalica",
+        "symbolId": "adeptus-mechanicus",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "stygies-viii",
+        "name": "Stygies VIII",
+        "symbolId": "adeptus-mechanicus",
+        "status": "inherited_faction"
+      }
+    ]
+  },
+  {
+    "id": "adepta-sororitas",
+    "name": "Adepta Sororitas (Sisters of Battle)",
+    "symbolId": "adepta-sororitas",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "our-martyred-lady",
+        "name": "Order of Our Martyred Lady",
+        "symbolId": "our-martyred-lady",
+        "status": "dedicated"
+      },
+      {
+        "id": "valorous-heart",
+        "name": "Order of the Valorous Heart",
+        "symbolId": "valorous-heart",
+        "status": "dedicated"
+      },
+      {
+        "id": "bloody-rose",
+        "name": "Order of the Bloody Rose",
+        "symbolId": "bloody-rose",
+        "status": "dedicated"
+      },
+      {
+        "id": "ebon-chalice",
+        "name": "Order of the Ebon Chalice",
+        "symbolId": "ebon-chalice",
+        "status": "dedicated"
+      },
+      {
+        "id": "argent-shroud",
+        "name": "Order of the Argent Shroud",
+        "symbolId": "argent-shroud",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "adeptus-custodes",
+    "name": "Adeptus Custodes",
+    "symbolId": "adeptus-custodes",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "aquilan-shield",
+        "name": "Aquilan Shield",
+        "symbolId": "adeptus-custodes",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "dread-host",
+        "name": "Dread Host",
+        "symbolId": "adeptus-custodes",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "shadowkeepers",
+        "name": "Shadowkeepers",
+        "symbolId": "adeptus-custodes",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "solar-watch",
+        "name": "Solar Watch",
+        "symbolId": "adeptus-custodes",
+        "status": "inherited_faction"
+      }
+    ]
+  },
+  {
+    "id": "grey-knights",
+    "name": "Grey Knights",
+    "symbolId": "grey-knights",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "first-brotherhood",
+        "name": "1st Brotherhood (The Swordbearers)",
+        "symbolId": "grey-knights",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "second-brotherhood",
+        "name": "2nd Brotherhood (The Blades of Victory)",
+        "symbolId": "grey-knights",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "purifier-order",
+        "name": "Order of Purifiers",
+        "symbolId": "grey-knights",
+        "status": "inherited_faction"
+      }
+    ]
+  },
+  {
+    "id": "imperial-knights",
+    "name": "Imperial Knights",
+    "symbolId": "imperial-knights",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "house-terryn",
+        "name": "House Terryn",
+        "symbolId": "imperial-knights",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "house-raven",
+        "name": "House Raven",
+        "symbolId": "imperial-knights",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "house-griffith",
+        "name": "House Griffith",
+        "symbolId": "imperial-knights",
+        "status": "inherited_faction"
+      }
+    ]
+  },
+  {
+    "id": "heretic-astartes",
+    "name": "Heretic Astartes (Chaos Space Marines)",
+    "symbolId": "heretic-astartes",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "black-legion",
+        "name": "Black Legion",
+        "symbolId": "black-legion",
+        "status": "dedicated"
+      },
+      {
+        "id": "iron-warriors",
+        "name": "Iron Warriors",
+        "symbolId": "iron-warriors",
+        "status": "dedicated"
+      },
+      {
+        "id": "night-lords",
+        "name": "Night Lords",
+        "symbolId": "night-lords",
+        "status": "dedicated"
+      },
+      {
+        "id": "word-bearers",
+        "name": "Word Bearers",
+        "symbolId": "word-bearers",
+        "status": "dedicated"
+      },
+      {
+        "id": "alpha-legion",
+        "name": "Alpha Legion",
+        "symbolId": "alpha-legion",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "death-guard",
+    "name": "Death Guard",
+    "symbolId": "death-guard",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "harbingers",
+        "name": "The Harbingers (1st Company)",
+        "symbolId": "death-guard",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "inexorable",
+        "name": "The Inexorable (2nd Company)",
+        "symbolId": "death-guard",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "mortarions-anvil",
+        "name": "Mortarion",
+        "symbolId": "death-guard",
+        "status": "inherited_faction"
+      }
+    ]
+  },
+  {
+    "id": "thousand-sons",
+    "name": "Thousand Sons",
+    "symbolId": "thousand-sons",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "cult-of-magic",
+        "name": "Cult of Magic",
+        "symbolId": "thousand-sons",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "cult-of-time",
+        "name": "Cult of Time",
+        "symbolId": "thousand-sons",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "cult-of-duplicity",
+        "name": "Cult of Duplicity",
+        "symbolId": "thousand-sons",
+        "status": "inherited_faction"
+      }
+    ]
+  },
+  {
+    "id": "world-eaters",
+    "name": "World Eaters",
+    "symbolId": "world-eaters",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "eightbound-coven",
+        "name": "Eightbound Coven",
+        "symbolId": "world-eaters",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "skullsworn",
+        "name": "The Skullsworn",
+        "symbolId": "world-eaters",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "gladitorial-pits",
+        "name": "Gladiators of Nuceria",
+        "symbolId": "world-eaters",
+        "status": "inherited_faction"
+      }
+    ]
+  },
+  {
+    "id": "chaos-daemons",
+    "name": "Chaos Daemons",
+    "symbolId": "chaos-daemons",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "khorne-legion",
+        "name": "Blood Legions of Khorne",
+        "symbolId": "khorne-legion",
+        "status": "dedicated"
+      },
+      {
+        "id": "nurgle-plague-host",
+        "name": "Plague Hosts of Nurgle",
+        "symbolId": "nurgle-plague-host",
+        "status": "dedicated"
+      },
+      {
+        "id": "tzeentch-changehost",
+        "name": "Changehosts of Tzeentch",
+        "symbolId": "tzeentch-changehost",
+        "status": "dedicated"
+      },
+      {
+        "id": "slaanesh-excess",
+        "name": "Hosts of Slaanesh",
+        "symbolId": "slaanesh-excess",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "aeldari",
+    "name": "Aeldari (Craftworlds / Asuryani)",
+    "symbolId": "aeldari",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "ulthwe",
+        "name": "Ulthw\u00e9",
+        "symbolId": "ulthwe",
+        "status": "dedicated"
+      },
+      {
+        "id": "biel-tan",
+        "name": "Biel-Tan",
+        "symbolId": "biel-tan",
+        "status": "dedicated"
+      },
+      {
+        "id": "saim-hann",
+        "name": "Saim-Hann",
+        "symbolId": "saim-hann",
+        "status": "dedicated"
+      },
+      {
+        "id": "iyanden",
+        "name": "Iyanden",
+        "symbolId": "iyanden",
+        "status": "dedicated"
+      },
+      {
+        "id": "alaitoc",
+        "name": "Alaitoc",
+        "symbolId": "alaitoc",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "drukhari",
+    "name": "Drukhari (Dark Eldar)",
+    "symbolId": "kabal-black-heart",
+    "status": "default_fallback",
+    "subfactions": [
+      {
+        "id": "kabal-black-heart",
+        "name": "Kabal of the Black Heart",
+        "symbolId": "kabal-black-heart",
+        "status": "dedicated"
+      },
+      {
+        "id": "cult-of-strife",
+        "name": "Cult of Strife",
+        "symbolId": "cult-of-strife",
+        "status": "dedicated"
+      },
+      {
+        "id": "prophets-of-flesh",
+        "name": "The Prophets of Flesh",
+        "symbolId": "prophets-of-flesh",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "necrons",
+    "name": "Necrons",
+    "symbolId": "necrons",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "szarekhan",
+        "name": "Szarekhan Dynasty",
+        "symbolId": "necrons",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "sautekh",
+        "name": "Sautekh Dynasty",
+        "symbolId": "sautekh",
+        "status": "dedicated"
+      },
+      {
+        "id": "mephrit",
+        "name": "Mephrit Dynasty",
+        "symbolId": "mephrit",
+        "status": "dedicated"
+      },
+      {
+        "id": "novokh",
+        "name": "Novokh Dynasty",
+        "symbolId": "novokh",
+        "status": "dedicated"
+      },
+      {
+        "id": "nihilakh",
+        "name": "Nihilakh Dynasty",
+        "symbolId": "nihilakh",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "orks",
+    "name": "Orks",
+    "symbolId": "orks",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "goffs",
+        "name": "Goffs",
+        "symbolId": "orks",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "bad-moons",
+        "name": "Bad Moons",
+        "symbolId": "bad-moons",
+        "status": "dedicated"
+      },
+      {
+        "id": "evil-sunz",
+        "name": "Evil Sunz",
+        "symbolId": "evil-sunz",
+        "status": "dedicated"
+      },
+      {
+        "id": "deathskulls",
+        "name": "Deathskulls",
+        "symbolId": "deathskulls",
+        "status": "dedicated"
+      },
+      {
+        "id": "snakebites",
+        "name": "Snakebites",
+        "symbolId": "snakebites",
+        "status": "dedicated"
+      },
+      {
+        "id": "blood-axes",
+        "name": "Blood Axes",
+        "symbolId": "blood-axes",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "tau-empire",
+    "name": "T",
+    "symbolId": "tau-sept",
+    "status": "default_fallback",
+    "subfactions": [
+      {
+        "id": "tau-sept",
+        "name": "T",
+        "symbolId": "tau-sept",
+        "status": "dedicated"
+      },
+      {
+        "id": "viorla",
+        "name": "Vior",
+        "symbolId": "viorla",
+        "status": "dedicated"
+      },
+      {
+        "id": "farsight-enclaves",
+        "name": "Farsight Enclaves",
+        "symbolId": "farsight-enclaves",
+        "status": "dedicated"
+      },
+      {
+        "id": "sacea",
+        "name": "Sa",
+        "symbolId": "sacea",
+        "status": "dedicated"
+      },
+      {
+        "id": "borkan",
+        "name": "Bork",
+        "symbolId": "borkan",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "tyranids",
+    "name": "Tyranids (The Great Devourer)",
+    "symbolId": "tyranids",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "hive-fleet-leviathan",
+        "name": "Hive Fleet Leviathan",
+        "symbolId": "tyranids",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "hive-fleet-kraken",
+        "name": "Hive Fleet Kraken",
+        "symbolId": "tyranids",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "hive-fleet-behemoth",
+        "name": "Hive Fleet Behemoth",
+        "symbolId": "tyranids",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "hive-fleet-kronos",
+        "name": "Hive Fleet Kronos",
+        "symbolId": "tyranids",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "hive-fleet-hydra",
+        "name": "Hive Fleet Hydra",
+        "symbolId": "tyranids",
+        "status": "inherited_faction"
+      }
+    ]
+  },
+  {
+    "id": "genestealer-cults",
+    "name": "Genestealer Cults",
+    "symbolId": "genestealer-cults",
+    "status": "dedicated",
+    "subfactions": [
+      {
+        "id": "four-armed-emperor",
+        "name": "Cult of the Four-Armed Emperor",
+        "symbolId": "genestealer-cults",
+        "status": "inherited_faction"
+      },
+      {
+        "id": "hivecult",
+        "name": "The Hivecult",
+        "symbolId": "hivecult",
+        "status": "dedicated"
+      },
+      {
+        "id": "bladed-cog",
+        "name": "The Bladed Cog",
+        "symbolId": "bladed-cog",
+        "status": "dedicated"
+      },
+      {
+        "id": "pauper-princes",
+        "name": "The Pauper Princes",
+        "symbolId": "pauper-princes",
+        "status": "dedicated"
+      }
+    ]
+  },
+  {
+    "id": "leagues-of-votann",
+    "name": "Leagues of Votann (Kin)",
+    "symbolId": "greater-thurian-league",
+    "status": "default_fallback",
+    "subfactions": [
+      {
+        "id": "greater-thurian-league",
+        "name": "Greater Thurian League",
+        "symbolId": "greater-thurian-league",
+        "status": "dedicated"
+      },
+      {
+        "id": "trans-hyperian-alliance",
+        "name": "Trans-Hyperian Alliance",
+        "symbolId": "trans-hyperian-alliance",
+        "status": "dedicated"
+      },
+      {
+        "id": "kronus-hegemony",
+        "name": "Kronus Hegemony",
+        "symbolId": "kronus-hegemony",
+        "status": "dedicated"
+      },
+      {
+        "id": "ymyr-conglomerate",
+        "name": "Ymyr Conglomerate",
+        "symbolId": "ymyr-conglomerate",
+        "status": "dedicated"
+      }
+    ]
+  }
+]

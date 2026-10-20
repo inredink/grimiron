@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "grimiron",
+    "name": "GrimIron",
     "slug": "grimiron",
     "scheme": "grimiron",
     "version": "1.0.0",
@@ -8,23 +8,48 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.grimiron.workoutrpg",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "GrimIron requires access to your photo library to select custom subfaction and character emblems."
+      }
     },
     "android": {
+      "package": "com.grimiron.workoutrpg",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0F1116",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-sqlite",
-      "expo-router"
-    ]
+      "expo-router",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GrimIron requires access to your photos to set custom subfaction insignia."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "520723c1-d293-4a62-ab2d-cf6c888e4897"
+      }
+    }
   }
 }

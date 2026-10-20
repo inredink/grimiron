@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useApp } from '../../src/context/AppContext';
 import { THEME } from '../../src/constants/theme';
@@ -24,6 +24,8 @@ import { CampaignMapModal } from '../../src/components/CampaignMapModal';
 import { WarfrontDailyBoardModal } from '../../src/components/WarfrontDailyBoardModal';
 import { WeeklyRaidModal } from '../../src/components/WeeklyRaidModal';
 import { CampaignAcademyModal } from '../../src/components/CampaignAcademyModal';
+import { CustomSubfactionManagerModal } from '../../src/components/CustomSubfactionManagerModal';
+import { TacticalWalkthroughModal } from '../../src/components/TacticalWalkthroughModal';
 import { ScheduledProgramSession } from '../../src/types/program';
 import { CampaignNode } from '../../src/types/campaign';
 import { CampaignChapter } from '../../src/types/campaignAcademy';
@@ -32,9 +34,11 @@ import { getMissionById } from '../../src/content/missions/catalog';
 import { MissionObjectiveDefinition } from '../../src/types/mission';
 import { Ionicons } from '@expo/vector-icons';
 import { getRankForXp } from '../../src/content/warhammer40k';
+import { triggerHaptic } from '../../src/utils/haptics';
 
 export default function CharacterScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const {
     character,
     progression,
@@ -73,7 +77,23 @@ export default function CharacterScreen() {
     claimAcademyPhaseReport,
     claimAcademyFinalDossier,
     deployChapterBossBattle,
+    customSubfactions,
+    settings,
+    updateSetting,
+    updateCharacterNameAction,
+    accountInfo,
+    signInCloudAccount,
+    signUpCloudAccount,
+    resendVerificationEmailAction,
   } = useApp();
+
+  const [isWalkthroughModalVisible, setIsWalkthroughModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (settings && settings.onboarding_completed === false) {
+      setIsWalkthroughModalVisible(true);
+    }
+  }, [settings?.onboarding_completed]);
 
   const [isCoopModalVisible, setIsCoopModalVisible] = useState(false);
   const [isAchievementModalVisible, setIsAchievementModalVisible] = useState(false);
@@ -83,6 +103,7 @@ export default function CharacterScreen() {
   const [isDailyBoardModalVisible, setIsDailyBoardModalVisible] = useState(false);
   const [isWeeklyRaidModalVisible, setIsWeeklyRaidModalVisible] = useState(false);
   const [isAcademyModalVisible, setIsAcademyModalVisible] = useState(false);
+  const [isCustomSubfactionModalVisible, setIsCustomSubfactionModalVisible] = useState(false);
 
   const { currentRank } = getRankForXp(currentFaction, character.totalXp);
 
@@ -134,7 +155,10 @@ export default function CharacterScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(60, insets.bottom + 40) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Terminal Header Bar */}
@@ -143,9 +167,22 @@ export default function CharacterScreen() {
             <View style={styles.statusDot} />
             <Text style={styles.terminalStatusText}>TACTICAL TERMINAL // ONLINE</Text>
           </View>
-          <Text style={styles.terminalDate}>
-            M41.{new Date().getFullYear()}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.terminalDate, { marginRight: 10 }]}>
+              M41.{new Date().getFullYear()}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                triggerHaptic.selection();
+                router.push('/settings');
+              }}
+              style={styles.settingsHeaderButton}
+              accessibilityLabel="Open Settings"
+              accessibilityRole="button"
+            >
+              <Ionicons name="settings-sharp" size={17} color={THEME.colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Character Dossier Hero Card */}
@@ -172,6 +209,13 @@ export default function CharacterScreen() {
                   variant="primary"
                   style={{ marginLeft: 6 }}
                 />
+                {(currentSubfaction as any)?.isCustom && (
+                  <Badge
+                    label="CUSTOM SUBFACTION"
+                    variant="secondary"
+                    style={{ marginLeft: 6 }}
+                  />
+                )}
               </View>
 
               <Text style={styles.rankTitle} numberOfLines={2}>
@@ -188,11 +232,17 @@ export default function CharacterScreen() {
                 </Text>
               )}
 
-              {currentSubfaction?.motto && (
-                <Text style={styles.mottoText} numberOfLines={1}>
-                  "{currentSubfaction.motto}"
+              {Boolean((currentSubfaction as any)?.homeworld?.trim()) ? (
+                <Text style={styles.homeworldDossierText} numberOfLines={1}>
+                  Base: {(currentSubfaction as any).homeworld}
                 </Text>
-              )}
+              ) : null}
+
+              {Boolean(currentSubfaction?.motto?.trim()) ? (
+                <Text style={styles.mottoText} numberOfLines={1}>
+                  "{currentSubfaction?.motto}"
+                </Text>
+              ) : null}
             </View>
           </View>
 
@@ -518,6 +568,26 @@ export default function CharacterScreen() {
           />
 
           <TerminalButton
+            title={
+              (currentSubfaction as any)?.isCustom
+                ? `CUSTOM SUBFACTION // ${currentSubfaction?.name?.toUpperCase() || 'CUSTOM'}`
+                : customSubfactions.length > 0
+                ? `MY SUBFACTIONS (${customSubfactions.length} CREATED)`
+                : 'FOUND CUSTOM SUBFACTION'
+            }
+            onPress={() => setIsCustomSubfactionModalVisible(true)}
+            variant={(currentSubfaction as any)?.isCustom ? 'secondary' : 'outline'}
+            size="md"
+            icon={
+              <Ionicons
+                name="flag-outline"
+                size={18}
+                color={THEME.colors.primary}
+              />
+            }
+          />
+
+          <TerminalButton
             title="BROWSE FACTION CODEX"
             onPress={() => router.push('/(tabs)/factions')}
             variant="outline"
@@ -615,12 +685,40 @@ export default function CharacterScreen() {
         onSelectActiveRaid={setActiveCoopRaid}
       />
 
+      {/* First-Time Tactical Walkthrough & Account Directives Modal */}
+      <TacticalWalkthroughModal
+        visible={isWalkthroughModalVisible}
+        onClose={() => setIsWalkthroughModalVisible(false)}
+        currentCallsign={character.characterName}
+        onSaveCallsign={updateCharacterNameAction}
+        onCompleteOnboarding={() => updateSetting('onboarding_completed', true)}
+        onOpenCloudAuth={() => {
+          setIsWalkthroughModalVisible(false);
+          router.push({
+            pathname: '/settings',
+            params: { category: 'privacy', openAuth: 'true', returnWalkthrough: 'true' },
+          });
+        }}
+        isCloudAuthenticated={accountInfo?.isCloudAuthenticated || false}
+        cloudEmail={accountInfo?.email}
+        onSignUpCloud={signUpCloudAccount}
+        onSignInCloud={signInCloudAccount}
+        onResendVerification={resendVerificationEmailAction}
+      />
+
       {/* Comprehensive Crusade Achievement Hub */}
       <AchievementHubModal
         visible={isAchievementModalVisible}
         onClose={() => setIsAchievementModalVisible(false)}
         userId="user_main"
         characterId="char_main"
+      />
+
+      {/* Custom Subfaction Manager Modal */}
+      <CustomSubfactionManagerModal
+        visible={isCustomSubfactionModalVisible}
+        onClose={() => setIsCustomSubfactionModalVisible(false)}
+        defaultParentFactionId={currentFaction.id}
       />
     </SafeAreaView>
   );
@@ -664,6 +762,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  settingsHeaderButton: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 240, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.25)',
+  },
   heroCard: {
     marginTop: 0,
   },
@@ -703,6 +808,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontStyle: 'italic',
     marginTop: 3,
+  },
+  homeworldDossierText: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
   },
   progressSection: {
     marginTop: THEME.spacing.md,

@@ -196,7 +196,7 @@ export const warhammer40kFactions: Faction[] = [
     subfactions: [
       { id: 'harbingers', factionId: 'death-guard', name: 'The Harbingers (1st Company)', lore: 'Commanded by Typhus; vectors of the Destroyer Plague spreading droning insect swarms.', colorScheme: { primary: '#689F38', secondary: '#795548', accent: '#D7CCC8' } },
       { id: 'inexorable', factionId: 'death-guard', name: 'The Inexorable (2nd Company)', lore: 'Mechanized plague-engines grinding enemy forces beneath rusted treads.', colorScheme: { primary: '#558B2F', secondary: '#424242', accent: '#FFB300' } },
-      { id: 'mortarions-anvil', factionId: 'death-guard', name: 'Mortarion\'s Anvil (3rd Company)', lore: 'Masters of immovable defense and horrific toxic trench warfare.', colorScheme: { primary: '#33691E', secondary: '#616161', accent: '#C0CA33' } },
+      { id: 'mortarions-anvil', factionId: 'death-guard', name: "Mortarion's Anvil (3rd Company)", lore: 'Masters of immovable defense and horrific toxic trench warfare.', colorScheme: { primary: '#33691E', secondary: '#616161', accent: '#C0CA33' } },
     ],
   },
   {
@@ -334,7 +334,7 @@ export const warhammer40kFactions: Faction[] = [
     id: 'tau-empire',
     universeId: 'warhammer40k',
     allegiance: 'xenos',
-    name: 'T\'au Empire',
+    name: "T'au Empire",
     shortDescription: 'High-tech egalitarian expansionists fighting for "The Greater Good" (Tau\'va).',
     lore: 'A young, rapidly advancing civilization. Structured into five castes (Fire, Earth, Water, Air, Ethereal), they field deadly long-range battlesuits and railguns, offering other races absorption or extinction.',
     iconName: 'locate',
@@ -342,11 +342,11 @@ export const warhammer40kFactions: Faction[] = [
     loreCriteriaNote: 'Presents the prominent Sept Worlds and the renegade Farsight Enclaves.',
     ranks: tauEmpireRanks,
     subfactions: [
-      { id: 'tau-sept', factionId: 'tau-empire', name: 'T\'au Sept', lore: 'The ancestral homeworld; ideological bastion of traditional discipline and coordinated fire.', colorScheme: { primary: '#C5A059', secondary: '#FAFAFA', accent: '#212121' }, motto: 'For the Greater Good!' },
-      { id: 'viorla', factionId: 'tau-empire', name: 'Vior\'la Sept', lore: 'Aggressive warriors trained on a high-gravity volcanic world, known for mobile rapid fire.', colorScheme: { primary: '#ECEFF1', secondary: '#C62828', accent: '#212121' } },
+      { id: 'tau-sept', factionId: 'tau-empire', name: "T'au Sept", lore: 'The ancestral homeworld; ideological bastion of traditional discipline and coordinated fire.', colorScheme: { primary: '#C5A059', secondary: '#FAFAFA', accent: '#212121' }, motto: 'For the Greater Good!' },
+      { id: 'viorla', factionId: 'tau-empire', name: "Vior'la Sept", lore: 'Aggressive warriors trained on a high-gravity volcanic world, known for mobile rapid fire.', colorScheme: { primary: '#ECEFF1', secondary: '#C62828', accent: '#212121' } },
       { id: 'farsight-enclaves', factionId: 'tau-empire', name: 'Farsight Enclaves', lore: 'Breakaway warriors led by Commander Farsight, rejecting the Ethereals and fighting up close.', colorScheme: { primary: '#B71C1C', secondary: '#455A64', accent: '#CFD8DC' } },
-      { id: 'sacea', factionId: 'tau-empire', name: 'Sa\'cea Sept', lore: 'Disciplined marksmen renown for cold precision and night-warfare blue camouflage.', colorScheme: { primary: '#455A64', secondary: '#FF8F00', accent: '#212121' } },
-      { id: 'borkan', factionId: 'tau-empire', name: 'Bork\'an Sept', lore: 'Scientific center producing extreme-range plasma rifles and prototype weapons systems.', colorScheme: { primary: '#4DB6AC', secondary: '#FAFAFA', accent: '#212121' } },
+      { id: 'sacea', factionId: 'tau-empire', name: "Sa'cea Sept", lore: 'Disciplined marksmen renown for cold precision and night-warfare blue camouflage.', colorScheme: { primary: '#455A64', secondary: '#FF8F00', accent: '#212121' } },
+      { id: 'borkan', factionId: 'tau-empire', name: "Bork'an Sept", lore: 'Scientific center producing extreme-range plasma rifles and prototype weapons systems.', colorScheme: { primary: '#4DB6AC', secondary: '#FAFAFA', accent: '#212121' } },
     ],
   },
   {

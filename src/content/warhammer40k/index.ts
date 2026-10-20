@@ -1,5 +1,6 @@
 import { UniverseCatalog, Faction, Subfaction, RankTier } from '../types';
 import { warhammer40kFactions } from './factions';
+import { CustomSubfactionRecord, toSubfactionView } from '../../types/customSubfaction';
 
 export const warhammer40kUniverse: UniverseCatalog = {
   id: 'warhammer40k',
@@ -14,7 +15,18 @@ export function getFactionById(factionId: string): Faction | undefined {
   return warhammer40kFactions.find((f) => f.id === factionId);
 }
 
-export function getSubfactionById(factionId: string, subfactionId?: string): Subfaction | undefined {
+export function getSubfactionById(
+  factionId: string,
+  subfactionId?: string,
+  customSubfactions?: CustomSubfactionRecord[]
+): Subfaction | undefined {
+  if (subfactionId && customSubfactions) {
+    const custom = customSubfactions.find((c) => c.id === subfactionId);
+    if (custom) {
+      return toSubfactionView(custom);
+    }
+  }
+
   const faction = getFactionById(factionId);
   if (!faction) return undefined;
   if (!subfactionId) return faction.subfactions[0];

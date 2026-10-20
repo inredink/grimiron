@@ -10,6 +10,7 @@ import { THEME } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { ProgressBar } from './ProgressBar';
 import { TerminalButton } from './TerminalButton';
+import { triggerHaptic } from '../utils/haptics';
 
 interface RestTimerProps {
   initialSeconds?: number;
@@ -41,6 +42,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
           if (prev <= 1) {
             setIsRunning(false);
             if (timerRef.current) clearInterval(timerRef.current);
+            triggerHaptic.warning();
             onTimerComplete?.();
             return 0;
           }

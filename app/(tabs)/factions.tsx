@@ -7,8 +7,9 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../src/context/AppContext';
 import { THEME } from '../../src/constants/theme';
 import { SciFiCard } from '../../src/components/SciFiCard';
@@ -17,17 +18,24 @@ import { TerminalButton } from '../../src/components/TerminalButton';
 import { warhammer40kUniverse } from '../../src/content/warhammer40k';
 import { Faction, Subfaction } from '../../src/content/types';
 import { Ionicons } from '@expo/vector-icons';
+import { triggerHaptic } from '../../src/utils/haptics';
+import { getFactionSymbol } from '../../src/assets/factionSymbols';
+import { CustomSubfactionManagerModal } from '../../src/components/CustomSubfactionManagerModal';
+import { toSubfactionView } from '../../src/types/customSubfaction';
 
 type AllegianceFilter = 'all' | 'imperium' | 'chaos' | 'xenos';
 
 export default function FactionsScreen() {
-  const { character, changeFaction, refreshData } = useApp();
+  const insets = useSafeAreaInsets();
+  const { character, changeFaction, refreshData, customSubfactions } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<AllegianceFilter>('all');
   const [expandedFactionId, setExpandedFactionId] = useState<string | null>(character.factionId);
   const [selectedSubfactionByFaction, setSelectedSubfactionByFaction] = useState<Record<string, string>>({
     [character.factionId]: character.subfactionId || '',
   });
+  const [isCustomManagerVisible, setIsCustomManagerVisible] = useState(false);
+  const [customModalParentFactionId, setCustomModalParentFactionId] = useState<string | undefined>(undefined);
 
   const filteredFactions = useMemo(() => {
     return warhammer40kUniverse.factions.filter((faction) => {
@@ -52,6 +60,7 @@ export default function FactionsScreen() {
   }, [searchQuery, selectedFilter]);
 
   const handleSelectSubfaction = (factionId: string, subfactionId: string) => {
+    triggerHaptic.selection();
     setSelectedSubfactionByFaction((prev) => ({
       ...prev,
       [factionId]: subfactionId,
@@ -70,6 +79,7 @@ export default function FactionsScreen() {
         {
           text: 'Pledge Allegiance',
           onPress: () => {
+            triggerHaptic.success();
             changeFaction(faction.id, chosenSubfactionId);
             refreshData();
           },
@@ -79,13 +89,17 @@ export default function FactionsScreen() {
   };
 
   const toggleExpand = (id: string) => {
+    triggerHaptic.light();
     setExpandedFactionId((prev) => (prev === id ? null : id));
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(60, insets.bottom + 40) },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -126,7 +140,10 @@ export default function FactionsScreen() {
                   styles.filterPill,
                   isActive && styles.filterPillActive,
                 ]}
-                onPress={() => setSelectedFilter(filter)}
+                onPress={() => {
+                  triggerHaptic.selection();
+                  setSelectedFilter(filter);
+                }}
                 activeOpacity={0.7}
               >
                 <Text
@@ -142,6 +159,47 @@ export default function FactionsScreen() {
           })}
         </View>
 
+        {/* Custom Subfactions Hub Banner */}
+        <TouchableOpacity
+          style={styles.customSubfactionBanner}
+          onPress={() => {
+            triggerHaptic.selection();
+            setCustomModalParentFactionId(undefined);
+            setIsCustomManagerVisible(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <View style={styles.customBannerIconCircle}>
+            <Ionicons name="flag" size={18} color={THEME.colors.primary} />
+          </View>
+          <View style={styles.customBannerMiddle}>
+            <View style={styles.customBannerHeaderRow}>
+              <Text style={styles.customBannerTitle}>MY CUSTOM SUBFACTIONS</Text>
+              {customSubfactions.length > 0 ? (
+                <Badge
+                  label={`${customSubfactions.length} ACTIVE`}
+                  variant="secondary"
+                  style={{ marginLeft: 6 }}
+                />
+              ) : (
+                <Badge
+                  label="CREATE"
+                  variant="primary"
+                  style={{ marginLeft: 6 }}
+                />
+              )}
+            </View>
+            <Text style={styles.customBannerSubtitle} numberOfLines={1}>
+              {customSubfactions.length > 0
+                ? `${customSubfactions.length} player force${customSubfactions.length === 1 ? '' : 's'} established • Tap to manage or edit`
+                : 'Found your own Chapter, Warband, Craftworld, or Sept'}
+            </Text>
+          </View>
+          <View style={styles.customBannerChevronBox}>
+            <Ionicons name="chevron-forward" size={18} color={THEME.colors.primary} />
+          </View>
+        </TouchableOpacity>
+
         {/* Catalog Count Banner */}
         <Text style={styles.resultCountText}>
           Displaying {filteredFactions.length} of {warhammer40kUniverse.factions.length} Major 40K Armies
@@ -155,6 +213,8 @@ export default function FactionsScreen() {
             selectedSubfactionByFaction[faction.id] ||
             (isCurrentAllegiance ? character.subfactionId : faction.subfactions[0]?.id);
 
+          const factionSymbol = getFactionSymbol(faction.id, undefined, 'white');
+
           return (
             <SciFiCard
               key={faction.id}
@@ -167,19 +227,30 @@ export default function FactionsScreen() {
                 onPress={() => toggleExpand(faction.id)}
                 style={styles.factionHeader}
               >
-                <View style={styles.factionTitleBlock}>
-                  <View style={styles.badgeRow}>
-                    <Badge label={faction.allegiance} variant={faction.allegiance as any} />
-                    {isCurrentAllegiance && (
-                      <Badge
-                        label="ACTIVE ALLEGIANCE"
-                        variant="primary"
-                        style={{ marginLeft: 6 }}
+                <View style={styles.factionHeaderLeft}>
+                  {factionSymbol && (
+                    <View style={[styles.factionIconBox, { borderColor: faction.themeColor || THEME.colors.primary }]}>
+                      <Image
+                        source={factionSymbol}
+                        style={styles.factionIconImage}
+                        resizeMode="contain"
                       />
-                    )}
+                    </View>
+                  )}
+                  <View style={styles.factionTitleBlock}>
+                    <View style={styles.badgeRow}>
+                      <Badge label={faction.allegiance} variant={faction.allegiance as any} />
+                      {isCurrentAllegiance && (
+                        <Badge
+                          label="ACTIVE ALLEGIANCE"
+                          variant="primary"
+                          style={{ marginLeft: 6 }}
+                        />
+                      )}
+                    </View>
+                    <Text style={styles.factionName}>{faction.name}</Text>
+                    <Text style={styles.factionDesc}>{faction.shortDescription}</Text>
                   </View>
-                  <Text style={styles.factionName}>{faction.name}</Text>
-                  <Text style={styles.factionDesc}>{faction.shortDescription}</Text>
                 </View>
 
                 <Ionicons
@@ -206,59 +277,153 @@ export default function FactionsScreen() {
                   )}
 
                   {/* Subfactions Section */}
-                  <Text style={styles.sectionHeader}>
-                    SUBFACTIONS ({faction.subfactions.length})
-                  </Text>
-                  <View style={styles.subfactionsGrid}>
-                    {faction.subfactions.map((subfaction) => {
-                      const isSelected = activeSubfactionId === subfaction.id;
-                      return (
-                        <TouchableOpacity
-                          key={subfaction.id}
-                          style={[
-                            styles.subfactionChip,
-                            isSelected && styles.subfactionChipSelected,
-                          ]}
-                          onPress={() => handleSelectSubfaction(faction.id, subfaction.id)}
-                          activeOpacity={0.7}
-                        >
-                          <View
-                            style={[
-                              styles.subfactionDot,
-                              { backgroundColor: subfaction.colorScheme.primary },
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.subfactionChipText,
-                              isSelected && styles.subfactionChipTextSelected,
-                            ]}
-                          >
-                            {subfaction.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                  {(() => {
+                    const customForFaction = customSubfactions
+                      .filter((cs) => cs.parentFactionId === faction.id && !cs.isArchived)
+                      .map(toSubfactionView);
+                    const allSubfactions = [...faction.subfactions, ...customForFaction];
 
-                  {/* Selected Subfaction Motto / Lore */}
-                  {activeSubfactionId && (
-                    <View style={styles.selectedSubfactionCard}>
-                      {(() => {
-                        const sub = faction.subfactions.find((s) => s.id === activeSubfactionId);
-                        if (!sub) return null;
-                        return (
-                          <>
-                            <Text style={styles.selectedSubTitle}>{sub.name}</Text>
-                            <Text style={styles.selectedSubLore}>{sub.lore}</Text>
-                            {sub.motto && (
-                              <Text style={styles.selectedSubMotto}>"{sub.motto}"</Text>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </View>
-                  )}
+                    return (
+                      <>
+                        <View style={styles.subfactionHeaderRow}>
+                          <Text style={styles.sectionHeader}>
+                            SUBFACTIONS ({allSubfactions.length})
+                          </Text>
+                          {customForFaction.length > 0 && (
+                            <Badge
+                              label={`${customForFaction.length} CUSTOM`}
+                              variant="secondary"
+                              style={{ marginBottom: 8 }}
+                            />
+                          )}
+                        </View>
+                        <View style={styles.subfactionsGrid}>
+                          {allSubfactions.map((subfaction) => {
+                            const isSelected = activeSubfactionId === subfaction.id;
+                            const isCustom = (subfaction as any).isCustom;
+                            const customIconUri = (subfaction as any).customIconUri;
+                            const subSymbol = getFactionSymbol(faction.id, subfaction.id, 'white');
+
+                            return (
+                              <TouchableOpacity
+                                key={subfaction.id}
+                                style={[
+                                  styles.subfactionChip,
+                                  isCustom && styles.subfactionChipCustom,
+                                  isSelected && styles.subfactionChipSelected,
+                                ]}
+                                onPress={() => handleSelectSubfaction(faction.id, subfaction.id)}
+                                activeOpacity={0.7}
+                              >
+                                {customIconUri ? (
+                                  <Image
+                                    source={{ uri: customIconUri }}
+                                    style={[
+                                      styles.subfactionChipIcon,
+                                      { borderRadius: 2 },
+                                    ]}
+                                    resizeMode={(subfaction as any).iconCropMode || 'contain'}
+                                  />
+                                ) : subSymbol ? (
+                                  <Image
+                                    source={subSymbol}
+                                    style={[
+                                      styles.subfactionChipIcon,
+                                      isSelected && { tintColor: '#0A0E17' },
+                                    ]}
+                                    resizeMode="contain"
+                                  />
+                                ) : (
+                                  <View
+                                    style={[
+                                      styles.subfactionDot,
+                                      { backgroundColor: subfaction.colorScheme.primary },
+                                    ]}
+                                  />
+                                )}
+                                <Text
+                                  style={[
+                                    styles.subfactionChipText,
+                                    isSelected && styles.subfactionChipTextSelected,
+                                  ]}
+                                >
+                                  {subfaction.name}
+                                  {isCustom ? ' ★' : ''}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+
+                          {/* Quick Add Custom Subfaction Button */}
+                          <TouchableOpacity
+                            style={styles.addSubfactionChip}
+                            onPress={() => {
+                              triggerHaptic.selection();
+                              setCustomModalParentFactionId(faction.id);
+                              setIsCustomManagerVisible(true);
+                            }}
+                            activeOpacity={0.75}
+                          >
+                            <Ionicons name="add" size={14} color={THEME.colors.primary} />
+                            <Text style={styles.addSubfactionChipText}>FOUND NEW</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Selected Subfaction Motto / Lore */}
+                        {activeSubfactionId && (
+                          <View style={styles.selectedSubfactionCard}>
+                            {(() => {
+                              const sub = allSubfactions.find((s) => s.id === activeSubfactionId);
+                              if (!sub) return null;
+                              const isCustom = (sub as any).isCustom;
+                              const customIconUri = (sub as any).customIconUri;
+                              const subSymbol = getFactionSymbol(faction.id, sub.id, 'white');
+
+                              return (
+                                <View style={styles.selectedSubfactionRow}>
+                                  {customIconUri ? (
+                                    <View style={[styles.selectedSubfactionIconBox, { borderColor: sub.colorScheme.primary }]}>
+                                      <Image
+                                        source={{ uri: customIconUri }}
+                                        style={styles.selectedSubfactionIcon}
+                                        resizeMode={(sub as any).iconCropMode || 'contain'}
+                                      />
+                                    </View>
+                                  ) : subSymbol ? (
+                                    <View style={[styles.selectedSubfactionIconBox, { borderColor: sub.colorScheme.primary }]}>
+                                      <Image
+                                        source={subSymbol}
+                                        style={styles.selectedSubfactionIcon}
+                                        resizeMode="contain"
+                                      />
+                                    </View>
+                                  ) : null}
+
+                                  <View style={{ flex: 1, marginLeft: (customIconUri || subSymbol) ? 12 : 0 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                      <Text style={styles.selectedSubTitle}>{sub.name}</Text>
+                                      {isCustom ? (
+                                        <Badge label="CUSTOM" variant="secondary" style={{ marginLeft: 6 }} />
+                                      ) : null}
+                                    </View>
+                                    {(sub as any).homeworld ? (
+                                      <Text style={styles.selectedSubHomeworld}>
+                                        Strategic Base: {(sub as any).homeworld}
+                                      </Text>
+                                    ) : null}
+                                    <Text style={styles.selectedSubLore}>{sub.lore}</Text>
+                                    {sub.motto ? (
+                                      <Text style={styles.selectedSubMotto}>"{sub.motto}"</Text>
+                                    ) : null}
+                                  </View>
+                                </View>
+                              );
+                            })()}
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Rank Ladder Table */}
                   <Text style={styles.sectionHeader}>FACTION RANK LADDER</Text>
@@ -292,6 +457,19 @@ export default function FactionsScreen() {
                       icon={<Ionicons name="shield-checkmark" size={16} color="#0A0E17" />}
                       style={{ marginTop: 16 }}
                     />
+                  ) : activeSubfactionId !== character.subfactionId ? (
+                    <TerminalButton
+                      title="UPDATE SUBFACTION ALLEGIANCE"
+                      onPress={() => {
+                        triggerHaptic.success();
+                        changeFaction(faction.id, activeSubfactionId);
+                        refreshData();
+                      }}
+                      variant="primary"
+                      size="md"
+                      icon={<Ionicons name="shield-checkmark" size={16} color="#0A0E17" />}
+                      style={{ marginTop: 16 }}
+                    />
                   ) : (
                     <View style={styles.alreadyPledgedNotice}>
                       <Ionicons
@@ -300,7 +478,7 @@ export default function FactionsScreen() {
                         color={THEME.colors.primary}
                       />
                       <Text style={styles.alreadyPledgedText}>
-                        YOU ARE CURRENTLY PLEDGED TO THIS FACTION
+                        YOU ARE CURRENTLY PLEDGED TO THIS FACTION & SUBFACTION
                       </Text>
                     </View>
                   )}
@@ -310,6 +488,13 @@ export default function FactionsScreen() {
           );
         })}
       </ScrollView>
+
+      {/* Custom Subfaction Manager Modal */}
+      <CustomSubfactionManagerModal
+        visible={isCustomManagerVisible}
+        onClose={() => setIsCustomManagerVisible(false)}
+        defaultParentFactionId={customModalParentFactionId}
+      />
     </SafeAreaView>
   );
 }
@@ -400,9 +585,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  factionHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  factionIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: THEME.borderRadius.sm,
+    backgroundColor: '#0A0E17',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    padding: 4,
+  },
+  factionIconImage: {
+    width: '100%',
+    height: '100%',
+  },
   factionTitleBlock: {
     flex: 1,
-    marginRight: 8,
   },
   badgeRow: {
     flexDirection: 'row',
@@ -479,6 +684,11 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.primary,
     backgroundColor: '#262012',
   },
+  subfactionChipIcon: {
+    width: 14,
+    height: 14,
+    marginRight: 6,
+  },
   subfactionDot: {
     width: 8,
     height: 8,
@@ -501,6 +711,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.colors.surfaceBorder,
     marginBottom: 10,
+  },
+  selectedSubfactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedSubfactionIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: THEME.borderRadius.sm,
+    backgroundColor: '#0A0E17',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+  },
+  selectedSubfactionIcon: {
+    width: '100%',
+    height: '100%',
   },
   selectedSubTitle: {
     color: THEME.colors.textBright,
@@ -589,5 +817,88 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.8,
     marginLeft: 6,
+  },
+  customSubfactionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surfaceRaised,
+    borderWidth: 1.5,
+    borderColor: THEME.colors.primary,
+    borderRadius: THEME.borderRadius.md,
+    padding: 12,
+    marginBottom: 12,
+  },
+  customBannerIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#0A0E17',
+    borderWidth: 1.5,
+    borderColor: THEME.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  customBannerMiddle: {
+    flex: 1,
+    marginHorizontal: 12,
+    justifyContent: 'center',
+  },
+  customBannerHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  customBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: THEME.colors.textBright,
+    letterSpacing: 1,
+  },
+  customBannerSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 2,
+  },
+  customBannerChevronBox: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  subfactionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  subfactionChipCustom: {
+    borderStyle: 'dashed',
+    borderColor: THEME.colors.primary,
+  },
+  addSubfactionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0A0E17',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: THEME.borderRadius.sm,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: THEME.colors.primary,
+    marginRight: 6,
+    marginBottom: 6,
+  },
+  addSubfactionChipText: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  selectedSubHomeworld: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 4,
   },
 });

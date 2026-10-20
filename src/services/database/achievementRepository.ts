@@ -243,6 +243,29 @@ export function dismissNotification(notificationId: string): void {
   );
 }
 
+/**
+ * Clears any erroneously awarded achievements and notifications for an initiate who has
+ * never completed any workouts or combat battles.
+ */
+export function clearUnearnedInitiateAchievements(): void {
+  const db = getDatabase();
+  try {
+    const woRow = db.getFirstSync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM workout_sessions WHERE is_completed = 1'
+    );
+    const combatRow = db.getFirstSync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM combat_encounters WHERE is_defeated = 1'
+    );
+    if ((woRow?.count || 0) === 0 && (combatRow?.count || 0) === 0) {
+      db.runSync('DELETE FROM achievement_awards;');
+      db.runSync('DELETE FROM achievement_progress;');
+      db.runSync("DELETE FROM pending_notifications WHERE type = 'achievement';");
+    }
+  } catch (err) {
+    console.warn('Initiate achievement check skipped:', err);
+  }
+}
+
 function mapAwardRow(row: AchievementAwardRow): AchievementAward {
   return {
     id: row.id,

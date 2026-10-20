@@ -1,0 +1,31 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://romepogxlqhjocskofpj.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvbWVwb2d4bHFoam9jc2tvZnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyOTgzNTMsImV4cCI6MjEwNzg3NDM1M30.Pts1LUdlyvQF7NZA4xGsEszB4hOHi6HslOOYY_4X83c"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://romepogxlqhjocskofpj.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvbWVwb2d4bHFoam9jc2tvZnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyOTgzNTMsImV4cCI6MjEwNzg3NDM1M30.Pts1LUdlyvQF7NZA4xGsEszB4hOHi6HslOOYY_4X83c"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

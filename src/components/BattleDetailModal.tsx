@@ -128,20 +128,20 @@ export const BattleDetailModal: React.FC<BattleDetailModalProps> = ({
                   {snapshot?.enemyDescription || battle.missionTitle}
                 </Text>
                 <View style={styles.tagRow}>
-                  {battle.enemyFaction && (
+                  {battle.enemyFaction ? (
                     <Badge
                       label={battle.enemyFaction.toUpperCase()}
                       variant="neutral"
                       style={{ marginRight: 6 }}
                     />
-                  )}
-                  {battle.enemyDifficulty && (
+                  ) : null}
+                  {battle.enemyDifficulty ? (
                     <Badge
                       label={battle.enemyDifficulty.toUpperCase()}
                       variant={getDifficultyBadgeVariant(battle.enemyDifficulty)}
                       style={{ marginRight: 6 }}
                     />
-                  )}
+                  ) : null}
                   <Badge
                     label={battle.encounterMode.toUpperCase()}
                     variant="primary"

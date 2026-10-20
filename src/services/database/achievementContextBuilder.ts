@@ -1,5 +1,6 @@
 import { AchievementEvaluationContext } from '../../types/achievements';
 import { ACHIEVEMENT_CATALOG } from '../../content/achievements/catalog';
+import { EXERCISE_CATALOG } from '../../content/exercises/catalog';
 import {
   awardAchievement,
   isAchievementAwarded,
@@ -75,16 +76,44 @@ export function buildEvaluationContextFromDb(
   );
   const distinctExercisesCount = exRow?.count || 0;
 
-  // 5. Distinct categories and equipment
-  const catRow = db.getFirstSync<{ count: number }>(
-    'SELECT COUNT(DISTINCT category) as count FROM custom_exercises'
-  );
-  const distinctCategoriesCount = Math.max(1, catRow?.count || 3);
+  // 5. Distinct categories and equipment from completed sessions or custom entries
+  const distinctCategories = new Set<string>();
+  const distinctEquipment = new Set<string>();
 
-  const equipRow = db.getFirstSync<{ count: number }>(
-    'SELECT COUNT(DISTINCT equipment) as count FROM custom_exercises'
+  if (completedWorkoutsCount > 0) {
+    const woExercises = db.getAllSync<{ name: string }>(
+      `SELECT DISTINCT we.name 
+       FROM workout_exercises we
+       JOIN workout_sessions s ON s.id = we.session_id
+       WHERE s.is_completed = 1`
+    );
+
+    for (const row of woExercises) {
+      const match = EXERCISE_CATALOG.find(
+        (e) => e.name.toLowerCase() === row.name.toLowerCase()
+      );
+      if (match) {
+        if (match.category) distinctCategories.add(match.category);
+        if (match.equipment) distinctEquipment.add(match.equipment);
+      }
+    }
+  }
+
+  // Also include custom_exercises if any exist
+  const customRows = db.getAllSync<{ category: string; equipment: string }>(
+    'SELECT category, equipment FROM custom_exercises'
   );
-  const distinctEquipmentCount = Math.max(1, equipRow?.count || 3);
+  for (const c of customRows) {
+    if (c.category) distinctCategories.add(c.category);
+    if (c.equipment) distinctEquipment.add(c.equipment);
+  }
+
+  const distinctCategoriesCount = distinctCategories.size;
+  const distinctEquipmentCount = distinctEquipment.size;
+  const customEquipmentCount = customRows.length;
+
+  // Distinct factions tested in actual field operations
+  const distinctFactionsExploredCount = completedWorkoutsCount > 0 ? 1 : 0;
 
   // 6. Combat metrics from solo encounters and battle history
   const combatRow = db.getFirstSync<{
@@ -157,11 +186,11 @@ export function buildEvaluationContextFromDb(
     distinctExercisesCount,
     distinctCategoriesCount,
     distinctEquipmentCount,
-    personalRecordsBrokenCount: Math.floor(completedWorkoutsCount * 0.8),
+    personalRecordsBrokenCount: completedWorkoutsCount > 0 ? Math.floor(completedWorkoutsCount * 0.8) : 0,
     maxSingleLiftWeightKg,
     maxSingleSetVolumeKg,
     consecutiveTrainingWeeks,
-    longestRestDaysHonored: 2,
+    longestRestDaysHonored: completedWorkoutsCount > 1 ? 2 : 0,
     totalCombatAttacks,
     totalCombatCrits,
     totalCombatDamage,
@@ -170,8 +199,9 @@ export function buildEvaluationContextFromDb(
     coopBossesDefeatedCount,
     coopAttacksCount,
     squadSharedDamageDealt,
-    distinctFactionsExploredCount: 1,
+    distinctFactionsExploredCount,
     campaignMissionsCompletedCount: completedWorkoutsCount,
+    customEquipmentCount,
     ...runtimeOverrides,
   };
 
@@ -181,12 +211,15 @@ export function buildEvaluationContextFromDb(
 /**
  * Runs evaluation using SQLite repositories for persistence and notification queuing.
  */
-export function runEvaluationWithDb(context: AchievementEvaluationContext) {
+export function runEvaluationWithDb(
+  context: AchievementEvaluationContext,
+  shouldQueueNotifications: boolean = true
+) {
   return evaluateAchievements(context, {
     checkAwardedFn: isAchievementAwarded,
     awardFn: awardAchievement,
     saveProgressFn: saveAchievementProgress,
-    queueNotificationFn: queueAchievementNotification,
+    queueNotificationFn: shouldQueueNotifications ? queueAchievementNotification : undefined,
   });
 }
 
@@ -202,7 +235,11 @@ export function backfillHistoricalAchievements(
 ): { awardedCount: number; evaluatedCount: number } {
   try {
     const context = buildEvaluationContextFromDb(userId, characterId, squadId);
-    const { newlyAwarded } = runEvaluationWithDb(context);
+    // If the user has never completed a workout and has no combat actions, they are a fresh initiate with no history to backfill
+    if (context.completedWorkoutsCount === 0 && context.totalCombatAttacks === 0 && context.completedSetsCount === 0) {
+      return { awardedCount: 0, evaluatedCount: ACHIEVEMENT_CATALOG.length };
+    }
+    const { newlyAwarded } = runEvaluationWithDb(context, false);
     return {
       awardedCount: newlyAwarded.length,
       evaluatedCount: ACHIEVEMENT_CATALOG.length,

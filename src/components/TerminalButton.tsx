@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { THEME } from '../constants/theme';
 
+import { triggerHaptic } from '../utils/haptics';
+
 interface TerminalButtonProps {
   title: string;
   onPress: () => void;
@@ -33,6 +35,17 @@ export const TerminalButton: React.FC<TerminalButtonProps> = ({
   style,
   textStyle,
 }) => {
+  const handlePress = () => {
+    if (variant === 'danger') {
+      triggerHaptic.warning();
+    } else if (variant === 'success') {
+      triggerHaptic.medium();
+    } else {
+      triggerHaptic.light();
+    }
+    onPress();
+  };
+
   const getContainerStyle = (): ViewStyle => {
     switch (variant) {
       case 'primary':
@@ -114,7 +127,7 @@ export const TerminalButton: React.FC<TerminalButtonProps> = ({
   return (
     <TouchableOpacity
       activeOpacity={0.75}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
       style={[
         styles.base,

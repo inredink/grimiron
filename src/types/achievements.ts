@@ -133,6 +133,7 @@ export interface AchievementEvaluationContext {
   squadSharedDamageDealt: number;
   distinctFactionsExploredCount: number;
   campaignMissionsCompletedCount: number;
+  customEquipmentCount?: number;
   latestWorkoutSessionId?: string;
   latestBattleId?: string;
 }

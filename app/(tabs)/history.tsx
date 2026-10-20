@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useApp } from '../../src/context/AppContext';
 import { THEME } from '../../src/constants/theme';
@@ -20,9 +20,11 @@ import { BattleDetailModal } from '../../src/components/BattleDetailModal';
 import { BattleOutcome, BattleRecord, EncounterMode } from '../../src/types/battleHistory';
 import { Ionicons } from '@expo/vector-icons';
 import { WorkoutSession } from '../../src/types/workout';
+import { triggerHaptic } from '../../src/utils/haptics';
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { workoutHistory, refreshData, startNewWorkout, repeatWorkout } = useApp();
 
   // Tab Mode: 'workouts' vs 'battles'
@@ -69,6 +71,7 @@ export default function HistoryScreen() {
         {
           text: 'Deploy Mission',
           onPress: () => {
+            triggerHaptic.medium();
             repeatWorkout(session.id);
             router.push('/(tabs)/workout');
           },
@@ -87,6 +90,7 @@ export default function HistoryScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
+            triggerHaptic.warning();
             deleteWorkout(session.id);
             refreshData();
           },
@@ -127,7 +131,10 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(60, insets.bottom + 40) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Terminal Header */}
@@ -145,7 +152,10 @@ export default function HistoryScreen() {
               styles.segmentButton,
               activeTab === 'workouts' && styles.segmentButtonActive,
             ]}
-            onPress={() => setActiveTab('workouts')}
+            onPress={() => {
+              triggerHaptic.selection();
+              setActiveTab('workouts');
+            }}
           >
             <Ionicons
               name="barbell-outline"
@@ -171,7 +181,10 @@ export default function HistoryScreen() {
               styles.segmentButton,
               activeTab === 'battles' && styles.segmentButtonActive,
             ]}
-            onPress={() => setActiveTab('battles')}
+            onPress={() => {
+              triggerHaptic.selection();
+              setActiveTab('battles');
+            }}
           >
             <Ionicons
               name="shield-checkmark-outline"

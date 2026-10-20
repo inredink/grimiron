@@ -9,6 +9,7 @@ import {
 import {
   getCharacterProfile,
   updateFactionAllegiance,
+  updateCharacterName,
   getUserCareerStats,
   addCharacterXp,
   syncCharacterProfileFromCloud,
@@ -55,6 +56,7 @@ import {
 import {
   getPendingNotifications,
   dismissNotification,
+  clearUnearnedInitiateAchievements,
 } from '../services/database/achievementRepository';
 import {
   ActiveMissionRecord,
@@ -151,6 +153,43 @@ import {
   CAMPAIGN_ACADEMY_CATALOG,
   getAcademyCampaignById,
 } from '../content/campaignAcademy/catalog';
+import {
+  CustomSubfactionRecord,
+  CustomSubfactionInput,
+} from '../types/customSubfaction';
+import {
+  createCustomSubfaction,
+  getAllCustomSubfactions,
+  getCustomSubfactionById,
+  updateCustomSubfaction,
+  duplicateCustomSubfaction,
+  archiveCustomSubfaction,
+  deleteCustomSubfaction,
+} from '../services/database/customSubfactionRepository';
+import { AppSettings, DEFAULT_APP_SETTINGS } from '../types/settings';
+import {
+  getAllSettings,
+  saveSetting,
+  resetAllSettings,
+} from '../services/database/settingsRepository';
+import { setHapticsEnabled } from '../utils/haptics';
+import {
+  activateWorkoutKeepAwake,
+  deactivateWorkoutKeepAwake,
+} from '../utils/keepAwake';
+import { awardRecoveryDayXp } from '../services/progression/recoveryEngine';
+import {
+  signOutAccount,
+  deleteAccountData,
+  signInAccount,
+  signUpAccount,
+  resendVerificationEmail,
+  getAccountInfo,
+  AccountInfo,
+} from '../services/account/accountService';
+import { initializeRecoverySqliteStorage } from '../services/database/recoveryRepository';
+import { initializeNotificationSqliteStorage } from '../services/database/notificationRepository';
+import { initializeDiagnosticsSqliteProvider } from '../services/database/diagnosticsRepository';
 
 export interface FinishWorkoutResult {
   xpEarned: number;
@@ -232,6 +271,26 @@ interface AppContextValue {
   claimAcademyPhaseReport: (phaseNumber: CampaignPhaseNumber) => CampaignPhaseReport | null;
   claimAcademyFinalDossier: () => FinalCampaignDossier | null;
   deployChapterBossBattle: (chapter: CampaignChapter) => void;
+  customSubfactions: CustomSubfactionRecord[];
+  refreshCustomSubfactions: () => void;
+  createCustomSubfactionAction: (input: CustomSubfactionInput) => CustomSubfactionRecord;
+  updateCustomSubfactionAction: (id: string, updates: Partial<CustomSubfactionInput>) => CustomSubfactionRecord;
+  duplicateCustomSubfactionAction: (id: string, newName?: string) => CustomSubfactionRecord;
+  archiveCustomSubfactionAction: (id: string) => boolean;
+  deleteCustomSubfactionAction: (id: string) => boolean;
+  selectCustomSubfactionAction: (customSubfactionId: string) => void;
+  settings: AppSettings;
+  updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+  resetSettings: () => void;
+  claimRecoveryXpAction: () => { awarded: boolean; xpEarned: number; reason: string };
+  updateCharacterNameAction: (name: string) => void;
+  accountInfo: AccountInfo | null;
+  refreshAccountInfo: () => Promise<AccountInfo>;
+  signInCloudAccount: (email: string, pass: string) => Promise<{ success: boolean; message: string }>;
+  signUpCloudAccount: (email: string, pass: string, displayName: string) => Promise<{ success: boolean; message: string }>;
+  resendVerificationEmailAction: (email: string) => Promise<{ success: boolean; message: string }>;
+  signOutAction: () => Promise<{ success: boolean; message: string }>;
+  deleteAccountAction: () => Promise<{ success: boolean; message: string }>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -293,14 +352,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeAcademyCampaign, setActiveAcademyCampaign] = useState<CampaignAcademyTemplate | null>(null);
   const [academyPhaseReports, setAcademyPhaseReports] = useState<CampaignPhaseReport[]>([]);
   const [academyFinalDossier, setAcademyFinalDossier] = useState<FinalCampaignDossier | null>(null);
+  const [customSubfactions, setCustomSubfactions] = useState<CustomSubfactionRecord[]>([]);
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+  const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
 
   const loadData = useCallback(() => {
     try {
       initializeDatabase();
+      initializeRecoverySqliteStorage();
+      initializeNotificationSqliteStorage();
+      initializeDiagnosticsSqliteProvider();
       const prof = getCharacterProfile();
       const userStats = getUserCareerStats();
       const history = getAllWorkouts();
       const cachedRaid = getActiveRaid();
+
+      // Clean up any erroneous initiate achievements if fresh account
+      try {
+        clearUnearnedInitiateAchievements();
+      } catch {}
+
+      // Load user settings
+      try {
+        const userSettings = getAllSettings();
+        setSettings(userSettings);
+        setHapticsEnabled(userSettings.haptics_enabled);
+      } catch (settingsErr) {
+        console.warn('Error loading settings:', settingsErr);
+      }
+
+      // Load account authentication info
+      getAccountInfo().then((acc) => setAccountInfo(acc)).catch(() => {});
 
       // Backfill achievements safely and idempotently on startup
       try {
@@ -367,9 +449,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setWarfrontStorageAdapter(sqliteWarfrontStorage);
 
       // Load Warfront daily rotation, weekly raid, and user settings
-      const rot = getOrCreateDailyRotation();
-      const wfSettings = getWarfrontSettings();
-      const raid = getOrCreateWeeklyRaid({ preferredSpawnDay: wfSettings.preferredSpawnDay });
+      try {
+        const rot = getOrCreateDailyRotation();
+        const wfSettings = getWarfrontSettings();
+        const raid = getOrCreateWeeklyRaid({ preferredSpawnDay: wfSettings.preferredSpawnDay });
+        setDailyRotation(rot);
+        setWarfrontSettingsState(wfSettings);
+        setWeeklyRaid(raid);
+      } catch (wfErr) {
+        console.warn('Warfront initialization warning:', wfErr);
+      }
 
       setCharacter(prof);
       setStats(userStats);
@@ -379,9 +468,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveMissions(curMissions);
       setActiveEnrollment(currentEnrollment);
       setCampaignTelemetry(campTelemetry);
-      setDailyRotation(rot);
-      setWarfrontSettingsState(wfSettings);
-      setWeeklyRaid(raid);
 
       // Load Campaign Academy data
       try {
@@ -403,9 +489,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Error loading academy enrollment:', acadLoadErr);
       }
 
+      // Load custom subfactions
+      try {
+        const userCustomSubfactions = getAllCustomSubfactions();
+        setCustomSubfactions(userCustomSubfactions);
+      } catch (subfacErr) {
+        console.warn('Error loading custom subfactions:', subfacErr);
+      }
+
       setIsInitialized(true);
     } catch (err) {
       console.error('Database initialization error:', err);
+      // Ensure app does not hang forever on loading screens if a recoverable error occurs
+      setIsInitialized(true);
     }
   }, []);
 
@@ -465,7 +561,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getFactionById(character.factionId) || DEFAULT_FACTION;
   const currentSubfaction: Subfaction | undefined = getSubfactionById(
     character.factionId,
-    character.subfactionId
+    character.subfactionId,
+    customSubfactions
   );
 
   const progression: CharacterProgression = calculateProgression(
@@ -519,6 +616,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       exercises: [],
     };
     setActiveWorkout(newSession);
+    if (settings.workout_keep_screen_awake) {
+      activateWorkoutKeepAwake(true);
+    }
     saveWorkoutDraft(
       newSession,
       mission || currentMission,
@@ -529,20 +629,124 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateActiveWorkout = (workout: WorkoutSession) => {
     setActiveWorkout(workout);
-    saveWorkoutDraft(
-      workout,
-      currentMission,
-      activeDailyEncounterId,
-      activeRaidCycleId
-    );
+    if (settings.workout_auto_save) {
+      saveWorkoutDraft(
+        workout,
+        currentMission,
+        activeDailyEncounterId,
+        activeRaidCycleId
+      );
+    }
   };
 
   const cancelActiveWorkout = () => {
+    deactivateWorkoutKeepAwake();
     clearWorkoutDraft();
     setActiveDailyEncounterId(null);
     setActiveRaidCycleId(null);
     setActiveWorkout(null);
   };
+
+  const updateSetting = useCallback(
+    <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+      try {
+        saveSetting(key, value);
+        setSettings((prev) => ({ ...prev, [key]: value }));
+
+        if (key === 'haptics_enabled') {
+          setHapticsEnabled(value as boolean);
+        } else if (key === 'warfront_preferred_spawn_day') {
+          updatePreferredSpawnDay(value as RaidSpawnDay);
+          setWarfrontSettingsState((prev) => ({
+            ...prev,
+            preferredSpawnDay: value as RaidSpawnDay,
+          }));
+          const newRaid = getOrCreateWeeklyRaid({
+            preferredSpawnDay: value as RaidSpawnDay,
+          });
+          setWeeklyRaid(newRaid);
+        }
+      } catch (err) {
+        console.error(`Failed to update setting ${key}:`, err);
+      }
+    },
+    []
+  );
+
+  const resetSettings = useCallback(() => {
+    try {
+      const defs = resetAllSettings();
+      setSettings(defs);
+      setHapticsEnabled(defs.haptics_enabled);
+    } catch (err) {
+      console.error('Failed to reset settings:', err);
+    }
+  }, []);
+
+  const claimRecoveryXpAction = useCallback(() => {
+    const result = awardRecoveryDayXp(new Date(), settings, activeEnrollment);
+    if (result.awarded) {
+      loadData();
+    }
+    return result;
+  }, [settings, activeEnrollment, loadData]);
+
+  const updateCharacterNameAction = useCallback((name: string) => {
+    const updated = updateCharacterName(name);
+    setCharacter(updated);
+  }, []);
+
+  const refreshAccountInfo = useCallback(async () => {
+    const acc = await getAccountInfo();
+    setAccountInfo(acc);
+    return acc;
+  }, []);
+
+  const signInCloudAccount = useCallback(
+    async (email: string, pass: string) => {
+      const res = await signInAccount(email, pass);
+      if (res.success) {
+        await refreshAccountInfo();
+        loadData();
+      }
+      return res;
+    },
+    [loadData, refreshAccountInfo]
+  );
+
+  const signUpCloudAccount = useCallback(
+    async (email: string, pass: string, displayName: string) => {
+      const res = await signUpAccount(email, pass, displayName, character.factionId);
+      if (res.success) {
+        updateCharacterNameAction(displayName);
+        await refreshAccountInfo();
+        loadData();
+      }
+      return res;
+    },
+    [character.factionId, loadData, refreshAccountInfo, updateCharacterNameAction]
+  );
+
+  const resendVerificationEmailAction = useCallback(async (email: string) => {
+    return await resendVerificationEmail(email);
+  }, []);
+
+  const signOutAction = useCallback(async () => {
+    const res = await signOutAccount();
+    if (res.success) {
+      await refreshAccountInfo();
+      loadData();
+    }
+    return res;
+  }, [loadData, refreshAccountInfo]);
+
+  const deleteAccountAction = useCallback(async () => {
+    const res = await deleteAccountData(true);
+    if (res.success) {
+      loadData();
+    }
+    return res;
+  }, [loadData]);
 
   const repeatWorkout = (sessionId: string): boolean => {
     const cloned = cloneWorkoutForRepeat(sessionId);
@@ -886,6 +1090,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Clear in-progress workout draft upon completion
+    deactivateWorkoutKeepAwake();
     clearWorkoutDraft();
     setActiveDailyEncounterId(null);
     setActiveRaidCycleId(null);
@@ -1210,6 +1415,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCharacter(updated);
   };
 
+  const refreshCustomSubfactions = useCallback(() => {
+    try {
+      const list = getAllCustomSubfactions();
+      setCustomSubfactions(list);
+    } catch (err) {
+      console.warn('Failed to refresh custom subfactions:', err);
+    }
+  }, []);
+
+  const createCustomSubfactionAction = useCallback(
+    (input: CustomSubfactionInput) => {
+      const created = createCustomSubfaction(input);
+      refreshCustomSubfactions();
+      return created;
+    },
+    [refreshCustomSubfactions]
+  );
+
+  const updateCustomSubfactionAction = useCallback(
+    (id: string, updates: Partial<CustomSubfactionInput>) => {
+      const updated = updateCustomSubfaction(id, updates);
+      refreshCustomSubfactions();
+      if (character.subfactionId === id) {
+        loadData();
+      }
+      return updated;
+    },
+    [character.subfactionId, refreshCustomSubfactions, loadData]
+  );
+
+  const duplicateCustomSubfactionAction = useCallback(
+    (id: string, newName?: string) => {
+      const duplicated = duplicateCustomSubfaction(id, newName);
+      refreshCustomSubfactions();
+      return duplicated;
+    },
+    [refreshCustomSubfactions]
+  );
+
+  const archiveCustomSubfactionAction = useCallback(
+    (id: string) => {
+      const success = archiveCustomSubfaction(id);
+      refreshCustomSubfactions();
+      if (character.subfactionId === id) {
+        const parent = getFactionById(character.factionId);
+        changeFaction(character.factionId, parent?.subfactions[0]?.id);
+      }
+      return success;
+    },
+    [character.subfactionId, character.factionId, refreshCustomSubfactions]
+  );
+
+  const deleteCustomSubfactionAction = useCallback(
+    (id: string) => {
+      const isCurrent = character.subfactionId === id;
+      const success = deleteCustomSubfaction(id);
+      refreshCustomSubfactions();
+      if (isCurrent) {
+        const parent = getFactionById(character.factionId);
+        changeFaction(character.factionId, parent?.subfactions[0]?.id);
+      }
+      return success;
+    },
+    [character.subfactionId, character.factionId, refreshCustomSubfactions]
+  );
+
+  const selectCustomSubfactionAction = useCallback(
+    (customSubfactionId: string) => {
+      const subRecord = getCustomSubfactionById(customSubfactionId);
+      if (subRecord) {
+        changeFaction(subRecord.parentFactionId, subRecord.id);
+        loadData();
+      }
+    },
+    [loadData]
+  );
+
   return (
     <AppContext.Provider
       value={{
@@ -1266,6 +1548,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         claimAcademyPhaseReport,
         claimAcademyFinalDossier,
         deployChapterBossBattle,
+        customSubfactions,
+        refreshCustomSubfactions,
+        createCustomSubfactionAction,
+        updateCustomSubfactionAction,
+        duplicateCustomSubfactionAction,
+        archiveCustomSubfactionAction,
+        deleteCustomSubfactionAction,
+        selectCustomSubfactionAction,
+        settings,
+        updateSetting,
+        resetSettings,
+        claimRecoveryXpAction,
+        updateCharacterNameAction,
+        accountInfo,
+        refreshAccountInfo,
+        signInCloudAccount,
+        signUpCloudAccount,
+        resendVerificationEmailAction,
+        signOutAction,
+        deleteAccountAction,
       }}
     >
       {children}

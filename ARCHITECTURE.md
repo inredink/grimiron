@@ -227,7 +227,7 @@ The Mission System connects real-world workout effort directly to narrative Warh
 ### Key Architectural Tenets
 1. **Universal Faction Coverage & Multi-Tier Progression**:
    - Comprehensive data catalog (`src/content/missions/catalog.ts`) featuring **63 lore-accurate missions** spanning all 20 Warhammer 40,000 factions and iconic subfactions (e.g. Space Wolves, Ultramarines, Farsight Enclaves).
-   - Multi-tier ladder per faction: Tier 1 (Initiate/Patrol) $\rightarrow$ Tier 2 (Veteran/Incursion/Skirmish) $\rightarrow$ Tier 3 (Master Rites/Decapitation/Boss purge).
+   - Multi-tier ladder per faction: Tier 1 (Initiate/Patrol) → Tier 2 (Veteran/Incursion/Skirmish) → Tier 3 (Master Rites/Decapitation/Boss purge).
 2. **Real-World Workout Metric Mapping**:
    - Objective types cleanly map physical training to battlefield telemetry:
      - `complete_workouts`: Deployments completed.
@@ -366,6 +366,54 @@ The Warfront subsystem introduces dynamic, date-driven daily tactical engagement
    - When a raid cycle expires, `reconcileExpiredRaids` automatically marks un-defeated bosses as `'escaped'` rather than `'defeated'`, preserving historical damage and participant logs without generating false victories.
 5. **Pluggable Storage Adapter**:
    - `WarfrontStorageAdapter` provides complete separation between domain logic and SQLite. Node.js unit tests run against `inMemoryWarfrontStorage`, while the React Native application binds `sqliteWarfrontStorage` at startup.
+
+---
+
+## 11. Custom Subfaction Architecture & User-Uploaded Insignias (Migration 13)
+
+The Custom Subfaction system empowers players to forge their own military identities under any of the 20 official parent armies (e.g., T'au Empire "The Obsidian Spear", Space Marines "The Ashen Wardens", Orks "Da Ironbreakaz", Necrons "The Sepulchral Dynasty") while cleanly preserving existing progression, combat mechanics, and official lore catalogs.
+
+### Architectural Principles:
+1. **Zero Catalog Mutation**: Official faction catalogs in `src/content/warhammer40k/factions.ts` remain immutable constants. Custom subfactions extend the universe without polluting or overwriting baseline data.
+2. **View Adapter Pattern (`toSubfactionView`)**: Custom records are translated into standard `Subfaction` objects with `isCustom: true` and `customIconUri`. Existing UI components (`PlaceholderPortrait.tsx`, `TerminalButton.tsx`) consume custom subfactions transparently.
+3. **Parent Faction Combat Baseline**: Custom subfactions inherit 100% of their parent army's attack catalog, weapon classifications, and combat multipliers. `resolveFactionAttack()` matches against the parent `factionId`, requiring no custom attack boilerplate.
+4. **Reliable Local Device Icon Storage**:
+   - Uses `expo-image-picker` to select photos from the user's mobile photo library.
+   - Files are copied to a dedicated local directory (`<documentDirectory>/subfaction_icons/`) using `expo-file-system/legacy`.
+   - File paths (not heavy base64 strings) are stored in SQLite.
+   - Max file size (5 MB) and dimension bounds (4096px) are strictly enforced.
+   - Supports PNG, JPEG, and WebP, with full alpha-channel transparency preservation for clean sci-fi insignia overlays.
+   - Aspect ratio toggle: users can switch between `contain` (un-cropped emblem fit) and `cover` (circular fill).
+   - Graceful fallback: If no image is provided, or if an icon is removed, the app automatically renders the verified monochrome SVG/PNG symbol of the parent army.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Custom Subfaction Architecture              │
+├─────────────────────────────────────────────────────────────┤
+│ User Creation Form (`CustomSubfactionModal.tsx`)            │
+│ ├─ Required: Name (trimmed, <=40 chars), Parent Faction ID  │
+│ ├─ Optional: Lore, Motto, Adaptive Homeworld, Doctrine Tags │
+│ └─ Optional: Photo Picker -> Local copy to subfaction_icons/│
+│                                │                            │
+│                                ▼                            │
+│ SQLite Persistence Layer (`custom_subfactions` table)       │
+│ ├─ Migration 13 with indexes on user_id & parent_faction_id │
+│ └─ Fast CRUD: create, update, duplicate, archive, delete    │
+│                                │                            │
+│                                ▼                            │
+│ Pure View Adapter (`toSubfactionView()`)                    │
+│ ├─ Maps record to standard `Subfaction` schema              │
+│ ├─ Sets `isCustom: true` and binds `customIconUri`          │
+│ └─ Resolves through `getSubfactionById()`                   │
+│                                │                            │
+│                                ▼                            │
+│ Consumption Across Core App                                 │
+│ ├─ Codex (`factions.tsx`): [CUSTOM] badge in army subgrid   │
+│ ├─ Dossier (`index.tsx`): Live emblem, motto, and homeworld │
+│ └─ Combat Engine: Inherits parent army attack catalog       │
+└─────────────────────────────────────────────────────────────┘
+```
+
 
 
 

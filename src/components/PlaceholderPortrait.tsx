@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, ViewStyle } from 'react-native';
 import { THEME } from '../constants/theme';
 import { Faction, Subfaction, RankTier } from '../content/types';
+import { getFactionSymbol } from '../assets/factionSymbols';
 
 interface PlaceholderPortraitProps {
   faction: Faction;
@@ -22,8 +23,13 @@ export const PlaceholderPortrait: React.FC<PlaceholderPortraitProps> = ({
   size = 140,
   style,
 }) => {
+  const customSub = subfaction as any;
+  const customIconUri = customSub?.customIconUri;
+  const iconCropMode = customSub?.iconCropMode || 'contain';
   const primaryColor = subfaction?.colorScheme.primary || faction.themeColor || THEME.colors.primary;
   const accentColor = subfaction?.colorScheme.accent || THEME.colors.primary;
+  const symbolSource = getFactionSymbol(faction.id, subfaction?.id, 'white');
+  const circleSize = Math.max(48, Math.round(size * 0.48));
 
   return (
     <View style={[styles.outerFrame, { width: size, height: size }, style]}>
@@ -41,11 +47,44 @@ export const PlaceholderPortrait: React.FC<PlaceholderPortraitProps> = ({
           <View style={styles.crosshairH} />
           <View style={styles.crosshairV} />
 
-          {/* Insignia / Monogram display */}
-          <View style={styles.insigniaCircle}>
-            <Text style={styles.insigniaText}>
-              {subfaction ? subfaction.name.substring(0, 2).toUpperCase() : faction.name.substring(0, 2).toUpperCase()}
-            </Text>
+          {/* Insignia / Official Symbol display */}
+          <View
+            style={[
+              styles.insigniaCircle,
+              {
+                width: circleSize,
+                height: circleSize,
+                borderRadius: circleSize / 2,
+              },
+            ]}
+          >
+            {customIconUri ? (
+              <Image
+                source={{ uri: customIconUri }}
+                style={[
+                  styles.insigniaSymbol,
+                  {
+                    width: circleSize * 0.82,
+                    height: circleSize * 0.82,
+                    borderRadius: iconCropMode === 'cover' ? (circleSize * 0.82) / 2 : 4,
+                  },
+                ]}
+                resizeMode={iconCropMode}
+              />
+            ) : symbolSource ? (
+              <Image
+                source={symbolSource}
+                style={[
+                  styles.insigniaSymbol,
+                  { width: circleSize * 0.72, height: circleSize * 0.72 },
+                ]}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.insigniaText}>
+                {subfaction ? subfaction.name.substring(0, 2).toUpperCase() : faction.name.substring(0, 2).toUpperCase()}
+              </Text>
+            )}
           </View>
 
           {/* Rank Tier Chevrons */}
@@ -109,6 +148,11 @@ const styles = StyleSheet.create({
     borderColor: THEME.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 4,
+  },
+  insigniaSymbol: {
+    width: '100%',
+    height: '100%',
   },
   insigniaText: {
     color: THEME.colors.textBright,

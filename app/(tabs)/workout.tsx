@@ -9,8 +9,9 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { triggerHaptic } from '../../src/utils/haptics';
 import { useApp } from '../../src/context/AppContext';
 import { THEME } from '../../src/constants/theme';
 import { SciFiCard } from '../../src/components/SciFiCard';
@@ -45,6 +46,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function WorkoutScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const {
     activeWorkout,
     workoutHistory,
@@ -73,6 +75,7 @@ export default function WorkoutScreen() {
     deployDailyEncounter,
     deployWeeklyRaid,
     claimWeeklyRaidRewardsAction,
+    settings,
   } = useApp();
 
   // Exercise Library Modal State
@@ -174,6 +177,11 @@ export default function WorkoutScreen() {
       exercises: [],
     };
 
+    const preferredUnit = settings.workout_weight_unit || 'lbs';
+    const isBodyweight =
+      exercise.equipment === 'bodyweight' ||
+      settings.exercise_default_weight_behavior === 'bodyweight';
+
     const newExercise: WorkoutExercise = {
       id: `ex_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       sessionId: baseWorkout.id,
@@ -186,8 +194,8 @@ export default function WorkoutScreen() {
           exerciseId: '',
           setNumber: 1,
           reps: 10,
-          weight: 0, // 0 indicates bodyweight / baseline
-          unit: 'lbs',
+          weight: isBodyweight ? 0 : (preferredUnit === 'lbs' ? 45 : 20),
+          unit: preferredUnit,
           isCompleted: false,
           setClassification: 'working',
         },
@@ -215,7 +223,7 @@ export default function WorkoutScreen() {
         setNumber: ex.sets.length + 1,
         reps: lastSet ? lastSet.reps : 10,
         weight: lastSet ? lastSet.weight : 0,
-        unit: lastSet ? lastSet.unit : 'lbs',
+        unit: lastSet ? lastSet.unit : (settings.workout_weight_unit || 'lbs'),
         isCompleted: false,
         setClassification: lastSet ? lastSet.setClassification : 'working',
       };
@@ -311,32 +319,40 @@ export default function WorkoutScreen() {
 
   const handleSetCompleted = (isNowCompleted: boolean, setId: string) => {
     if (isNowCompleted) {
-      // Automatically prompt or start rest timer on completed set
-      setRestTimerKey(Date.now());
-      setShowRestTimer(true);
+      // Auto-start rest timer only if enabled in user settings
+      if (settings.workout_auto_start_rest_timer) {
+        setRestTimerKey(Date.now());
+        setShowRestTimer(true);
+      }
       setLastCompletedSetId(setId);
 
-      // Asynchronous Cooperative Boss Assault
-      if (activeCoopRaid && !activeCoopRaid.isDefeated) {
-        let targetEx: WorkoutExercise | undefined;
-        let targetSet: ExerciseSet | undefined;
-        for (const ex of activeWorkout?.exercises || []) {
-          const found = ex.sets.find((s) => s.id === setId);
-          if (found) {
-            targetEx = ex;
-            targetSet = found;
-            break;
-          }
+      // Find exercise and set to deliver tactical combat feedback
+      let targetEx: WorkoutExercise | undefined;
+      let targetSet: ExerciseSet | undefined;
+      for (const ex of activeWorkout?.exercises || []) {
+        const found = ex.sets.find((s) => s.id === setId);
+        if (found) {
+          targetEx = ex;
+          targetSet = found;
+          break;
+        }
+      }
+
+      if (targetEx && targetSet) {
+        const attack = createAttackFromSet(
+          targetSet,
+          targetEx.name,
+          targetEx.exerciseRefId,
+          currentFaction?.id,
+          currentSubfaction?.id
+        );
+
+        if (attack.isCrit) {
+          triggerHaptic.heavy();
         }
 
-        if (targetEx && targetSet) {
-          const attack = createAttackFromSet(
-            targetSet,
-            targetEx.name,
-            targetEx.exerciseRefId,
-            currentFaction?.id,
-            currentSubfaction?.id
-          );
+        // Asynchronous Cooperative Boss Assault
+        if (activeCoopRaid && !activeCoopRaid.isDefeated) {
           const sanitizedPayload = sanitizeCoopAttackPayload({
             groupBossId: activeCoopRaid.bossId,
             clientSetId: targetSet.id,
@@ -355,6 +371,9 @@ export default function WorkoutScreen() {
                 setCoopQueueStats(getQueueStats());
               } catch {}
               if (result.newHp !== undefined && activeCoopRaid) {
+                if (result.isDefeated) {
+                  triggerHaptic.success();
+                }
                 setActiveCoopRaid({
                   ...activeCoopRaid,
                   bossCurrentHp: result.newHp,
@@ -389,33 +408,54 @@ export default function WorkoutScreen() {
       return;
     }
 
-    const result = finishActiveWorkout(combatState, currentMission);
-    if (result) {
-      setShowRestTimer(false);
-      if (result.report) {
-        setAfterActionReport(result.report);
-      } else {
-        setFinishResult(result);
+    const executeFinish = () => {
+      const result = finishActiveWorkout(combatState, currentMission);
+      if (result) {
+        triggerHaptic.success();
+        setShowRestTimer(false);
+        if (result.report) {
+          setAfterActionReport(result.report);
+        } else {
+          setFinishResult(result);
+        }
       }
+    };
+
+    if (settings.workout_confirm_finish) {
+      Alert.alert(
+        'Complete Crusade Session?',
+        'Submit combat encounter performance and record accumulated Glory XP?',
+        [
+          { text: 'Keep Training', style: 'cancel' },
+          { text: 'Complete Session', style: 'default', onPress: executeFinish },
+        ]
+      );
+    } else {
+      executeFinish();
     }
   };
 
   const handleCancelWorkout = () => {
-    Alert.alert(
-      'Abort Crusade Mission?',
-      'Are you sure you want to discard this in-progress workout session? Unsaved progress will be lost.',
-      [
-        { text: 'Resume', style: 'cancel' },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: () => {
-            cancelActiveWorkout();
-            setShowRestTimer(false);
+    if (settings.workout_warn_unsaved) {
+      Alert.alert(
+        'Abort Crusade Mission?',
+        'Are you sure you want to discard this in-progress workout session? Unsaved progress will be lost.',
+        [
+          { text: 'Resume', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              cancelActiveWorkout();
+              setShowRestTimer(false);
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    } else {
+      cancelActiveWorkout();
+      setShowRestTimer(false);
+    }
   };
 
   // If no active workout, display clean launcher card
@@ -424,7 +464,34 @@ export default function WorkoutScreen() {
 
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.emptyContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.emptyContainer,
+            { paddingBottom: Math.max(80, insets.bottom + 60) },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Top Header & Settings Quick Access */}
+          <View style={styles.topLauncherHeader}>
+            <View style={styles.terminalStatus}>
+              <View style={styles.statusDot} />
+              <Text style={styles.terminalStatusText}>CRUSADE TERMINAL // ARMED</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                triggerHaptic.selection();
+                router.push('/settings');
+              }}
+              style={styles.settingsHeaderButton}
+              accessibilityLabel="Open Settings"
+              accessibilityRole="button"
+            >
+              <Ionicons name="settings-sharp" size={17} color={THEME.colors.primary} />
+            </TouchableOpacity>
+          </View>
+
           <Ionicons name="shield-half-outline" size={60} color={THEME.colors.primary} />
           <Text style={styles.emptyTitle}>MISSION BRIEFING TERMINAL</Text>
           <Text style={styles.emptySubtitle}>
@@ -633,9 +700,13 @@ export default function WorkoutScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={[
           styles.scrollContent,
-          showRestTimer && { paddingBottom: 120 },
+          {
+            paddingBottom:
+              (showRestTimer ? 160 : 100) + Math.max(insets.bottom, 20),
+          },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -682,6 +753,21 @@ export default function WorkoutScreen() {
                 size={20}
                 color={showRestTimer ? THEME.colors.secondary : THEME.colors.textMuted}
               />
+            </TouchableOpacity>
+
+            {/* Tactical Settings Button */}
+            <TouchableOpacity
+              onPress={() => {
+                triggerHaptic.selection();
+                router.push('/settings');
+              }}
+              style={styles.headerIconButton}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Open Settings"
+              accessibilityRole="button"
+            >
+              <Ionicons name="settings-outline" size={19} color={THEME.colors.textMuted} />
             </TouchableOpacity>
 
             {/* Abort Button */}
@@ -859,11 +945,16 @@ export default function WorkoutScreen() {
 
       {/* Floating Tactical Rest Timer HUD pinned above bottom bar */}
       {showRestTimer && (
-        <View style={styles.floatingTimerContainer}>
+        <View
+          style={[
+            styles.floatingTimerContainer,
+            { bottom: Math.max(12, insets.bottom + 4) },
+          ]}
+        >
           <RestTimer
             key={restTimerKey}
-            initialSeconds={90}
-            autoStart={true}
+            initialSeconds={settings.workout_default_rest_duration || 90}
+            autoStart={settings.workout_auto_start_rest_timer}
             visible={showRestTimer}
             onClose={() => setShowRestTimer(false)}
           />
@@ -1066,10 +1157,42 @@ const styles = StyleSheet.create({
     paddingBottom: THEME.spacing.xxl,
   },
   emptyContainer: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: THEME.spacing.xl,
+    paddingHorizontal: THEME.spacing.md,
+    paddingTop: THEME.spacing.md,
+  },
+  topLauncherHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  terminalStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.colors.success,
+    marginRight: 6,
+  },
+  terminalStatusText: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  settingsHeaderButton: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 240, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.25)',
   },
   emptyTitle: {
     color: THEME.colors.primary,

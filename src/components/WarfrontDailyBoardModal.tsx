@@ -208,7 +208,7 @@ export const WarfrontDailyBoardModal: React.FC<WarfrontDailyBoardModalProps> = (
                             <Text style={[styles.modifierName, { color: mod.color }]}>
                               {mod.name}:
                             </Text>
-                            <Text style={styles.modifierDesc} numberOfLines={1}>
+                            <Text style={styles.modifierDesc} numberOfLines={2}>
                               {mod.description}
                             </Text>
                           </View>
@@ -216,51 +216,58 @@ export const WarfrontDailyBoardModal: React.FC<WarfrontDailyBoardModalProps> = (
                       </View>
                     )}
 
-                    {/* Stats & Deploy Footer */}
-                    <View style={styles.cardFooter}>
-                      <View style={styles.statsColumn}>
-                        <View style={styles.statRow}>
-                          <Ionicons name="fitness-outline" size={14} color="#90A4AE" />
-                          <Text style={styles.statText}>
-                            Rec: {encounter.recommendedSets} sets • {encounter.recommendedIntensity}
-                          </Text>
+                    {/* Combat Specs & Recommended Protocol */}
+                    <View style={styles.cardSpecs}>
+                      <View style={styles.specsRow}>
+                        <View style={styles.specBadge}>
+                          <Ionicons name="heart-outline" size={13} color="#E53935" />
+                          <Text style={styles.specLabel}>TARGET HP:</Text>
+                          <Text style={styles.specValue}>{encounter.baseHealth.toLocaleString()}</Text>
                         </View>
-                        <View style={styles.statRow}>
-                          <Ionicons name="heart-outline" size={14} color="#E53935" />
-                          <Text style={styles.statText}>Target HP: {encounter.baseHealth}</Text>
-                          <Ionicons
-                            name="trophy-outline"
-                            size={14}
-                            color="#FFD700"
-                            style={{ marginLeft: 12 }}
-                          />
-                          <Text style={[styles.statText, { color: '#FFD700' }]}>
-                            +{encounter.baseXpBonus} Glory XP
+                        <View style={styles.specBadge}>
+                          <Ionicons name="trophy-outline" size={13} color="#FFD700" />
+                          <Text style={styles.specLabel}>REWARD:</Text>
+                          <Text style={[styles.specValue, { color: '#FFD700' }]}>
+                            +{encounter.baseXpBonus} XP
                           </Text>
                         </View>
                       </View>
 
-                      <TouchableOpacity
-                        style={[
-                          styles.deployButton,
-                          { backgroundColor: encounter.primaryColor },
-                          isCompleted && styles.deployButtonCompleted,
-                        ]}
-                        onPress={() => {
-                          onDeployEncounter(encounter);
-                          onClose();
-                        }}
-                      >
-                        <Ionicons
-                          name={isCompleted ? 'repeat-outline' : 'play-outline'}
-                          size={16}
-                          color="#FFFFFF"
-                        />
-                        <Text style={styles.deployButtonText}>
-                          {isCompleted ? 'REPEAT' : 'DEPLOY'}
-                        </Text>
-                      </TouchableOpacity>
+                      <View style={styles.protocolRow}>
+                        <Ionicons name="fitness-outline" size={14} color="#90A4AE" style={styles.protocolIcon} />
+                        <View style={styles.protocolTextContainer}>
+                          <Text style={styles.protocolLabel}>
+                            RECOMMENDED PROTOCOL ({encounter.recommendedSets} SETS)
+                          </Text>
+                          <Text style={styles.protocolIntensity}>
+                            {encounter.recommendedIntensity}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
+
+                    {/* Dedicated Full-Width Deploy Action Button */}
+                    <TouchableOpacity
+                      style={[
+                        styles.deployButton,
+                        { backgroundColor: encounter.primaryColor || '#E53935' },
+                        isCompleted && styles.deployButtonCompleted,
+                      ]}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        onDeployEncounter(encounter);
+                        onClose();
+                      }}
+                    >
+                      <Ionicons
+                        name={isCompleted ? 'repeat-outline' : 'play-outline'}
+                        size={16}
+                        color="#FFFFFF"
+                      />
+                      <Text style={styles.deployButtonText}>
+                        {isCompleted ? 'REPEAT ENGAGEMENT' : 'DEPLOY ENGAGEMENT'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 );
               })
@@ -421,6 +428,7 @@ const styles = StyleSheet.create({
   cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 8,
   },
@@ -523,14 +531,15 @@ const styles = StyleSheet.create({
   },
   modifierPill: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: '#1A1E26',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 6,
   },
   modIcon: {
     marginRight: 6,
+    marginTop: 1,
   },
   modifierName: {
     fontSize: 11,
@@ -540,45 +549,96 @@ const styles = StyleSheet.create({
   modifierDesc: {
     color: '#90A4AE',
     fontSize: 11,
+    lineHeight: 15,
     flex: 1,
+    flexWrap: 'wrap',
   },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
+  cardSpecs: {
+    marginTop: 6,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#2C3440',
+    gap: 8,
   },
-  statsColumn: {
+  specsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  specBadge: {
     flex: 1,
-    gap: 4,
-  },
-  statRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: '#181C24',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2A313D',
   },
-  statText: {
-    color: '#B0BEC5',
+  specLabel: {
+    color: '#78909C',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  specValue: {
+    color: '#ECEFF1',
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 'auto',
+  },
+  protocolRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#181C24',
+    padding: 8,
+    borderRadius: 6,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#2A313D',
+  },
+  protocolIcon: {
+    marginTop: 2,
+  },
+  protocolTextContainer: {
+    flex: 1,
+  },
+  protocolLabel: {
+    color: '#90A4AE',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  protocolIntensity: {
+    color: '#CFD8DC',
     fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   deployButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 3,
   },
   deployButtonCompleted: {
-    backgroundColor: '#455A64',
+    backgroundColor: '#37474F',
   },
   deployButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
 });

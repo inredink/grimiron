@@ -717,29 +717,38 @@ export const CampaignAcademyModal: React.FC<CampaignAcademyModalProps> = ({
 
                 {/* 3 Training Blocks */}
                 <SciFiCard title="3-BLOCK PERIODIZATION (12 WEEKS // 90 DAYS)" variant="normal">
-                  {inspectCampaign.programDefinition.blocks.map((block) => (
-                    <View key={block.blockNumber} style={styles.curriculumBlockItem}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text style={styles.blockTitle}>
-                          BLOCK {block.blockNumber}: {block.title.toUpperCase()}
+                  {inspectCampaign.programDefinition.blocks.map((block) => {
+                    const cleanTitle = block.title.replace(/^Block\s*\d+\s*:\s*/i, '');
+                    return (
+                      <View key={block.blockNumber} style={styles.curriculumBlockItem}>
+                        <View style={styles.curriculumHeaderRow}>
+                          <Text style={styles.blockTitle} numberOfLines={2}>
+                            BLOCK {block.blockNumber}: {cleanTitle.toUpperCase()}
+                          </Text>
+                          <View style={styles.badgeWrapper}>
+                            <Badge label={`${block.durationWeeks} WEEKS`} variant="primary" />
+                          </View>
+                        </View>
+                        <Text style={styles.blockFocusText}>Focus: {block.focus}</Text>
+                        <Text style={styles.blockSessionsText}>
+                          {block.sessions.filter((s) => !s.isRestDay).length} Working Sessions (Rest days rescheduled non-punitively)
                         </Text>
-                        <Badge label={`${block.durationWeeks} WEEKS`} variant="primary" />
                       </View>
-                      <Text style={styles.blockFocusText}>Focus: {block.focus}</Text>
-                      <Text style={styles.blockSessionsText}>
-                        {block.sessions.filter((s) => !s.isRestDay).length} Working Sessions (Rest days rescheduled non-punitively)
-                      </Text>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </SciFiCard>
 
                 {/* 6 Story Chapters and Bosses */}
                 <SciFiCard title="6 PROGRESSIVE CHAPTERS & COMMANDERS" variant="normal">
                   {inspectCampaign.chapters.map((ch) => (
                     <View key={ch.id} style={styles.curriculumChapterItem}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text style={styles.chapterNumText}>CHAPTER {ch.chapterNumber}: {ch.title.toUpperCase()}</Text>
-                        <Badge label={`PHASE ${ch.phaseNumber}`} variant="secondary" />
+                      <View style={styles.curriculumHeaderRow}>
+                        <Text style={styles.chapterNumText} numberOfLines={2}>
+                          CHAPTER {ch.chapterNumber}: {ch.title.toUpperCase()}
+                        </Text>
+                        <View style={styles.badgeWrapper}>
+                          <Badge label={`PHASE ${ch.phaseNumber}`} variant="secondary" />
+                        </View>
                       </View>
                       <Text style={styles.chapterBriefingText}>{ch.narrativeBriefing}</Text>
                       <View style={styles.chapterBossMiniCard}>
@@ -1292,10 +1301,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.surfaceBorder,
   },
+  curriculumHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 4,
+  },
+  badgeWrapper: {
+    flexShrink: 0,
+    alignSelf: 'center',
+  },
   blockTitle: {
+    flex: 1,
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.textBright,
+    marginRight: 6,
   },
   blockFocusText: {
     fontSize: 12,
@@ -1313,9 +1336,12 @@ const styles = StyleSheet.create({
     borderBottomColor: THEME.colors.surfaceBorder,
   },
   chapterNumText: {
+    flex: 1,
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.textBright,
+    marginRight: 6,
   },
   chapterBriefingText: {
     fontSize: 12,
