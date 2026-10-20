@@ -12,16 +12,19 @@ import { ProgressBar } from './ProgressBar';
 import { getSafeIoniconsName } from '../utils/iconHelper';
 import {
   AchievementAward,
+  AchievementCriterion,
   AchievementDefinition,
   AchievementProgress,
   AchievementTier,
 } from '../types/achievements';
 
-interface AchievementCardProps {
+export interface AchievementCardProps {
   definition: AchievementDefinition;
   progress?: AchievementProgress;
   award?: AchievementAward;
   onPress?: () => void;
+  mode?: 'available' | 'completed';
+  characterFactionId?: string;
 }
 
 export const TIER_COLORS: Record<AchievementTier, string> = {
@@ -32,20 +35,33 @@ export const TIER_COLORS: Record<AchievementTier, string> = {
   relic: '#FF3366',
 };
 
+import { formatCriterionRequirement } from '../utils/achievementFormatter';
+export { formatCriterionRequirement };
+
 export const AchievementCard: React.FC<AchievementCardProps> = ({
   definition,
   progress,
   award,
   onPress,
+  mode,
+  characterFactionId,
 }) => {
   const isUnlocked = Boolean(award || progress?.isCompleted);
+  const cardMode = mode || (isUnlocked ? 'completed' : 'available');
   const tierColor = TIER_COLORS[definition.tier] || THEME.colors.primary;
 
   const currentVal = progress?.currentValue ?? (isUnlocked ? definition.criterion.targetValue : 0);
   const targetVal = definition.criterion.targetValue;
+  const remaining = Math.max(0, targetVal - currentVal);
   const progressPercent = Math.min(
     100,
-    progress?.progressPercent ?? (isUnlocked ? 100 : Math.round((currentVal / targetVal) * 100))
+    progress?.progressPercent ?? (isUnlocked ? 100 : Math.round((currentVal / Math.max(1, targetVal)) * 100))
+  );
+
+  const isRestricted = Boolean(
+    definition.factionRestriction &&
+      characterFactionId &&
+      definition.factionRestriction !== characterFactionId
   );
 
   return (
@@ -54,37 +70,38 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
       onPress={onPress}
       style={[
         styles.cardContainer,
-        isUnlocked && styles.cardContainerUnlocked,
+        cardMode === 'completed' && styles.cardContainerCompleted,
       ]}
     >
       <View style={styles.contentRow}>
-        {/* Tier & Icon Glyph Badge */}
+        {/* Tier & Glyph Medallion */}
         <View
           style={[
             styles.iconBox,
-            { borderColor: isUnlocked ? tierColor : THEME.colors.surfaceBorder },
-            isUnlocked && { backgroundColor: `${tierColor}15` },
+            { borderColor: cardMode === 'completed' ? tierColor : THEME.colors.surfaceBorder },
+            cardMode === 'completed' && { backgroundColor: `${tierColor}18` },
           ]}
         >
           <Ionicons
-            name={getSafeIoniconsName(definition.icon, 'trophy-outline')}
+            name={getSafeIoniconsName(definition.icon, cardMode === 'completed' ? 'trophy' : 'trophy-outline')}
             size={24}
-            color={isUnlocked ? tierColor : THEME.colors.textMuted}
+            color={cardMode === 'completed' ? tierColor : THEME.colors.textMuted}
           />
-          {isUnlocked && (
+          {cardMode === 'completed' && (
             <View style={[styles.miniCheck, { backgroundColor: tierColor }]}>
               <Ionicons name="checkmark" size={10} color="#000" />
             </View>
           )}
         </View>
 
-        {/* Text Details */}
+        {/* Text & Telemetry Body */}
         <View style={styles.textContainer}>
+          {/* Header Row: Title, Tier, Status */}
           <View style={styles.headerRow}>
             <Text
               style={[
                 styles.title,
-                isUnlocked && { color: THEME.colors.textBright },
+                cardMode === 'completed' && { color: THEME.colors.textBright },
               ]}
               numberOfLines={1}
             >
@@ -105,24 +122,79 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
             {definition.description}
           </Text>
 
-          {/* Progress Bar & Numerical Target */}
-          <View style={styles.progressSection}>
-            <View style={styles.progressNumbersRow}>
-              <Text style={styles.progressText}>
-                {isUnlocked
-                  ? 'ACCOMPLISHED'
-                  : `${currentVal.toLocaleString()} / ${targetVal.toLocaleString()}`}
-              </Text>
-              <Text style={styles.xpText}>+{definition.rewardXp} XP</Text>
-            </View>
-            <ProgressBar
-              progress={progressPercent}
-              color={isUnlocked ? THEME.colors.success : THEME.colors.primary}
-              style={{ marginTop: 4 }}
-            />
-          </View>
+          {/* ========================================================= */}
+          {/* AVAILABLE MODE: Telemetry, Requirement, Remaining Needed  */}
+          {/* ========================================================= */}
+          {cardMode === 'available' && (
+            <View style={styles.availableSection}>
+              {/* Requirement Summary */}
+              <View style={styles.requirementRow}>
+                <Ionicons name="flag-outline" size={12} color={THEME.colors.textMuted} />
+                <Text style={styles.requirementText} numberOfLines={1}>
+                  {formatCriterionRequirement(definition.criterion)}
+                </Text>
+              </View>
 
-          {/* Metadata tags */}
+              {/* Progress Bar & Numerical Target */}
+              <View style={styles.progressSection}>
+                <View style={styles.progressNumbersRow}>
+                  <Text style={styles.progressText}>
+                    Progress: {currentVal.toLocaleString()} / {targetVal.toLocaleString()} ({progressPercent}%)
+                  </Text>
+                  <Text style={styles.remainingText}>
+                    {remaining === 0 ? 'READY TO CLAIM' : `${remaining.toLocaleString()} more needed`}
+                  </Text>
+                </View>
+                <ProgressBar
+                  progress={progressPercent}
+                  color={progressPercent > 0 ? THEME.colors.primary : THEME.colors.surfaceBorder}
+                  style={{ marginTop: 4 }}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* ========================================================= */}
+          {/* COMPLETED MODE: Conferred Date, Source Event, XP Awarded */}
+          {/* ========================================================= */}
+          {cardMode === 'completed' && (
+            <View style={styles.completedSection}>
+              <View style={styles.completedMetaRow}>
+                <Ionicons name="checkmark-circle" size={13} color={THEME.colors.success} />
+                <Text style={styles.conferredDateText}>
+                  {award?.unlockedAt
+                    ? `Awarded ${new Date(award.unlockedAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })} at ${new Date(award.unlockedAt).toLocaleTimeString([], {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}`
+                    : 'Honor Conferred'}
+                </Text>
+              </View>
+
+              {Boolean(award?.sourceEventType) && (
+                <View style={styles.sourceEventRow}>
+                  <Ionicons name="link-outline" size={12} color={THEME.colors.textMuted} />
+                  <Text style={styles.sourceEventText}>
+                    {award?.sourceEventType === 'workout_completed'
+                      ? 'Linked: Crusade Workout Session'
+                      : award?.sourceEventType === 'battle_completed'
+                      ? 'Linked: Tactical Combat Engagement'
+                      : award?.sourceEventType === 'raid_completed'
+                      ? 'Linked: Weekly Raid Boss Battle'
+                      : award?.sourceEventType === 'mission_reward'
+                      ? 'Linked: Mission Operations'
+                      : `Linked: ${award?.sourceEventType?.replace(/_/g, ' ')}`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Metadata & Reward Strip */}
           <View style={styles.metaRow}>
             <Badge
               label={`[${definition.scope.toUpperCase()}]`}
@@ -132,12 +204,27 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({
             <Badge
               label={definition.category.toUpperCase().replace('_', ' ')}
               variant="neutral"
+              style={{ marginRight: 6 }}
             />
-            {award?.unlockedAt && (
-              <Text style={styles.unlockedDate}>
-                Awarded {new Date(award.unlockedAt).toLocaleDateString()}
-              </Text>
-            )}
+
+            {isRestricted ? (
+              <Badge
+                label="FACTION LOCKED"
+                variant="neutral"
+                style={{ borderColor: THEME.colors.warning, borderWidth: 1 }}
+              />
+            ) : null}
+
+            <Text
+              style={[
+                styles.rewardTag,
+                cardMode === 'completed' && { color: THEME.colors.success },
+              ]}
+            >
+              {cardMode === 'completed'
+                ? `+${award?.rewardXp || definition.rewardXp} XP Credited`
+                : `+${definition.rewardXp} XP Commendation`}
+            </Text>
           </View>
         </View>
       </View>
@@ -153,10 +240,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginBottom: 10,
-    opacity: 0.9,
+    opacity: 0.95,
   },
-  cardContainerUnlocked: {
-    borderColor: 'rgba(255,255,255,0.2)',
+  cardContainerCompleted: {
+    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(20, 24, 30, 0.95)',
     opacity: 1,
   },
   contentRow: {
@@ -207,8 +295,24 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginBottom: 8,
   },
-  progressSection: {
+  availableSection: {
     marginBottom: 8,
+    gap: 4,
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  requirementText: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    fontWeight: '600',
+    flex: 1,
+  },
+  progressSection: {
+    marginTop: 2,
   },
   progressNumbersRow: {
     flexDirection: 'row',
@@ -220,19 +324,45 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.colors.textMuted,
   },
-  xpText: {
+  remainingText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
     color: THEME.colors.primary,
+  },
+  completedSection: {
+    marginBottom: 8,
+    gap: 3,
+  },
+  completedMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  conferredDateText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.textBright,
+  },
+  sourceEventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  sourceEventText: {
+    fontSize: 10,
+    color: THEME.colors.textMuted,
+    fontWeight: '600',
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
+    marginTop: 4,
   },
-  unlockedDate: {
+  rewardTag: {
     fontSize: 10,
-    color: THEME.colors.textMuted,
+    fontWeight: '800',
+    color: THEME.colors.primary,
     marginLeft: 'auto',
   },
 });

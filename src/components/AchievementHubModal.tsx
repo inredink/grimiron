@@ -27,13 +27,15 @@ import {
   getAllAwards,
   getAllAchievementProgress,
 } from '../services/database/achievementRepository';
+import { triggerHaptic } from '../utils/haptics';
 
-interface AchievementHubModalProps {
+export interface AchievementHubModalProps {
   visible: boolean;
   onClose: () => void;
   userId: string;
   characterId: string;
   squadId?: string;
+  characterFactionId?: string;
 }
 
 const CATEGORIES: Array<{ key: AchievementCategory | 'all'; label: string }> = [
@@ -57,16 +59,24 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
   userId,
   characterId,
   squadId,
+  characterFactionId,
 }) => {
-  // Filters & State
+  // Primary Navigation Tab: Available vs Completed
+  const [activeTab, setActiveTab] = useState<'available' | 'completed'>('available');
+
+  // Scope & Category Filtering
   const [selectedScope, setSelectedScope] = useState<AchievementScope | 'all'>('all');
   const [selectedCategory, setSelectedCategory] = useState<AchievementCategory | 'all'>('all');
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'earned' | 'in_progress' | 'locked'>('all');
+  const [availableStatusFilter, setAvailableStatusFilter] = useState<'all' | 'in_progress' | 'unstarted'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'tier' | 'progress' | 'name'>('progress');
+
+  // Sorting
+  const [availableSortBy, setAvailableSortBy] = useState<'progress' | 'tier' | 'name'>('progress');
+  const [completedSortBy, setCompletedSortBy] = useState<'recently_earned' | 'tier' | 'name'>('recently_earned');
+
   const [selectedDetailDef, setSelectedDetailDef] = useState<AchievementDefinition | null>(null);
 
-  // Load live awards and progress
+  // Load live awards and progress from SQLite
   const { awardsMap, progressMap, awardsList } = useMemo(() => {
     try {
       const allAwards = getAllAwards();
@@ -110,9 +120,48 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
     };
   }, [awardsList]);
 
-  // Filtered definitions
-  const filteredDefinitions = useMemo(() => {
-    return ACHIEVEMENT_CATALOG.filter((def) => {
+  // Counts partitioned by Available vs Completed for current scope
+  const tabCounts = useMemo(() => {
+    let availCount = 0;
+    let compCount = 0;
+    let inProgCount = 0;
+    let unstartedCount = 0;
+
+    for (const def of ACHIEVEMENT_CATALOG) {
+      if (selectedScope !== 'all' && def.scope !== selectedScope) continue;
+
+      let targetId = userId;
+      if (def.scope === 'character') targetId = characterId;
+      if (def.scope === 'squad') targetId = squadId || 'squad_default';
+
+      const key = `${def.id}_${targetId}`;
+      const award = awardsMap.get(key);
+      const prog = progressMap.get(key);
+      const isCompleted = Boolean(award || prog?.isCompleted);
+
+      if (isCompleted) {
+        compCount++;
+      } else {
+        availCount++;
+        if ((prog?.currentValue || 0) > 0) {
+          inProgCount++;
+        } else {
+          unstartedCount++;
+        }
+      }
+    }
+
+    return {
+      availCount,
+      compCount,
+      inProgCount,
+      unstartedCount,
+    };
+  }, [awardsMap, progressMap, selectedScope, userId, characterId, squadId]);
+
+  // Filtered and sorted definitions
+  const displayedDefinitions = useMemo(() => {
+    const list = ACHIEVEMENT_CATALOG.filter((def) => {
       // 1. Scope filter
       if (selectedScope !== 'all' && def.scope !== selectedScope) {
         return false;
@@ -123,7 +172,15 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
         return false;
       }
 
-      // Target ID lookup
+      // 3. Search query
+      if (searchQuery.trim().length > 0) {
+        const q = searchQuery.toLowerCase();
+        const matchName = def.name.toLowerCase().includes(q);
+        const matchDesc = def.description.toLowerCase().includes(q);
+        if (!matchName && !matchDesc) return false;
+      }
+
+      // Resolve scope target ID
       let targetId = userId;
       if (def.scope === 'character') targetId = characterId;
       if (def.scope === 'squad') targetId = squadId || 'squad_default';
@@ -133,45 +190,67 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
       const prog = progressMap.get(key);
       const isCompleted = Boolean(award || prog?.isCompleted);
 
-      // 3. Status filter
-      if (selectedStatus === 'earned' && !isCompleted) return false;
-      if (selectedStatus === 'locked' && (isCompleted || (prog?.progressPercent || 0) > 0)) return false;
-      if (selectedStatus === 'in_progress') {
+      // 4. Primary tab separation:
+      // AVAILABLE tab MUST only include unearned achievements
+      // COMPLETED tab MUST only include earned achievements
+      if (activeTab === 'available') {
         if (isCompleted) return false;
-        if (!prog || prog.progressPercent === 0) return false;
-      }
 
-      // 4. Search filter
-      if (searchQuery.trim().length > 0) {
-        const q = searchQuery.toLowerCase();
-        const matchName = def.name.toLowerCase().includes(q);
-        const matchDesc = def.description.toLowerCase().includes(q);
-        if (!matchName && !matchDesc) return false;
-      }
+        // Sub-filter for available tab
+        const currentVal = prog?.currentValue || 0;
+        if (availableStatusFilter === 'in_progress' && currentVal === 0) return false;
+        if (availableStatusFilter === 'unstarted' && currentVal > 0) return false;
 
-      return true;
-    }).sort((a, b) => {
+        return true;
+      } else {
+        // activeTab === 'completed'
+        if (!isCompleted) return false;
+        return true;
+      }
+    });
+
+    const tierWeights: Record<string, number> = { relic: 5, platinum: 4, gold: 3, silver: 2, bronze: 1 };
+
+    return list.sort((a, b) => {
       let targetIdA = a.scope === 'character' ? characterId : a.scope === 'squad' ? (squadId || 'squad_default') : userId;
       let targetIdB = b.scope === 'character' ? characterId : b.scope === 'squad' ? (squadId || 'squad_default') : userId;
 
-      const progA = progressMap.get(`${a.id}_${targetIdA}`)?.progressPercent || 0;
-      const progB = progressMap.get(`${b.id}_${targetIdB}`)?.progressPercent || 0;
-
-      if (sortBy === 'progress') {
-        return progB - progA;
+      if (activeTab === 'completed') {
+        // Completed sorting (default: most recently earned first)
+        if (completedSortBy === 'recently_earned') {
+          const awardA = awardsMap.get(`${a.id}_${targetIdA}`);
+          const awardB = awardsMap.get(`${b.id}_${targetIdB}`);
+          const timeA = awardA?.unlockedAt ? new Date(awardA.unlockedAt).getTime() : 0;
+          const timeB = awardB?.unlockedAt ? new Date(awardB.unlockedAt).getTime() : 0;
+          if (timeB !== timeA) return timeB - timeA;
+        }
+        if (completedSortBy === 'tier') {
+          const diff = (tierWeights[b.tier] || 0) - (tierWeights[a.tier] || 0);
+          if (diff !== 0) return diff;
+        }
+        return a.name.localeCompare(b.name);
+      } else {
+        // Available sorting (default: highest progress percentage first)
+        if (availableSortBy === 'progress') {
+          const progA = progressMap.get(`${a.id}_${targetIdA}`)?.progressPercent || 0;
+          const progB = progressMap.get(`${b.id}_${targetIdB}`)?.progressPercent || 0;
+          if (progB !== progA) return progB - progA;
+        }
+        if (availableSortBy === 'tier') {
+          const diff = (tierWeights[b.tier] || 0) - (tierWeights[a.tier] || 0);
+          if (diff !== 0) return diff;
+        }
+        return a.name.localeCompare(b.name);
       }
-      if (sortBy === 'tier') {
-        const tierWeights: Record<string, number> = { relic: 5, platinum: 4, gold: 3, silver: 2, bronze: 1 };
-        return (tierWeights[b.tier] || 0) - (tierWeights[a.tier] || 0);
-      }
-      return a.name.localeCompare(b.name);
     });
   }, [
+    activeTab,
     selectedScope,
     selectedCategory,
-    selectedStatus,
+    availableStatusFilter,
     searchQuery,
-    sortBy,
+    availableSortBy,
+    completedSortBy,
     awardsMap,
     progressMap,
     userId,
@@ -206,21 +285,112 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
           />
         </View>
 
+        {/* ========================================================= */}
+        {/* PRIMARY VIEW MODE SWITCHER: AVAILABLE vs COMPLETED TABS   */}
+        {/* ========================================================= */}
+        <View style={styles.primaryTabsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.primaryTabBtn,
+              activeTab === 'available' && styles.primaryTabBtnActive,
+            ]}
+            onPress={() => {
+              triggerHaptic.selection();
+              setActiveTab('available');
+            }}
+          >
+            <Ionicons
+              name="compass-outline"
+              size={18}
+              color={activeTab === 'available' ? THEME.colors.primary : THEME.colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.primaryTabText,
+                activeTab === 'available' && styles.primaryTabTextActive,
+              ]}
+            >
+              AVAILABLE
+            </Text>
+            <View
+              style={[
+                styles.tabBadge,
+                activeTab === 'available' && styles.tabBadgeActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tabBadgeText,
+                  activeTab === 'available' && styles.tabBadgeTextActive,
+                ]}
+              >
+                {tabCounts.availCount}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.primaryTabBtn,
+              activeTab === 'completed' && styles.primaryTabBtnActiveCompleted,
+            ]}
+            onPress={() => {
+              triggerHaptic.selection();
+              setActiveTab('completed');
+            }}
+          >
+            <Ionicons
+              name="trophy"
+              size={18}
+              color={activeTab === 'completed' ? THEME.colors.success : THEME.colors.textMuted}
+            />
+            <Text
+              style={[
+                styles.primaryTabText,
+                activeTab === 'completed' && styles.primaryTabTextActiveCompleted,
+              ]}
+            >
+              COMPLETED
+            </Text>
+            <View
+              style={[
+                styles.tabBadge,
+                activeTab === 'completed' && styles.tabBadgeActiveCompleted,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.tabBadgeText,
+                  activeTab === 'completed' && styles.tabBadgeTextActiveCompleted,
+                ]}
+              >
+                {tabCounts.compCount}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* Summary Metric Strip */}
         <View style={styles.statsStrip}>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>USER HONORS</Text>
-            <Text style={styles.statValue}>{stats.userAwardsCount}</Text>
+            <Text style={styles.statLabel}>AVAILABLE</Text>
+            <Text style={[styles.statValue, { color: THEME.colors.primary }]}>
+              {tabCounts.availCount}
+            </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>CHARACTER</Text>
-            <Text style={styles.statValue}>{stats.charAwardsCount}</Text>
+            <Text style={styles.statLabel}>IN PROGRESS</Text>
+            <Text style={[styles.statValue, { color: THEME.colors.warning }]}>
+              {tabCounts.inProgCount}
+            </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>SQUAD</Text>
-            <Text style={styles.statValue}>{stats.squadAwardsCount}</Text>
+            <Text style={styles.statLabel}>COMPLETED</Text>
+            <Text style={[styles.statValue, { color: THEME.colors.success }]}>
+              {tabCounts.compCount}
+            </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
@@ -239,7 +409,10 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
               <TouchableOpacity
                 key={sc}
                 style={[styles.scopeTabBtn, isActive && styles.scopeTabBtnActive]}
-                onPress={() => setSelectedScope(sc)}
+                onPress={() => {
+                  triggerHaptic.selection();
+                  setSelectedScope(sc);
+                }}
               >
                 <Text
                   style={[
@@ -270,7 +443,10 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
                     styles.categoryPill,
                     isActive && styles.categoryPillActive,
                   ]}
-                  onPress={() => setSelectedCategory(cat.key)}
+                  onPress={() => {
+                    triggerHaptic.selection();
+                    setSelectedCategory(cat.key);
+                  }}
                 >
                   <Text
                     style={[
@@ -286,13 +462,13 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
           </ScrollView>
         </View>
 
-        {/* Search & Status Bar */}
+        {/* Search & Sub-Filter / Sort Control Row */}
         <View style={styles.filterRow}>
           <View style={styles.searchBox}>
             <Ionicons name="search" size={16} color={THEME.colors.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search achievements..."
+              placeholder="Search citations..."
               placeholderTextColor={THEME.colors.textMuted}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -304,34 +480,80 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
             )}
           </View>
 
-          {/* Status selector */}
-          <TouchableOpacity
-            style={styles.statusToggleBtn}
-            onPress={() => {
-              const nextStatus: Record<string, 'all' | 'earned' | 'in_progress' | 'locked'> = {
-                all: 'earned',
-                earned: 'in_progress',
-                in_progress: 'locked',
-                locked: 'all',
-              };
-              setSelectedStatus(nextStatus[selectedStatus]);
-            }}
-          >
-            <Text style={styles.statusToggleText}>
-              {selectedStatus === 'all'
-                ? 'ALL'
-                : selectedStatus === 'earned'
-                ? 'EARNED'
-                : selectedStatus === 'in_progress'
-                ? 'PROGRESS'
-                : 'LOCKED'}
-            </Text>
-          </TouchableOpacity>
+          {/* Sub-filter or Sorting Button depending on activeTab */}
+          {activeTab === 'available' ? (
+            <TouchableOpacity
+              style={styles.statusToggleBtn}
+              onPress={() => {
+                triggerHaptic.selection();
+                const nextStatus: Record<string, 'all' | 'in_progress' | 'unstarted'> = {
+                  all: 'in_progress',
+                  in_progress: 'unstarted',
+                  unstarted: 'all',
+                };
+                setAvailableStatusFilter(nextStatus[availableStatusFilter]);
+              }}
+            >
+              <Text style={styles.statusToggleText}>
+                {availableStatusFilter === 'all'
+                  ? 'STATUS: ALL'
+                  : availableStatusFilter === 'in_progress'
+                  ? 'IN PROGRESS'
+                  : 'UNSTARTED'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.statusToggleBtn}
+              onPress={() => {
+                triggerHaptic.selection();
+                const nextSort: Record<string, 'recently_earned' | 'tier' | 'name'> = {
+                  recently_earned: 'tier',
+                  tier: 'name',
+                  name: 'recently_earned',
+                };
+                setCompletedSortBy(nextSort[completedSortBy]);
+              }}
+            >
+              <Text style={styles.statusToggleText}>
+                {completedSortBy === 'recently_earned'
+                  ? 'SORT: RECENT'
+                  : completedSortBy === 'tier'
+                  ? 'SORT: TIER'
+                  : 'SORT: NAME'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Secondary Sort button for Available tab */}
+          {activeTab === 'available' && (
+            <TouchableOpacity
+              style={styles.sortToggleBtn}
+              onPress={() => {
+                triggerHaptic.selection();
+                const nextSort: Record<string, 'progress' | 'tier' | 'name'> = {
+                  progress: 'tier',
+                  tier: 'name',
+                  name: 'progress',
+                };
+                setAvailableSortBy(nextSort[availableSortBy]);
+              }}
+            >
+              <Ionicons name="swap-vertical" size={14} color={THEME.colors.primary} />
+              <Text style={styles.sortToggleText}>
+                {availableSortBy === 'progress'
+                  ? 'PROGRESS'
+                  : availableSortBy === 'tier'
+                  ? 'TIER'
+                  : 'A-Z'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Achievement List */}
         <FlatList
-          data={filteredDefinitions}
+          data={displayedDefinitions}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => {
@@ -348,6 +570,8 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
                 definition={item}
                 award={award}
                 progress={progress}
+                mode={activeTab}
+                characterFactionId={characterFactionId}
                 onPress={() => setSelectedDetailDef(item)}
               />
             );
@@ -355,14 +579,46 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons
-                name="shield-outline"
+                name={activeTab === 'completed' ? 'trophy-outline' : 'shield-outline'}
                 size={48}
                 color={THEME.colors.surfaceBorder}
               />
-              <Text style={styles.emptyTitle}>NO CITATIONS FOUND</Text>
-              <Text style={styles.emptySubtitle}>
-                No achievements match your active filter criteria. Clear filters or complete more crusade missions.
+              <Text style={styles.emptyTitle}>
+                {activeTab === 'completed'
+                  ? tabCounts.compCount === 0
+                    ? 'NO HONORS EARNED YET'
+                    : 'NO COMPLETED HONORS IN THIS CATEGORY'
+                  : tabCounts.availCount === 0
+                  ? 'ALL COMMENDATIONS CONFERRED'
+                  : 'NO AVAILABLE CITATIONS MATCH'}
               </Text>
+              <Text style={styles.emptySubtitle}>
+                {activeTab === 'completed'
+                  ? tabCounts.compCount === 0
+                    ? 'Complete physical workouts, break personal records, or slay sector invaders to earn Imperial citations.'
+                    : 'No completed achievements match your active category, scope, or search filter.'
+                  : tabCounts.availCount === 0
+                  ? 'Outstanding devotion to the Emperor! You have completed all achievements in this category.'
+                  : 'No incomplete achievements match your active search terms or criteria.'}
+              </Text>
+              {(selectedCategory !== 'all' ||
+                selectedScope !== 'all' ||
+                searchQuery.length > 0 ||
+                availableStatusFilter !== 'all') && (
+                <TouchableOpacity
+                  style={styles.resetFilterBtn}
+                  onPress={() => {
+                    triggerHaptic.selection();
+                    setSelectedCategory('all');
+                    setSelectedScope('all');
+                    setSearchQuery('');
+                    setAvailableStatusFilter('all');
+                  }}
+                >
+                  <Ionicons name="refresh-outline" size={14} color={THEME.colors.primary} />
+                  <Text style={styles.resetFilterBtnText}>RESET ALL FILTERS</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
         />
@@ -373,6 +629,8 @@ export const AchievementHubModal: React.FC<AchievementHubModalProps> = ({
             visible={Boolean(selectedDetailDef)}
             onClose={() => setSelectedDetailDef(null)}
             definition={selectedDetailDef}
+            mode={activeTab}
+            characterFactionId={characterFactionId}
             award={
               awardsMap.get(
                 `${selectedDetailDef.id}_${
@@ -437,6 +695,75 @@ const styles = StyleSheet.create({
     color: THEME.colors.textBright,
     letterSpacing: 0.5,
   },
+  primaryTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: THEME.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.surfaceBorder,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  primaryTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+    backgroundColor: THEME.colors.surface,
+    gap: 8,
+  },
+  primaryTabBtnActive: {
+    borderColor: THEME.colors.primary,
+    backgroundColor: 'rgba(0, 240, 255, 0.12)',
+  },
+  primaryTabBtnActiveCompleted: {
+    borderColor: THEME.colors.success,
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+  },
+  primaryTabText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.8,
+  },
+  primaryTabTextActive: {
+    color: THEME.colors.primary,
+  },
+  primaryTabTextActiveCompleted: {
+    color: THEME.colors.success,
+  },
+  tabBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+  },
+  tabBadgeActive: {
+    backgroundColor: THEME.colors.primary,
+    borderColor: THEME.colors.primary,
+  },
+  tabBadgeActiveCompleted: {
+    backgroundColor: THEME.colors.success,
+    borderColor: THEME.colors.success,
+  },
+  tabBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.textMuted,
+  },
+  tabBadgeTextActive: {
+    color: '#000',
+  },
+  tabBadgeTextActiveCompleted: {
+    color: '#000',
+  },
   statsStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -451,15 +778,15 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '800',
     color: THEME.colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    marginBottom: 2,
   },
   statValue: {
     fontSize: 14,
     fontWeight: '900',
     color: THEME.colors.textBright,
-    marginTop: 2,
   },
   statDivider: {
     width: 1,
@@ -468,52 +795,54 @@ const styles = StyleSheet.create({
   },
   scopeTabs: {
     flexDirection: 'row',
+    backgroundColor: THEME.colors.surfaceRaised,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.surfaceBorder,
-    backgroundColor: THEME.colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   scopeTabBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 6,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderRadius: 4,
   },
   scopeTabBtnActive: {
+    backgroundColor: THEME.colors.surface,
+    borderBottomWidth: 2,
     borderBottomColor: THEME.colors.primary,
-    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   scopeTabText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: THEME.colors.textMuted,
     letterSpacing: 0.5,
   },
   scopeTabTextActive: {
-    color: THEME.colors.primary,
+    color: THEME.colors.textBright,
     fontWeight: '900',
   },
   categoryScrollWrap: {
+    backgroundColor: THEME.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.surfaceBorder,
-    backgroundColor: THEME.colors.surface,
+    paddingVertical: 6,
   },
   categoryScrollContent: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: 6,
   },
   categoryPill: {
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 4,
-    backgroundColor: THEME.colors.background,
+    borderRadius: 14,
+    backgroundColor: THEME.colors.surface,
     borderWidth: 1,
     borderColor: THEME.colors.surfaceBorder,
-    marginRight: 6,
   },
   categoryPillActive: {
+    backgroundColor: THEME.colors.surfaceRaised,
     borderColor: THEME.colors.primary,
-    backgroundColor: `${THEME.colors.primary}20`,
   },
   categoryPillText: {
     fontSize: 10,
@@ -530,37 +859,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
+    backgroundColor: THEME.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: THEME.colors.surfaceBorder,
+    gap: 8,
   },
   searchBox: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
     borderColor: THEME.colors.surfaceBorder,
+    borderWidth: 1,
     borderRadius: 6,
     paddingHorizontal: 8,
     height: 36,
-    marginRight: 8,
+    gap: 6,
   },
   searchInput: {
     flex: 1,
     fontSize: 12,
     color: THEME.colors.textBright,
-    marginLeft: 6,
     paddingVertical: 0,
   },
   statusToggleBtn: {
-    paddingHorizontal: 10,
     height: 36,
+    paddingHorizontal: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 6,
     backgroundColor: THEME.colors.surface,
-    borderWidth: 1,
     borderColor: THEME.colors.surfaceBorder,
+    borderWidth: 1,
+    borderRadius: 6,
   },
   statusToggleText: {
     fontSize: 10,
@@ -568,27 +898,64 @@ const styles = StyleSheet.create({
     color: THEME.colors.textBright,
     letterSpacing: 0.5,
   },
+  sortToggleBtn: {
+    height: 36,
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    backgroundColor: THEME.colors.surface,
+    borderColor: THEME.colors.surfaceBorder,
+    borderWidth: 1,
+    borderRadius: 6,
+    gap: 4,
+  },
+  sortToggleText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.primary,
+    letterSpacing: 0.5,
+  },
   listContent: {
     padding: 12,
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
   },
   emptyTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '900',
     color: THEME.colors.textBright,
     letterSpacing: 1,
     marginTop: 12,
-    marginBottom: 4,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 12,
     color: THEME.colors.textMuted,
+    lineHeight: 18,
     textAlign: 'center',
-    lineHeight: 16,
+    marginTop: 6,
+  },
+  resetFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+    backgroundColor: 'rgba(0, 240, 255, 0.08)',
+  },
+  resetFilterBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME.colors.primary,
+    letterSpacing: 0.5,
   },
 });

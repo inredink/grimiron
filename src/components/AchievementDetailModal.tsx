@@ -16,15 +16,17 @@ import {
   AchievementDefinition,
   AchievementProgress,
 } from '../types/achievements';
-import { TIER_COLORS } from './AchievementCard';
+import { TIER_COLORS, formatCriterionRequirement } from './AchievementCard';
 import { getSafeIoniconsName } from '../utils/iconHelper';
 
-interface AchievementDetailModalProps {
+export interface AchievementDetailModalProps {
   visible: boolean;
   onClose: () => void;
   definition: AchievementDefinition | null;
   progress?: AchievementProgress;
   award?: AchievementAward;
+  mode?: 'available' | 'completed';
+  characterFactionId?: string;
 }
 
 export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
@@ -33,17 +35,27 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
   definition,
   progress,
   award,
+  mode,
+  characterFactionId,
 }) => {
   if (!definition) return null;
 
   const isUnlocked = Boolean(award || progress?.isCompleted);
+  const detailMode = mode || (isUnlocked ? 'completed' : 'available');
   const tierColor = TIER_COLORS[definition.tier] || THEME.colors.primary;
 
   const currentVal = progress?.currentValue ?? (isUnlocked ? definition.criterion.targetValue : 0);
   const targetVal = definition.criterion.targetValue;
+  const remaining = Math.max(0, targetVal - currentVal);
   const progressPercent = Math.min(
     100,
-    progress?.progressPercent ?? (isUnlocked ? 100 : Math.round((currentVal / targetVal) * 100))
+    progress?.progressPercent ?? (isUnlocked ? 100 : Math.round((currentVal / Math.max(1, targetVal)) * 100))
+  );
+
+  const isRestricted = Boolean(
+    definition.factionRestriction &&
+      characterFactionId &&
+      definition.factionRestriction !== characterFactionId
   );
 
   return (
@@ -58,7 +70,11 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
           {/* Header */}
           <View style={styles.modalHeader}>
             <View style={styles.titleWrap}>
-              <Text style={styles.headerSubtitle}>IMPERIAL CITATION OF HONOR</Text>
+              <Text style={styles.headerSubtitle}>
+                {detailMode === 'completed'
+                  ? 'IMPERIAL CITATION CONFERRED'
+                  : 'TACTICAL CITATION OBJECTIVE'}
+              </Text>
               <Text style={styles.headerTitle}>{definition.name.toUpperCase()}</Text>
             </View>
             <TouchableOpacity
@@ -81,25 +97,31 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
                 style={[
                   styles.medallionBox,
                   { borderColor: tierColor },
-                  isUnlocked && { backgroundColor: `${tierColor}20` },
+                  detailMode === 'completed' && { backgroundColor: `${tierColor}20` },
                 ]}
               >
                 <Ionicons
-                  name={getSafeIoniconsName(definition.icon, 'trophy')}
+                  name={getSafeIoniconsName(definition.icon, detailMode === 'completed' ? 'trophy' : 'trophy-outline')}
                   size={48}
-                  color={isUnlocked ? tierColor : THEME.colors.textMuted}
+                  color={detailMode === 'completed' ? tierColor : THEME.colors.textMuted}
                 />
               </View>
-              <Badge
-                label={`${definition.tier.toUpperCase()} TIER HONOR`}
-                variant="neutral"
-                style={{
-                  borderColor: tierColor,
-                  borderWidth: 1,
-                  backgroundColor: 'transparent',
-                  marginTop: 12,
-                }}
-              />
+              <View style={styles.badgeRow}>
+                <Badge
+                  label={`${definition.tier.toUpperCase()} TIER HONOR`}
+                  variant="neutral"
+                  style={{
+                    borderColor: tierColor,
+                    borderWidth: 1,
+                    backgroundColor: 'transparent',
+                    marginRight: 8,
+                  }}
+                />
+                <Badge
+                  label={detailMode === 'completed' ? 'CONFERRED' : 'INCOMPLETE'}
+                  variant={detailMode === 'completed' ? 'primary' : 'neutral'}
+                />
+              </View>
             </View>
 
             {/* Description Card */}
@@ -108,7 +130,7 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
               <Text style={styles.infoText}>{definition.description}</Text>
             </View>
 
-            {/* Progress Telemetry */}
+            {/* Progress & Requirement Telemetry */}
             <View style={styles.infoCard}>
               <View style={styles.progressHeader}>
                 <Text style={styles.infoLabel}>PROGRESS TELEMETRY</Text>
@@ -118,13 +140,33 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
               </View>
               <ProgressBar
                 progress={progressPercent}
-                color={isUnlocked ? THEME.colors.success : THEME.colors.primary}
+                color={detailMode === 'completed' ? THEME.colors.success : THEME.colors.primary}
                 style={{ marginTop: 8 }}
               />
               <Text style={styles.criterionDetail}>
-                Requirement: Reach {targetVal.toLocaleString()} {definition.criterion.type.replace(/_/g, ' ')}
+                Requirement: {formatCriterionRequirement(definition.criterion)}
               </Text>
+              {detailMode === 'available' && (
+                <Text style={styles.remainingDetail}>
+                  {remaining === 0
+                    ? 'Target accomplished! Ready to claim upon mission submission.'
+                    : `Remaining needed: ${remaining.toLocaleString()} more`}
+                </Text>
+              )}
             </View>
+
+            {/* Faction Prerequisite Notice if applicable */}
+            {isRestricted && (
+              <View style={[styles.infoCard, styles.restrictedCard]}>
+                <View style={styles.restrictedRow}>
+                  <Ionicons name="lock-closed" size={16} color={THEME.colors.warning} />
+                  <Text style={styles.restrictedTitle}>FACTION RESTRICTION PREREQUISITE</Text>
+                </View>
+                <Text style={styles.restrictedText}>
+                  This citation is reserved for warriors sworn to the {definition.factionRestriction}.
+                </Text>
+              </View>
+            )}
 
             {/* Rewards & Attributes */}
             <View style={styles.infoCard}>
@@ -144,14 +186,37 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
               <View style={styles.attrRow}>
                 <Text style={styles.attrKey}>XP Commendation:</Text>
                 <Text style={[styles.attrVal, { color: THEME.colors.primary, fontWeight: '800' }]}>
-                  +{definition.rewardXp} CRUSADE XP
+                  +{award?.rewardXp || definition.rewardXp} CRUSADE XP {detailMode === 'completed' ? '(CREDITED)' : ''}
                 </Text>
               </View>
               {award?.unlockedAt && (
                 <View style={styles.attrRow}>
                   <Text style={styles.attrKey}>Conferred Date:</Text>
                   <Text style={styles.attrVal}>
-                    {new Date(award.unlockedAt).toLocaleString()}
+                    {new Date(award.unlockedAt).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })} at {new Date(award.unlockedAt).toLocaleTimeString([], {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </View>
+              )}
+              {Boolean(award?.sourceEventType) && (
+                <View style={styles.attrRow}>
+                  <Text style={styles.attrKey}>Linked Operation:</Text>
+                  <Text style={styles.attrVal}>
+                    {award?.sourceEventType === 'workout_completed'
+                      ? 'Crusade Workout Operation'
+                      : award?.sourceEventType === 'battle_completed'
+                      ? 'Combat Battle Engagement'
+                      : award?.sourceEventType === 'raid_completed'
+                      ? 'Weekly Raid Boss Battle'
+                      : award?.sourceEventType === 'mission_reward'
+                      ? 'Faction Mission Operations'
+                      : award?.sourceEventType?.replace(/_/g, ' ')}
                   </Text>
                 </View>
               )}
@@ -160,7 +225,7 @@ export const AchievementDetailModal: React.FC<AchievementDetailModalProps> = ({
 
           {/* Dismiss Button */}
           <TouchableOpacity style={styles.confirmBtn} onPress={onClose}>
-            <Text style={styles.confirmBtnText}>ACKNOWLEDGE HONOR</Text>
+            <Text style={styles.confirmBtnText}>ACKNOWLEDGE COMMENDATION</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -205,23 +270,24 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
     color: THEME.colors.textBright,
     letterSpacing: 0.5,
   },
   closeBtn: {
-    padding: 4,
+    padding: 6,
   },
   scrollArea: {
-    maxHeight: 480,
+    flexGrow: 0,
   },
   scrollContent: {
     padding: 16,
+    gap: 12,
   },
   medallionSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginVertical: 4,
   },
   medallionBox: {
     width: 80,
@@ -232,19 +298,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
   infoCard: {
     backgroundColor: THEME.colors.background,
     borderColor: THEME.colors.surfaceBorder,
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    marginBottom: 12,
   },
   infoLabel: {
     fontSize: 10,
     fontWeight: '800',
     color: THEME.colors.textMuted,
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     marginBottom: 6,
   },
   infoText: {
@@ -258,7 +328,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   progressNumbers: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: THEME.colors.textBright,
   },
@@ -266,6 +336,34 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: THEME.colors.textMuted,
     marginTop: 6,
+    fontStyle: 'italic',
+  },
+  remainingDetail: {
+    fontSize: 11,
+    color: THEME.colors.primary,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  restrictedCard: {
+    borderColor: 'rgba(255, 170, 0, 0.4)',
+    backgroundColor: 'rgba(255, 170, 0, 0.08)',
+  },
+  restrictedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  restrictedTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.colors.warning,
+    letterSpacing: 0.5,
+  },
+  restrictedText: {
+    fontSize: 11,
+    color: THEME.colors.textBright,
+    lineHeight: 16,
   },
   attrRow: {
     flexDirection: 'row',
@@ -273,7 +371,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 4,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   attrKey: {
     fontSize: 11,
@@ -282,17 +380,19 @@ const styles = StyleSheet.create({
   attrVal: {
     fontSize: 11,
     color: THEME.colors.textBright,
+    fontWeight: '700',
   },
   confirmBtn: {
-    backgroundColor: THEME.colors.primary,
+    margin: 16,
     paddingVertical: 14,
+    backgroundColor: THEME.colors.primary,
+    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   confirmBtnText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '900',
-    color: '#000000',
+    color: '#000',
     letterSpacing: 1,
   },
 });

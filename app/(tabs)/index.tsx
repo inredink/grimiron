@@ -753,6 +753,7 @@ export default function CharacterScreen() {
         onClose={() => setIsAchievementModalVisible(false)}
         userId="user_main"
         characterId="char_main"
+        characterFactionId={currentFaction.id}
       />
 
       {/* Custom Subfaction Manager Modal */}

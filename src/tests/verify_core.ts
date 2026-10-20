@@ -54,6 +54,7 @@ import {
   AchievementProgress,
   AchievementCategory,
 } from '../types/achievements';
+import { formatCriterionRequirement } from '../utils/achievementFormatter';
 import {
   BattleRecord,
   BattleSnapshot,
@@ -3578,6 +3579,406 @@ const customAward = awardXp({
 assert(customAward.creditedAmount === 1200, 'With custom 1,500 XP cap, 1,200 XP is credited without capping');
 assert(customAward.isCapped === false, 'Custom cap allows larger volume when configured');
 assert(customAward.dailyAllowanceRemaining === 300, '300 XP allowance remaining for the day');
+
+// ----------------------------------------------------
+// TEST SUITE 22: Separate Available and Completed Achievements
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 22: Separate Available and Completed Achievements]');
+
+console.log('Testing Human-Readable Requirement Formatting for All Criterion Types...');
+assert(
+  formatCriterionRequirement({ type: 'count_workouts', targetValue: 10 }) ===
+    'Complete 10 full workout sessions',
+  'count_workouts formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'count_sets', targetValue: 50 }) ===
+    'Complete 50 completed working sets',
+  'count_sets formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'count_reps', targetValue: 500 }) ===
+    'Complete 500 total repetitions',
+  'count_reps formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'total_volume_kg', targetValue: 10000 }) ===
+    'Lift 10,000 kg in cumulative tonnage volume',
+  'total_volume_kg formats with commas'
+);
+assert(
+  formatCriterionRequirement({ type: 'single_set_volume_kg', targetValue: 1500 }) ===
+    'Perform a single set with 1,500 kg volume',
+  'single_set_volume_kg formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'distinct_exercises', targetValue: 15 }) ===
+    'Train with 15 distinct exercises',
+  'distinct_exercises formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'distinct_categories', targetValue: 5 }) ===
+    'Train across 5 distinct muscle groups',
+  'distinct_categories formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'distinct_equipment', targetValue: 4 }) ===
+    'Train with 4 distinct equipment types',
+  'distinct_equipment formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'pr_broken_count', targetValue: 5 }) ===
+    'Break personal records 5 times',
+  'pr_broken_count formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'single_lift_weight_kg', targetValue: 140 }) ===
+    'Lift 140 kg on a single repetition',
+  'single_lift_weight_kg formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'weekly_streak_weeks', targetValue: 4 }) ===
+    'Maintain a training streak of 4 consecutive weeks',
+  'weekly_streak_weeks formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'return_after_rest_days', targetValue: 3 }) ===
+    'Honor 3 scheduled rest & recovery windows',
+  'return_after_rest_days formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'rest_day_taken', targetValue: 1 }) ===
+    'Complete 1 scheduled recovery day',
+  'rest_day_taken formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'combat_attacks_count', targetValue: 100 }) ===
+    'Land 100 combat strikes against hostiles',
+  'combat_attacks_count formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'combat_crits_count', targetValue: 25 }) ===
+    'Deal 25 critical strikes in combat',
+  'combat_crits_count formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'total_combat_damage', targetValue: 5000 }) ===
+    'Deal 5,000 total combat damage',
+  'total_combat_damage formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'solo_boss_defeated', targetValue: 3 }) ===
+    'Slay 3 solo sector bosses',
+  'solo_boss_defeated formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'distinct_enemies_defeated', targetValue: 10 }) ===
+    'Purge 10 distinct hostile enemy types',
+  'distinct_enemies_defeated formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'coop_boss_defeated', targetValue: 2 }) ===
+    'Defeat 2 co-op crusade raid bosses',
+  'coop_boss_defeated formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'coop_attacks_count', targetValue: 20 }) ===
+    'Contribute 20 attacks in co-op raids',
+  'coop_attacks_count formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'squad_shared_damage', targetValue: 10000 }) ===
+    'Deal 10,000 shared squad damage in co-op',
+  'squad_shared_damage formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'character_level', targetValue: 10 }) ===
+    'Advance warrior to Level 10',
+  'character_level formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'rank_tier', targetValue: 3 }) ===
+    'Achieve military Rank Tier 3',
+  'rank_tier formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'distinct_factions_tried', targetValue: 5 }) ===
+    'Complete 5 crusade operations',
+  'distinct_factions_tried formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'custom_equipment_count', targetValue: 2 }) ===
+    'Configure 2 custom wargear entries',
+  'custom_equipment_count formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'campaign_missions_completed', targetValue: 6 }) ===
+    'Conquer 6 planetary campaign missions',
+  'campaign_missions_completed formats correctly'
+);
+assert(
+  formatCriterionRequirement({ type: 'unknown_future_metric' as any, targetValue: 99 }) ===
+    'Reach requirement of 99 unknown future metric',
+  'default fallback formats unknown metric cleanly'
+);
+
+console.log('Testing Available vs. Completed Strict Partitioning...');
+const testUserId = 'user_suite22';
+const testCharId = 'char_suite22_A';
+const testSquadId = 'squad_suite22_1';
+
+const awardsMap = new Map<string, AchievementAward>();
+const progressMap = new Map<string, AchievementProgress>();
+
+// Initial state: No awards earned
+let availList = ACHIEVEMENT_CATALOG.filter((def) => {
+  const targetId = def.scope === 'character' ? testCharId : def.scope === 'squad' ? testSquadId : testUserId;
+  const isCompleted = Boolean(awardsMap.get(`${def.id}_${targetId}`) || progressMap.get(`${def.id}_${targetId}`)?.isCompleted);
+  return !isCompleted;
+});
+let compList = ACHIEVEMENT_CATALOG.filter((def) => {
+  const targetId = def.scope === 'character' ? testCharId : def.scope === 'squad' ? testSquadId : testUserId;
+  const isCompleted = Boolean(awardsMap.get(`${def.id}_${targetId}`) || progressMap.get(`${def.id}_${targetId}`)?.isCompleted);
+  return isCompleted;
+});
+
+assert(availList.length === ACHIEVEMENT_CATALOG.length, 'All catalog achievements start in Available list');
+assert(compList.length === 0, 'Completed list is initially empty');
+
+// Check that an unearned achievement is never present in Completed list
+const firstDef = ACHIEVEMENT_CATALOG[0];
+assert(availList.some((d) => d.id === firstDef.id), 'First catalog achievement is in Available list');
+assert(!compList.some((d) => d.id === firstDef.id), 'First catalog achievement is NOT in Completed list');
+
+console.log('Testing Automatic Transition on Earning an Achievement...');
+const targetIdFirst = firstDef.scope === 'character' ? testCharId : firstDef.scope === 'squad' ? testSquadId : testUserId;
+const awardTimestamp = '2026-10-20T10:15:00.000Z';
+const awardRecord: AchievementAward = {
+  id: 'award_s22_001',
+  achievementId: firstDef.id,
+  scope: firstDef.scope,
+  targetId: targetIdFirst,
+  tier: 1,
+  unlockedAt: awardTimestamp,
+  sourceEventType: 'workout_completion',
+  rewardXp: firstDef.rewardXp,
+  rewardClaimed: true,
+};
+
+// Store award
+awardsMap.set(`${firstDef.id}_${targetIdFirst}`, awardRecord);
+
+// Re-partition
+availList = ACHIEVEMENT_CATALOG.filter((def) => {
+  const targetId = def.scope === 'character' ? testCharId : def.scope === 'squad' ? testSquadId : testUserId;
+  return !Boolean(awardsMap.get(`${def.id}_${targetId}`) || progressMap.get(`${def.id}_${targetId}`)?.isCompleted);
+});
+compList = ACHIEVEMENT_CATALOG.filter((def) => {
+  const targetId = def.scope === 'character' ? testCharId : def.scope === 'squad' ? testSquadId : testUserId;
+  return Boolean(awardsMap.get(`${def.id}_${targetId}`) || progressMap.get(`${def.id}_${targetId}`)?.isCompleted);
+});
+
+assert(availList.length === ACHIEVEMENT_CATALOG.length - 1, 'Available list decrements exactly by 1 upon award');
+assert(compList.length === 1, 'Completed list increments exactly to 1 upon award');
+assert(!availList.some((d) => d.id === firstDef.id), 'Earned achievement is immediately absent from Available list');
+assert(compList.some((d) => d.id === firstDef.id), 'Earned achievement is immediately present in Completed list');
+const retrievedAward = awardsMap.get(`${firstDef.id}_${targetIdFirst}`);
+assert(retrievedAward?.unlockedAt === awardTimestamp, 'Original award timestamp is preserved exactly');
+assert(retrievedAward?.rewardXp === firstDef.rewardXp, 'Credited XP matches definition reward');
+
+console.log('Testing Completed Tab Default Sorting by recently_earned (unlockedAt desc)...');
+const secondDef = ACHIEVEMENT_CATALOG[1];
+const thirdDef = ACHIEVEMENT_CATALOG[2];
+
+const targetIdSecond = secondDef.scope === 'character' ? testCharId : secondDef.scope === 'squad' ? testSquadId : testUserId;
+const targetIdThird = thirdDef.scope === 'character' ? testCharId : thirdDef.scope === 'squad' ? testSquadId : testUserId;
+
+// Award 1: 10:15:00
+// Award 2: 12:30:00 (newest)
+// Award 3: 11:00:00 (middle)
+awardsMap.set(`${secondDef.id}_${targetIdSecond}`, {
+  id: 'award_s22_002',
+  achievementId: secondDef.id,
+  scope: secondDef.scope,
+  targetId: targetIdSecond,
+  tier: 1,
+  unlockedAt: '2026-10-20T12:30:00.000Z',
+  sourceEventType: 'tactical_combat',
+  rewardXp: secondDef.rewardXp,
+  rewardClaimed: true,
+});
+awardsMap.set(`${thirdDef.id}_${targetIdThird}`, {
+  id: 'award_s22_003',
+  achievementId: thirdDef.id,
+  scope: thirdDef.scope,
+  targetId: targetIdThird,
+  tier: 1,
+  unlockedAt: '2026-10-20T11:00:00.000Z',
+  sourceEventType: 'mission_reward',
+  rewardXp: thirdDef.rewardXp,
+  rewardClaimed: true,
+});
+
+// Re-filter completed
+compList = ACHIEVEMENT_CATALOG.filter((def) => {
+  const targetId = def.scope === 'character' ? testCharId : def.scope === 'squad' ? testSquadId : testUserId;
+  return Boolean(awardsMap.get(`${def.id}_${targetId}`));
+});
+
+// Sort with recently_earned
+compList.sort((a, b) => {
+  const targetIdA = a.scope === 'character' ? testCharId : a.scope === 'squad' ? testSquadId : testUserId;
+  const targetIdB = b.scope === 'character' ? testCharId : b.scope === 'squad' ? testSquadId : testUserId;
+  const timeA = new Date(awardsMap.get(`${a.id}_${targetIdA}`)!.unlockedAt).getTime();
+  const timeB = new Date(awardsMap.get(`${b.id}_${targetIdB}`)!.unlockedAt).getTime();
+  return timeB - timeA;
+});
+
+assert(compList[0].id === secondDef.id, 'Most recently earned (12:30) is at index 0');
+assert(compList[1].id === thirdDef.id, 'Middle earned (11:00) is at index 1');
+assert(compList[2].id === firstDef.id, 'Earliest earned (10:15) is at index 2');
+
+console.log('Testing Available Tab Default Sorting by Progress Percentage...');
+const fourthDef = ACHIEVEMENT_CATALOG[3];
+const fifthDef = ACHIEVEMENT_CATALOG[4];
+const sixthDef = ACHIEVEMENT_CATALOG[5];
+
+const targetIdFourth = fourthDef.scope === 'character' ? testCharId : fourthDef.scope === 'squad' ? testSquadId : testUserId;
+const targetIdFifth = fifthDef.scope === 'character' ? testCharId : fifthDef.scope === 'squad' ? testSquadId : testUserId;
+const targetIdSixth = sixthDef.scope === 'character' ? testCharId : sixthDef.scope === 'squad' ? testSquadId : testUserId;
+
+// Set 4th at 85% progress, 5th at 30% progress, 6th at 0% progress
+progressMap.set(`${fourthDef.id}_${targetIdFourth}`, {
+  id: `prog_${fourthDef.id}_${targetIdFourth}`,
+  achievementId: fourthDef.id,
+  scope: fourthDef.scope,
+  targetId: targetIdFourth,
+  targetValue: fourthDef.criterion.targetValue,
+  currentValue: Math.floor(fourthDef.criterion.targetValue * 0.85),
+  isCompleted: false,
+  progressPercent: 85,
+  lastUpdatedAt: '2026-10-20T12:00:00.000Z',
+});
+progressMap.set(`${fifthDef.id}_${targetIdFifth}`, {
+  id: `prog_${fifthDef.id}_${targetIdFifth}`,
+  achievementId: fifthDef.id,
+  scope: fifthDef.scope,
+  targetId: targetIdFifth,
+  targetValue: fifthDef.criterion.targetValue,
+  currentValue: Math.floor(fifthDef.criterion.targetValue * 0.3),
+  isCompleted: false,
+  progressPercent: 30,
+  lastUpdatedAt: '2026-10-20T12:00:00.000Z',
+});
+progressMap.set(`${sixthDef.id}_${targetIdSixth}`, {
+  id: `prog_${sixthDef.id}_${targetIdSixth}`,
+  achievementId: sixthDef.id,
+  scope: sixthDef.scope,
+  targetId: targetIdSixth,
+  targetValue: sixthDef.criterion.targetValue,
+  currentValue: 0,
+  isCompleted: false,
+  progressPercent: 0,
+  lastUpdatedAt: '2026-10-20T12:00:00.000Z',
+});
+
+const sampleAvailable = [sixthDef, fourthDef, fifthDef];
+sampleAvailable.sort((a, b) => {
+  const targetIdA = a.scope === 'character' ? testCharId : a.scope === 'squad' ? testSquadId : testUserId;
+  const targetIdB = b.scope === 'character' ? testCharId : b.scope === 'squad' ? testSquadId : testUserId;
+  const progA = progressMap.get(`${a.id}_${targetIdA}`)?.progressPercent || 0;
+  const progB = progressMap.get(`${b.id}_${targetIdB}`)?.progressPercent || 0;
+  if (progB !== progA) return progB - progA;
+  return a.name.localeCompare(b.name);
+});
+
+assert(sampleAvailable[0].id === fourthDef.id, 'Highest progress (85%) sorts first in Available');
+assert(sampleAvailable[1].id === fifthDef.id, 'Moderate progress (30%) sorts second in Available');
+assert(sampleAvailable[2].id === sixthDef.id, 'Unstarted (0%) sorts last in Available');
+
+console.log('Testing Available Sub-Filters (ALL vs IN PROGRESS vs UNSTARTED)...');
+const currentVal4 = progressMap.get(`${fourthDef.id}_${targetIdFourth}`)?.currentValue || 0;
+const currentVal6 = progressMap.get(`${sixthDef.id}_${targetIdSixth}`)?.currentValue || 0;
+
+assert(currentVal4 > 0, 'Fourth achievement qualifies for IN PROGRESS sub-filter');
+assert(currentVal6 === 0, 'Sixth achievement qualifies for UNSTARTED sub-filter');
+
+console.log('Testing Scope Isolation (User vs Character vs Squad)...');
+const charDef = ACHIEVEMENT_CATALOG.find((d) => d.scope === 'character')!;
+assert(Boolean(charDef), 'Found character-scoped achievement definition');
+
+const char1Id = 'warrior_alpha';
+const char2Id = 'warrior_bravo';
+
+// Award character-scoped achievement to warrior_alpha only
+awardsMap.set(`${charDef.id}_${char1Id}`, {
+  id: 'award_char_alpha',
+  achievementId: charDef.id,
+  scope: 'character',
+  targetId: char1Id,
+  tier: 1,
+  unlockedAt: '2026-10-20T14:00:00.000Z',
+  sourceEventType: 'workout_completion',
+  rewardXp: charDef.rewardXp,
+  rewardClaimed: true,
+});
+
+// Evaluate for Warrior Alpha
+const isCompletedForAlpha = Boolean(
+  awardsMap.get(`${charDef.id}_${char1Id}`) || progressMap.get(`${charDef.id}_${char1Id}`)?.isCompleted
+);
+// Evaluate for Warrior Bravo
+const isCompletedForBravo = Boolean(
+  awardsMap.get(`${charDef.id}_${char2Id}`) || progressMap.get(`${charDef.id}_${char2Id}`)?.isCompleted
+);
+
+assert(isCompletedForAlpha === true, 'Warrior Alpha has character achievement marked completed');
+assert(isCompletedForBravo === false, 'Warrior Bravo does NOT have character achievement marked completed');
+
+// Squad isolation test
+const squadDef = ACHIEVEMENT_CATALOG.find((d) => d.scope === 'squad')!;
+assert(Boolean(squadDef), 'Found squad-scoped achievement definition');
+const squad1 = 'squad_deathwatch_1';
+const squad2 = 'squad_grey_knights_2';
+
+awardsMap.set(`${squadDef.id}_${squad1}`, {
+  id: 'award_squad_1',
+  achievementId: squadDef.id,
+  scope: 'squad',
+  targetId: squad1,
+  tier: 1,
+  unlockedAt: '2026-10-20T15:00:00.000Z',
+  sourceEventType: 'coop_raid',
+  rewardXp: squadDef.rewardXp,
+  rewardClaimed: true,
+});
+
+const isCompletedSquad1 = Boolean(awardsMap.get(`${squadDef.id}_${squad1}`));
+const isCompletedSquad2 = Boolean(awardsMap.get(`${squadDef.id}_${squad2}`));
+
+assert(isCompletedSquad1 === true, 'Squad 1 has squad achievement marked completed');
+assert(isCompletedSquad2 === false, 'Squad 2 does NOT inherit Squad 1 achievement');
+
+console.log('Testing Faction-Restricted Achievement Prerequisite Distinction...');
+// Find or define a faction-restricted achievement
+const factionRestrictedDef = ACHIEVEMENT_CATALOG.find((d) => d.factionRestriction) || {
+  ...firstDef,
+  id: 'faction_specific_ultramarines',
+  factionRestriction: 'adeptus-astartes',
+};
+
+const userFaction = 'adeptus-astartes';
+const foreignFaction = 'world-eaters';
+
+const isRestrictedForUserFaction = Boolean(
+  factionRestrictedDef.factionRestriction && factionRestrictedDef.factionRestriction !== userFaction
+);
+const isRestrictedForForeignFaction = Boolean(
+  factionRestrictedDef.factionRestriction && factionRestrictedDef.factionRestriction !== foreignFaction
+);
+
+assert(isRestrictedForUserFaction === false, 'Matching faction is NOT restricted');
+assert(isRestrictedForForeignFaction === true, 'Mismatched faction is correctly flagged as FACTION LOCKED');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
