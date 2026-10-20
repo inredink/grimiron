@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.grimiron.workoutrpg",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#0F1116",
         "foregroundImage": "./assets/android-icon-foreground.png",

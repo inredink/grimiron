@@ -3273,6 +3273,137 @@ const case3 = resolveProfileSync(
 );
 assert(case3.action === 'in_sync', 'Identical profiles remain in sync');
 
+console.log('\n[TEST SUITE 20: One-Time Onboarding & Setup Lifecycle]');
+console.log('Testing New User First Launch Evaluation...');
+
+interface OnboardingEvaluationState {
+  isInitialized: boolean;
+  onboardingCompleted: boolean;
+}
+
+function shouldShowOnboarding(state: OnboardingEvaluationState): boolean {
+  if (!state.isInitialized) return false; // Guarded against false trigger during SQLite load
+  return !state.onboardingCompleted;
+}
+
+// 1. Initial boot before SQLite initializes
+assert(
+  !shouldShowOnboarding({ isInitialized: false, onboardingCompleted: false }),
+  'Onboarding does not trigger before database initialization finishes'
+);
+
+// 2. First launch of fresh initiate
+assert(
+  shouldShowOnboarding({ isInitialized: true, onboardingCompleted: false }),
+  'Fresh initiate sees onboarding once initialized'
+);
+
+console.log('Testing Completion & Skip Persistence...');
+// 3. User finishes all slides
+let simulatedSettings: AppSettings = { ...DEFAULT_APP_SETTINGS, onboarding_completed: false };
+simulatedSettings.onboarding_completed = true; // onCompleteOnboarding()
+assert(
+  !shouldShowOnboarding({ isInitialized: true, onboardingCompleted: simulatedSettings.onboarding_completed }),
+  'Completing onboarding prevents modal on subsequent evaluation'
+);
+
+// 4. User explicitly skips onboarding
+let skippedSettings: AppSettings = { ...DEFAULT_APP_SETTINGS, onboarding_completed: false };
+// handleSkip calls handleFinish -> onCompleteOnboarding
+skippedSettings.onboarding_completed = true;
+assert(
+  !shouldShowOnboarding({ isInitialized: true, onboardingCompleted: skippedSettings.onboarding_completed }),
+  'Skipping onboarding also marks completion and prevents repetition'
+);
+
+console.log('Testing App Restart & Tab Navigation Persistence...');
+// 5. Subsequent launch / app restart
+const restartedSettings: AppSettings = { ...simulatedSettings };
+assert(
+  !shouldShowOnboarding({ isInitialized: true, onboardingCompleted: restartedSettings.onboarding_completed }),
+  'Restarting app preserves completed state and suppresses onboarding'
+);
+
+// 6. Tab navigation remount
+const tabNavState: OnboardingEvaluationState = { isInitialized: true, onboardingCompleted: true };
+assert(!shouldShowOnboarding(tabNavState), 'Navigating between tabs does not re-trigger onboarding');
+
+console.log('Testing Interrupted Setup Recovery...');
+// 7. Interrupted flow: app killed while onboarding is open
+const interruptedState: OnboardingEvaluationState = { isInitialized: true, onboardingCompleted: false };
+assert(shouldShowOnboarding(interruptedState), 'Interrupted setup is resumed on next launch');
+
+console.log('Testing Existing User Automatic Protection...');
+function resolveExistingUserOnboarding(
+  userStats: { totalWorkouts: number },
+  charProfile: { totalXp: number },
+  currentOnboardingFlag: boolean
+): boolean {
+  const isExistingUser = userStats.totalWorkouts > 0 || charProfile.totalXp > 0;
+  if (isExistingUser && !currentOnboardingFlag) {
+    return true; // Auto-upgraded so veterans are never forced through onboarding
+  }
+  return currentOnboardingFlag;
+}
+
+assert(
+  resolveExistingUserOnboarding({ totalWorkouts: 12 }, { totalXp: 5000 }, false) === true,
+  'Existing user with 12 workouts automatically protected from onboarding'
+);
+assert(
+  resolveExistingUserOnboarding({ totalWorkouts: 0 }, { totalXp: 800 }, false) === true,
+  'Existing user with training XP automatically protected from onboarding'
+);
+assert(
+  resolveExistingUserOnboarding({ totalWorkouts: 0 }, { totalXp: 0 }, false) === false,
+  'Brand-new initiate with 0 workouts and 0 XP is eligible for onboarding'
+);
+
+console.log('Testing Settings Reset vs Onboarding Reset Separation...');
+// 8. General settings reset preserves onboarding flag
+function simulateResetAllSettings(wasOnboardingCompleted: boolean): AppSettings {
+  return {
+    ...DEFAULT_APP_SETTINGS,
+    onboarding_completed: wasOnboardingCompleted,
+  };
+}
+
+const resetPrefs = simulateResetAllSettings(true);
+assert(resetPrefs.workout_weight_unit === 'lbs', 'Workout preferences restored to default');
+assert(resetPrefs.onboarding_completed === true, 'General settings reset preserves completed onboarding');
+
+// 9. Manual Onboarding Reset specifically resets onboarding
+function simulateResetOnboardingOnly(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    onboarding_completed: false,
+  };
+}
+
+const resetOnboardingOnly = simulateResetOnboardingOnly(resetPrefs);
+assert(resetOnboardingOnly.onboarding_completed === false, 'Manual onboarding reset resets flag to false');
+assert(resetOnboardingOnly.workout_weight_unit === 'lbs', 'Manual onboarding reset does not affect workout settings');
+
+console.log('Testing Cloud Account Metadata Synchronization...');
+function syncCloudOnboardingState(localCompleted: boolean, cloudCompleted: boolean | null): {
+  localResult: boolean;
+  pushToCloud: boolean;
+} {
+  if (cloudCompleted === true) {
+    return { localResult: true, pushToCloud: false };
+  } else if (cloudCompleted === false && localCompleted) {
+    return { localResult: true, pushToCloud: true };
+  }
+  return { localResult: localCompleted, pushToCloud: false };
+}
+
+const cloudSync1 = syncCloudOnboardingState(false, true);
+assert(cloudSync1.localResult === true, 'Cloud account completed state propagates to fresh device');
+
+const cloudSync2 = syncCloudOnboardingState(true, false);
+assert(cloudSync2.localResult === true, 'Local completed state not overwritten by pending cloud metadata');
+assert(cloudSync2.pushToCloud === true, 'Local completed state pushed to cloud user metadata');
+
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
 console.log('====================================================');

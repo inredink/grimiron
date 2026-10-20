@@ -81,14 +81,19 @@ export function saveSetting<K extends keyof AppSettings>(
 }
 
 /**
- * Resets all settings to default values.
+ * Resets all settings to default values, preserving the onboarding completion flag
+ * so that users resetting workout preferences are not forced back into onboarding.
  */
 export function resetAllSettings(): AppSettings {
   const db = getDatabase();
+  const wasOnboardingCompleted = getSetting('onboarding_completed');
   try {
-    db.runSync('DELETE FROM app_settings;');
+    db.runSync("DELETE FROM app_settings WHERE key != 'onboarding_completed';");
   } catch (err) {
     console.error('Failed to reset settings:', err);
   }
-  return { ...DEFAULT_APP_SETTINGS };
+  return {
+    ...DEFAULT_APP_SETTINGS,
+    onboarding_completed: wasOnboardingCompleted,
+  };
 }

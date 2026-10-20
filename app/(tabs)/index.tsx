@@ -78,6 +78,7 @@ export default function CharacterScreen() {
     claimAcademyFinalDossier,
     deployChapterBossBattle,
     customSubfactions,
+    isInitialized,
     settings,
     updateSetting,
     updateCharacterNameAction,
@@ -90,10 +91,15 @@ export default function CharacterScreen() {
   const [isWalkthroughModalVisible, setIsWalkthroughModalVisible] = useState(false);
 
   useEffect(() => {
+    // Only evaluate after the database and settings have finished initializing from SQLite
+    if (!isInitialized) return;
+
     if (settings && settings.onboarding_completed === false) {
       setIsWalkthroughModalVisible(true);
+    } else {
+      setIsWalkthroughModalVisible(false);
     }
-  }, [settings?.onboarding_completed]);
+  }, [isInitialized, settings?.onboarding_completed]);
 
   const [isCoopModalVisible, setIsCoopModalVisible] = useState(false);
   const [isAchievementModalVisible, setIsAchievementModalVisible] = useState(false);

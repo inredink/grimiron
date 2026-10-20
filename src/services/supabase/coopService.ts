@@ -130,6 +130,31 @@ export const coopService = {
     return this.updateMyProfile({ displayName });
   },
 
+  async getOnboardingMetadata(): Promise<boolean | null> {
+    const client = getSupabaseClient();
+    if (!client) return null;
+    try {
+      const user = (await client.auth.getUser()).data.user;
+      if (!user) return null;
+      return user.user_metadata?.onboarding_completed === true;
+    } catch {
+      return null;
+    }
+  },
+
+  async updateOnboardingMetadata(completed: boolean): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+    try {
+      const { error } = await client.auth.updateUser({
+        data: { onboarding_completed: completed },
+      });
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
   async createSquad(groupName: string): Promise<{ groupId: string; name: string; inviteCode: string } | null> {
     const client = getSupabaseClient();
     if (!client) throw new Error('Supabase is not configured.');

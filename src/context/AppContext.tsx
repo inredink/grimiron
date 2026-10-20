@@ -375,6 +375,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Load user settings
       try {
         const userSettings = getAllSettings();
+
+        // If this is an existing user who already has recorded workouts or training XP,
+        // but onboarding_completed is false (e.g. from an older version of the app),
+        // automatically mark onboarding as completed so they are never forced through it.
+        const isExistingUser = userStats.totalWorkouts > 0 || prof.totalXp > 0;
+        if (isExistingUser && !userSettings.onboarding_completed) {
+          userSettings.onboarding_completed = true;
+          saveSetting('onboarding_completed', true);
+        }
+
         setSettings(userSettings);
         setHapticsEnabled(userSettings.haptics_enabled);
       } catch (settingsErr) {
@@ -470,6 +480,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     })
                     .catch(() => {});
                 }
+              }
+            }
+          })
+          .catch(() => {});
+
+        // Sync cloud onboarding metadata if authenticated with Supabase
+        coopService
+          .getOnboardingMetadata()
+          .then((cloudOnboarding) => {
+            if (cloudOnboarding === true) {
+              const currentSettings = getAllSettings();
+              if (!currentSettings.onboarding_completed) {
+                saveSetting('onboarding_completed', true);
+                setSettings((prev) => ({ ...prev, onboarding_completed: true }));
+              }
+            } else if (cloudOnboarding === false) {
+              const currentSettings = getAllSettings();
+              if (currentSettings.onboarding_completed) {
+                coopService.updateOnboardingMetadata(true).catch(() => {});
               }
             }
           })
@@ -696,6 +725,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             preferredSpawnDay: value as RaidSpawnDay,
           });
           setWeeklyRaid(newRaid);
+        } else if (key === 'onboarding_completed') {
+          // If cloud authenticated, synchronize the onboarding state to cloud account user_metadata
+          if (coopService.isConfigured()) {
+            coopService.updateOnboardingMetadata(Boolean(value)).catch(() => {});
+          }
         }
       } catch (err) {
         console.error(`Failed to update setting ${key}:`, err);
