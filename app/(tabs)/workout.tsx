@@ -698,6 +698,33 @@ export default function WorkoutScreen() {
           }}
           onLogRestDay={logRestDaySessionAction}
         />
+
+        {/* Warfront Daily Engagements Board Modal */}
+        <WarfrontDailyBoardModal
+          visible={isDailyBoardModalVisible}
+          onClose={() => setIsDailyBoardModalVisible(false)}
+          dailyRotation={dailyRotation}
+          onDeployEncounter={(enc) => {
+            deployDailyEncounter(enc);
+            setIsDailyBoardModalVisible(false);
+          }}
+          preferredSpawnDay={warfrontSettings.preferredSpawnDay}
+          onSetSpawnDay={setWarfrontSpawnDay}
+        />
+
+        {/* Weekly Raid Boss Encounter Modal */}
+        <WeeklyRaidModal
+          visible={isWeeklyRaidModalVisible}
+          onClose={() => setIsWeeklyRaidModalVisible(false)}
+          weeklyRaid={weeklyRaid}
+          preferredSpawnDay={warfrontSettings.preferredSpawnDay}
+          onSetSpawnDay={setWarfrontSpawnDay}
+          onDeployRaidWorkout={(raid) => {
+            deployWeeklyRaid(raid);
+            setIsWeeklyRaidModalVisible(false);
+          }}
+          onClaimRewards={claimWeeklyRaidRewardsAction}
+        />
       </SafeAreaView>
     );
   }
@@ -1119,6 +1146,8 @@ export default function WorkoutScreen() {
           deployDailyEncounter(enc);
           setIsDailyBoardModalVisible(false);
         }}
+        preferredSpawnDay={warfrontSettings.preferredSpawnDay}
+        onSetSpawnDay={setWarfrontSpawnDay}
       />
 
       {/* Weekly Raid Boss Encounter Modal */}

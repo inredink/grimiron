@@ -207,11 +207,26 @@ export default function RaidScreen() {
             </View>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.ladderScrollRow}>
+          <View style={styles.ladderGridRow}>
             {RAID_TIERS.map((tier) => {
               const isSelected = selectedRaidTierId === tier.id;
               const tierEligibility = checkRaidEligibility(tier.id);
               const isDefeated = (raidProgression.tierVictories[tier.id] || 0) > 0;
+
+              const shortName =
+                tier.tierNumber === 1
+                  ? 'Initiation'
+                  : tier.tierNumber === 2
+                  ? 'Field Ops'
+                  : tier.tierNumber === 3
+                  ? 'Veteran'
+                  : tier.tierNumber === 4
+                  ? 'Elite'
+                  : tier.tierNumber === 5
+                  ? 'Champion'
+                  : tier.tierNumber === 6
+                  ? 'Mythic'
+                  : 'Primarch';
 
               return (
                 <TouchableOpacity
@@ -238,7 +253,7 @@ export default function RaidScreen() {
                           ? 'lock-open-outline'
                           : 'lock-closed'
                       }
-                      size={12}
+                      size={11}
                       color={
                         isDefeated
                           ? '#00E676'
@@ -255,12 +270,12 @@ export default function RaidScreen() {
                     ]}
                     numberOfLines={1}
                   >
-                    {tier.name.replace(' Raids', '').replace(' Crusade', '')}
+                    {shortName}
                   </Text>
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
 
         {/* Selected Raid Tier Clearance & Requirements Dossier */}
@@ -656,66 +671,49 @@ export default function RaidScreen() {
           )}
         </View>
 
-        {/* Raid Wargear Loot Table Preview Card */}
+        {/* Classified Raid Spoils Briefing Card */}
         <View style={styles.lootTableCard}>
           <View style={styles.lootTableHeader}>
-            <Ionicons name="trophy-outline" size={16} color="#00F0FF" />
+            <Ionicons name="cube-outline" size={16} color="#00F0FF" />
             <Text style={styles.lootTableTitle}>
-              RAID SPOILS // TIER {currentTierDef.tierNumber} REWARD TABLE
+              RAID SPOILS // TIER {currentTierDef.tierNumber} WAR REQUISITION
             </Text>
           </View>
           <Text style={styles.lootTableSubtitle}>
-            Neutralizing this raid boss grants +{currentTierDef.gloryXpReward} Glory XP and eligible wargear drops:
+            Neutralizing this raid boss grants +{currentTierDef.gloryXpReward} Glory XP, Raid Promotion Clearance, and classified wargear spoils:
           </Text>
-          <View style={styles.lootItemsList}>
-            {(getLootCandidatesForRaidTier(selectedRaidTierId) || []).map((itemId) => {
-              const item = getEquipmentById(itemId);
-              if (!item) return null;
-              const color = RARITY_COLORS[item.rarity] || '#FFFFFF';
-              const equipCheck = isItemEquipEligible(
-                item,
-                currentFaction.id,
-                progression.level,
-                progression.currentRankTier
-              );
 
-              return (
-                <View key={item.id} style={[styles.lootItemRow, { borderLeftColor: color }]}>
-                  <View style={{ flex: 1 }}>
-                    <View style={styles.lootItemTitleRow}>
-                      <Text style={[styles.lootItemName, { color }]}>{item.name}</Text>
-                      <View
-                        style={[
-                          styles.lootEquipBadge,
-                          equipCheck.eligible
-                            ? styles.lootEquipBadgeReady
-                            : styles.lootEquipBadgeLocked,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.lootEquipBadgeText,
-                            equipCheck.eligible
-                              ? styles.lootEquipBadgeTextReady
-                              : styles.lootEquipBadgeTextLocked,
-                          ]}
-                        >
-                          {equipCheck.eligible
-                            ? 'EQUIP READY'
-                            : `REQ LVL ${item.requirements.minLevel || 1}`}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.lootItemStats}>
-                      Tier {item.tier} {item.rarity.toUpperCase()} • {item.slot.replace(/_/g, ' ').toUpperCase()}
-                      {item.stats.bonusDamage ? ` • +${item.stats.bonusDamage} DMG` : ''}
-                      {item.stats.damageMultiplier ? ` • +${Math.round(item.stats.damageMultiplier * 100)}% Mult` : ''}
-                      {item.stats.defenseRating ? ` • +${item.stats.defenseRating} DEF` : ''}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
+          <View style={styles.classifiedSpoilsCard}>
+            <View style={styles.classifiedSpoilsHeader}>
+              <View style={styles.classifiedIconBox}>
+                <Ionicons name="shield-half-outline" size={24} color="#00F0FF" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.classifiedTitle}>CLASSIFIED MUNITORUM CRATE</Text>
+                <Text style={styles.classifiedRarity}>
+                  Rarity Floor: {currentTierDef.dropRarityFloor.toUpperCase()} OR HIGHER
+                </Text>
+              </View>
+              <View style={styles.classifiedBadge}>
+                <Ionicons name="lock-closed" size={11} color="#FFD700" />
+                <Text style={styles.classifiedBadgeText}>ENCRYPTED</Text>
+              </View>
+            </View>
+
+            <Text style={styles.classifiedDesc}>
+              Hostile equipment caches and weapon schematics are classified by Munitorum command until the raid boss is neutralized in combat. Complete the assault to decrypt and claim your wargear drop.
+            </Text>
+
+            <View style={styles.classifiedMetaRow}>
+              <View style={styles.classifiedMetaItem}>
+                <Ionicons name="sparkles-outline" size={13} color="#00E676" />
+                <Text style={styles.classifiedMetaText}>Guaranteed drop on victory</Text>
+              </View>
+              <View style={styles.classifiedMetaItem}>
+                <Ionicons name="arrow-up-circle-outline" size={13} color="#00F0FF" />
+                <Text style={styles.classifiedMetaText}>Scales to Tier {currentTierDef.tierNumber}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -953,16 +951,19 @@ const styles = StyleSheet.create({
     color: '#00E676',
     letterSpacing: 0.5,
   },
-  ladderScrollRow: {
+  ladderGridRow: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 6,
     paddingVertical: 2,
   },
   ladderTab: {
-    minWidth: 84,
+    flexBasis: '22%',
+    flexGrow: 1,
+    minWidth: 70,
     backgroundColor: '#202632',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 7,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#2F3B4D',
@@ -1678,27 +1679,78 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     marginBottom: 10,
   },
-  lootItemsList: {
-    gap: 6,
-  },
-  lootItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 6,
-    padding: 8,
+  classifiedSpoilsCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderRadius: 8,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#2A3648',
-    borderLeftWidth: 3,
+    gap: 10,
   },
-  lootItemName: {
+  classifiedSpoilsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  classifiedIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: '#00F0FF40',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  classifiedTitle: {
+    color: '#ECEFF1',
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  lootItemStats: {
+  classifiedRarity: {
+    color: '#00F0FF',
     fontSize: 10,
-    color: '#90A4AE',
+    fontWeight: '700',
     marginTop: 2,
+  },
+  classifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 215, 0, 0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#FFD70050',
+  },
+  classifiedBadgeText: {
+    color: '#FFD700',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  classifiedDesc: {
+    color: '#90A4AE',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  classifiedMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#242F3D',
+  },
+  classifiedMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  classifiedMetaText: {
+    color: '#B0BEC5',
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

@@ -41,7 +41,7 @@ export function getActiveProgramEnrollment(
 ): UserProgramEnrollment | null {
   const db = getDatabase();
   const row = db.getFirstSync<any>(
-    `SELECT * FROM user_programs WHERE character_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1`,
+    `SELECT * FROM user_programs WHERE (character_id = ? OR character_id = 'char_main' OR character_id = '1') AND status = 'active' ORDER BY updated_at DESC LIMIT 1`,
     [characterId]
   );
 

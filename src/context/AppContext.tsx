@@ -789,6 +789,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const enrollment = createProgramEnrollment(character.id.toString(), program);
       saveProgramEnrollment(enrollment);
+      setActiveEnrollment(enrollment);
       loadData();
     } catch (err) {
       console.warn('Error enrolling in program:', err);
@@ -798,6 +799,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const pauseActiveProgram = useCallback(() => {
     if (activeEnrollment) {
       pauseProgramEnrollment(activeEnrollment.id);
+      setActiveEnrollment((prev) => (prev ? { ...prev, status: 'paused' } : null));
       loadData();
     }
   }, [activeEnrollment, loadData]);
@@ -805,6 +807,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resumeActiveProgram = useCallback(() => {
     if (activeEnrollment) {
       resumeProgramEnrollment(activeEnrollment.id);
+      setActiveEnrollment((prev) => (prev ? { ...prev, status: 'active' } : null));
       loadData();
     }
   }, [activeEnrollment, loadData]);

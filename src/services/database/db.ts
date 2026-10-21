@@ -12,6 +12,23 @@ export function getDatabase(): SQLite.SQLiteDatabase {
 }
 
 /**
+ * Safely adds a column to an existing table if it does not already exist.
+ */
+function ensureColumnExists(
+  db: SQLite.SQLiteDatabase,
+  table: string,
+  column: string,
+  definition: string
+): void {
+  try {
+    const columns = db.getAllSync<{ name: string }>(`PRAGMA table_info(${table});`);
+    if (!columns.some((c) => c.name === column)) {
+      db.execSync(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`);
+    }
+  } catch {}
+}
+
+/**
  * Ensures all core application tables exist idempotently.
  * This guarantees that even if a device's schema_migrations table contains
  * an inconsistent version record from a past build, no queries or migrations
@@ -79,8 +96,6 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
       idempotency_key TEXT,
       FOREIGN KEY (session_id) REFERENCES workout_sessions (id) ON DELETE CASCADE
     );
-    CREATE INDEX IF NOT EXISTS idx_xp_tx_day ON xp_transactions (calendar_day);
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_xp_tx_idempotency ON xp_transactions (idempotency_key) WHERE idempotency_key IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS custom_exercises (
       id TEXT PRIMARY KEY,
@@ -507,6 +522,36 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
     INSERT OR IGNORE INTO warfront_settings (id, preferred_spawn_day, updated_at)
     VALUES (1, 'saturday', datetime('now'));
   `);
+
+  // Ensure all columns added in later migrations exist before any indexes are generated on them
+  ensureColumnExists(db, 'xp_transactions', 'user_id', "TEXT DEFAULT 'user_main'");
+  ensureColumnExists(db, 'xp_transactions', 'character_id', "TEXT DEFAULT 'char_main'");
+  ensureColumnExists(db, 'xp_transactions', 'requested_amount', 'INTEGER DEFAULT 0');
+  ensureColumnExists(db, 'xp_transactions', 'calendar_day', 'TEXT');
+  ensureColumnExists(db, 'xp_transactions', 'is_capped', 'INTEGER DEFAULT 1');
+  ensureColumnExists(db, 'xp_transactions', 'reason', 'TEXT');
+  ensureColumnExists(db, 'xp_transactions', 'idempotency_key', 'TEXT');
+
+  // Safely generate indexes on xp_transactions
+  try {
+    db.execSync('CREATE INDEX IF NOT EXISTS idx_xp_tx_day ON xp_transactions (calendar_day);');
+  } catch {}
+  try {
+    db.execSync('CREATE UNIQUE INDEX IF NOT EXISTS idx_xp_tx_idempotency ON xp_transactions (idempotency_key) WHERE idempotency_key IS NOT NULL;');
+  } catch {}
+
+  // Ensure all settings columns exist
+  ensureColumnExists(db, 'app_settings', 'training_preferred_days', "TEXT DEFAULT '[\"monday\",\"wednesday\",\"friday\"]'");
+  ensureColumnExists(db, 'app_settings', 'training_recovery_preference', "TEXT DEFAULT 'active'");
+  ensureColumnExists(db, 'app_settings', 'training_recovery_xp_enabled', 'INTEGER DEFAULT 1');
+  ensureColumnExists(db, 'app_settings', 'training_recovery_xp_amount', 'INTEGER DEFAULT 50');
+  ensureColumnExists(db, 'app_settings', 'notif_recovery_reminders', 'INTEGER DEFAULT 1');
+  ensureColumnExists(db, 'app_settings', 'rpg_daily_xp_cap', 'INTEGER DEFAULT 500');
+  ensureColumnExists(db, 'app_settings', 'unit_system', "TEXT DEFAULT 'lbs'");
+  ensureColumnExists(db, 'app_settings', 'calendar_first_day', "TEXT DEFAULT 'monday'");
+  ensureColumnExists(db, 'app_settings', 'date_display_format', "TEXT DEFAULT 'iso'");
+  ensureColumnExists(db, 'app_settings', 'time_display_format', "TEXT DEFAULT '24h'");
+  ensureColumnExists(db, 'app_settings', 'theme_accent_color', "TEXT DEFAULT 'aquila_gold'");
 }
 
 /**
@@ -516,24 +561,37 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
   const db = getDatabase();
 
   // Enable foreign keys and WAL mode for reliability and performance
-  db.execSync('PRAGMA foreign_keys = ON;');
-  db.execSync('PRAGMA journal_mode = WAL;');
+  try {
+    db.execSync('PRAGMA foreign_keys = ON;');
+    db.execSync('PRAGMA journal_mode = WAL;');
+  } catch {}
 
   // Migration tracking table
-  db.execSync(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      version INTEGER PRIMARY KEY,
-      applied_at TEXT NOT NULL
-    );
-  `);
+  try {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        version INTEGER PRIMARY KEY,
+        applied_at TEXT NOT NULL
+      );
+    `);
+  } catch {}
 
   // Idempotently ensure all core application tables exist.
   // This repairs any database where schema_migrations might have drifted.
-  ensureAllTablesExist(db);
+  try {
+    ensureAllTablesExist(db);
+  } catch (err) {
+    console.warn('ensureAllTablesExist warning:', err);
+  }
 
-  const appliedMigrations = db.getAllSync<{ version: number }>(
-    'SELECT version FROM schema_migrations'
-  ).map((row) => row.version);
+  let appliedMigrations: number[] = [];
+  try {
+    appliedMigrations = db.getAllSync<{ version: number }>(
+      'SELECT version FROM schema_migrations'
+    ).map((row) => row.version);
+  } catch {
+    appliedMigrations = [];
+  }
 
   // Migration 1: Core initial schema
   if (!appliedMigrations.includes(1)) {

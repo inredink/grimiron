@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -12,6 +12,7 @@ import {
   DailyRotationRecord,
   EncounterCategory,
   EncounterTemplate,
+  RaidSpawnDay,
 } from '../types/warfront';
 import { getSafeIoniconsName } from '../utils/iconHelper';
 import {
@@ -19,12 +20,15 @@ import {
   getEncountersByCategory,
   allEncounterTemplates,
 } from '../content/encounters/catalog';
+import { getOrCreateDailyRotation } from '../services/progression/warfrontEngine';
 
 interface WarfrontDailyBoardModalProps {
   visible: boolean;
   onClose: () => void;
   dailyRotation: DailyRotationRecord | null;
   onDeployEncounter: (encounter: EncounterTemplate) => void;
+  preferredSpawnDay?: RaidSpawnDay;
+  onSetSpawnDay?: (day: RaidSpawnDay) => void;
 }
 
 const CATEGORIES: { id: EncounterCategory | 'all'; label: string; icon: string }[] = [
@@ -44,14 +48,38 @@ export const WarfrontDailyBoardModal: React.FC<WarfrontDailyBoardModalProps> = (
   onClose,
   dailyRotation,
   onDeployEncounter,
+  preferredSpawnDay,
+  onSetSpawnDay,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<EncounterCategory | 'all'>('all');
 
-  const offeredEncounters: EncounterTemplate[] = (
-    dailyRotation?.offeredEncounterIds || []
-  )
-    .map((id) => getEncounterById(id))
-    .filter((enc): enc is EncounterTemplate => !!enc);
+  // Bulletproof fallback: If dailyRotation is not loaded or has 0 encounters, generate today's rotation
+  const effectiveRotation = useMemo(() => {
+    if (
+      dailyRotation &&
+      dailyRotation.offeredEncounterIds &&
+      dailyRotation.offeredEncounterIds.length > 0
+    ) {
+      return dailyRotation;
+    }
+    try {
+      return getOrCreateDailyRotation();
+    } catch {
+      return dailyRotation;
+    }
+  }, [dailyRotation]);
+
+  const offeredEncounters: EncounterTemplate[] = useMemo(() => {
+    const ids = effectiveRotation?.offeredEncounterIds || [];
+    const found = ids
+      .map((id) => getEncounterById(id))
+      .filter((enc): enc is EncounterTemplate => !!enc);
+
+    if (found.length > 0) return found;
+
+    // Safety fallback: if database is cold, display tactical templates directly from catalog
+    return allEncounterTemplates.slice(0, 6);
+  }, [effectiveRotation]);
 
   const displayedEncounters =
     selectedCategory === 'all'
@@ -71,7 +99,7 @@ export const WarfrontDailyBoardModal: React.FC<WarfrontDailyBoardModalProps> = (
               <View style={styles.headerTextContainer}>
                 <Text style={styles.headerTitle}>WARFRONT ENGAGEMENTS</Text>
                 <Text style={styles.headerSubtitle}>
-                  Daily Battle Board • Cycle: {dailyRotation?.rotationDate || 'Today'}
+                  Daily Battle Board • Cycle: {effectiveRotation?.rotationDate || 'Today'}
                 </Text>
               </View>
             </View>
@@ -135,7 +163,7 @@ export const WarfrontDailyBoardModal: React.FC<WarfrontDailyBoardModalProps> = (
             ) : (
               displayedEncounters.map((encounter) => {
                 const isCompleted =
-                  dailyRotation?.completedEncounterIds?.includes(encounter.id) || false;
+                  effectiveRotation?.completedEncounterIds?.includes(encounter.id) || false;
 
                 return (
                   <View
