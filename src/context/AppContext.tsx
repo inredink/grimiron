@@ -53,6 +53,7 @@ import {
   buildEvaluationContextFromDb,
   runEvaluationWithDb,
   backfillHistoricalAchievements,
+  reconcileAndPruneUnearnedAchievements,
 } from '../services/database/achievementContextBuilder';
 import {
   getPendingNotifications,
@@ -503,8 +504,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Load account authentication info
       getAccountInfo().then((acc) => setAccountInfo(acc)).catch(() => {});
 
-      // Backfill achievements safely and idempotently on startup
+      // Backfill and reconcile achievements safely on startup
       try {
+        reconcileAndPruneUnearnedAchievements('user_main', 'char_main');
         backfillHistoricalAchievements('user_main', 'char_main');
       } catch (backfillErr) {
         console.warn('Initial backfill skipped:', backfillErr);

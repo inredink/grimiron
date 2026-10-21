@@ -134,6 +134,7 @@ export interface AchievementEvaluationContext {
   distinctFactionsExploredCount: number;
   campaignMissionsCompletedCount: number;
   customEquipmentCount?: number;
+  defeatedEnemyIds?: string[];
   latestWorkoutSessionId?: string;
   latestBattleId?: string;
 }

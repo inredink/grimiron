@@ -4926,6 +4926,70 @@ assert(coopClearance.success === true, 'Co-op squad strike grants raid boss clea
 const coopT7Clearance = evaluateDeployClearance('tier_7_endgame', recruitCtx, true);
 assert(coopT7Clearance.success === true, 'All raid bosses accessible from Level 1 in co-op squad mode');
 
+// ----------------------------------------------------
+// TEST SUITE 32: Strict Achievement Verification & Regular Creature vs Boss Isolation
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 32: Strict Achievement Verification & Regular Creature vs Boss Isolation]');
+
+// 1. Regular creatures (patrol mobs) do not qualify as bosses
+console.log('Testing Regular Creature vs Boss Discrimination...');
+const patrolCreatureCtx: AchievementEvaluationContext = {
+  userId: 'user_test',
+  characterId: 'char_test',
+  characterTotalXp: 50,
+  characterLevel: 1,
+  rankTier: 1,
+  factionId: 'adeptus-astartes',
+  completedWorkoutsCount: 2,
+  completedSetsCount: 6,
+  totalReps: 50,
+  totalVolumeKg: 1000,
+  distinctExercisesCount: 2,
+  distinctCategoriesCount: 1,
+  distinctEquipmentCount: 1,
+  personalRecordsBrokenCount: 0,
+  maxSingleLiftWeightKg: 50,
+  maxSingleSetVolumeKg: 200,
+  consecutiveTrainingWeeks: 1,
+  longestRestDaysHonored: 0,
+  totalCombatAttacks: 6,
+  totalCombatCrits: 1,
+  totalCombatDamage: 600,
+  soloBossesDefeatedCount: 0, // 2 regular creatures defeated, but 0 bosses!
+  distinctEnemiesDefeatedCount: 2,
+  coopBossesDefeatedCount: 0,
+  coopAttacksCount: 0,
+  squadSharedDamageDealt: 0,
+  distinctFactionsExploredCount: 1,
+  campaignMissionsCompletedCount: 0,
+  defeatedEnemyIds: ['enemy_chaos_cultist', 'enemy_ork_boyz'], // 2 regular creatures
+};
+
+// Generic solo boss achievement should NOT be awarded
+const bossDef = ACHIEVEMENT_CATALOG.find((d) => d.criterion.type === 'solo_boss_defeated' && !d.criterion.enemyId && d.criterion.targetValue === 1);
+assert(Boolean(bossDef), 'Found generic solo boss achievement');
+assert(evaluateCriterionMetric(bossDef!.criterion, patrolCreatureCtx) === 0, 'Generic solo boss achievement returns 0 for regular creature defeats');
+
+// Specific boss achievements (e.g. Bloodthirster, Carnifex, Helbrute) should NOT be awarded
+const bloodthirsterDef = ACHIEVEMENT_CATALOG.find((d) => d.criterion.enemyId === 'enemy_bloodthirster');
+assert(Boolean(bloodthirsterDef), 'Found Bloodthirster boss achievement');
+assert(evaluateCriterionMetric(bloodthirsterDef!.criterion, patrolCreatureCtx) === 0, 'Bloodthirster achievement returns 0 when only regular creatures defeated');
+
+const carnifexDef = ACHIEVEMENT_CATALOG.find((d) => d.criterion.enemyId === 'enemy_tyranid_carnifex');
+assert(Boolean(carnifexDef), 'Found Carnifex boss achievement');
+assert(evaluateCriterionMetric(carnifexDef!.criterion, patrolCreatureCtx) === 0, 'Carnifex achievement returns 0 when only regular creatures defeated');
+
+// Fake PR achievement should NOT be awarded
+const prDef = ACHIEVEMENT_CATALOG.find((d) => d.criterion.type === 'pr_broken_count' && d.criterion.targetValue === 1);
+assert(Boolean(prDef), 'Found PR achievement');
+assert(evaluateCriterionMetric(prDef!.criterion, patrolCreatureCtx) === 0, 'PR achievement returns 0 when no actual PR was broken');
+
+// Legitimate regular creature achievement (e.g. distinct enemies defeated: 2) CAN be awarded
+const distinctEnemiesDef = ACHIEVEMENT_CATALOG.find((d) => d.criterion.type === 'distinct_enemies_defeated' && d.criterion.targetValue === 2);
+if (distinctEnemiesDef) {
+  assert(evaluateCriterionMetric(distinctEnemiesDef.criterion, patrolCreatureCtx) === 2, 'Distinct enemies defeated evaluates to 2 legitimately');
+}
+
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
 console.log('====================================================');

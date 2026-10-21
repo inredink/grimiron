@@ -1,6 +1,7 @@
 import { AchievementEvaluationContext } from '../../types/achievements';
 import { ACHIEVEMENT_CATALOG } from '../../content/achievements/catalog';
 import { EXERCISE_CATALOG } from '../../content/exercises/catalog';
+import { ENEMY_CATALOG } from '../../content/combat/enemies';
 import {
   awardAchievement,
   isAchievementAwarded,
@@ -10,6 +11,7 @@ import {
 import {
   calculateConsecutiveWeeks,
   evaluateAchievements,
+  evaluateCriterionMetric,
 } from '../progression/achievementEvaluator';
 import { getDatabase } from './db';
 
@@ -118,14 +120,36 @@ export function buildEvaluationContextFromDb(
   // 6. Combat metrics from solo encounters and battle history
   const combatRow = db.getFirstSync<{
     total_encounters: number;
-    total_defeated: number;
     total_damage: number;
   }>(
-    'SELECT COUNT(*) as total_encounters, SUM(is_defeated) as total_defeated, SUM(total_damage) as total_damage FROM combat_encounters'
+    'SELECT COUNT(*) as total_encounters, SUM(total_damage) as total_damage FROM combat_encounters'
+  );
+  const totalCombatDamage = combatRow?.total_damage || 0;
+
+  // Defeated enemy IDs strictly from defeated combat encounters
+  const defeatedEnemyRows = db.getAllSync<{ enemy_id: string }>(
+    'SELECT DISTINCT enemy_id FROM combat_encounters WHERE is_defeated = 1'
+  );
+  const defeatedEnemyIds = defeatedEnemyRows.map((r) => r.enemy_id);
+
+  // Boss enemies: Only enemies classified as 'boss' or 'crusade' in the catalog
+  const bossIds = new Set(
+    ENEMY_CATALOG.filter((e) => e.difficulty === 'boss' || e.difficulty === 'crusade').map((e) => e.id)
   );
 
-  const soloBossesDefeatedCount = combatRow?.total_defeated || 0;
-  const totalCombatDamage = combatRow?.total_damage || 0;
+  let raidVictoriesCount = 0;
+  try {
+    const raidRows = db.getFirstSync<{ total: number }>(
+      'SELECT COALESCE(SUM(victories_count), 0) as total FROM character_raid_progression'
+    );
+    raidVictoriesCount = raidRows?.total || 0;
+  } catch {}
+
+  const soloBossesDefeatedCount =
+    defeatedEnemyRows.filter((r) => bossIds.has(r.enemy_id)).length + raidVictoriesCount;
+
+  // Distinct enemies defeated
+  const distinctEnemiesDefeatedCount = defeatedEnemyIds.length;
 
   // Attacks and crits from combat encounter JSONs
   let totalCombatAttacks = 0;
@@ -145,12 +169,6 @@ export function buildEvaluationContextFromDb(
     }
   }
 
-  // Distinct enemies defeated
-  const enemyRow = db.getFirstSync<{ count: number }>(
-    'SELECT COUNT(DISTINCT enemy_id) as count FROM combat_encounters WHERE is_defeated = 1'
-  );
-  const distinctEnemiesDefeatedCount = enemyRow?.count || 0;
-
   // 7. Cooperative metrics
   const coopRow = db.getFirstSync<{ total_attacks: number; total_damage: number }>(
     'SELECT COUNT(*) as total_attacks, SUM(damage) as total_damage FROM coop_attack_queue'
@@ -169,7 +187,25 @@ export function buildEvaluationContextFromDb(
   );
   const consecutiveTrainingWeeks = calculateConsecutiveWeeks(datesRows.map((d) => d.finished_at));
 
-  // Base context
+  // 9. Real rest days honored from recovery transactions
+  let longestRestDaysHonored = 0;
+  try {
+    const restRow = db.getFirstSync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM xp_transactions WHERE source_type = 'recovery_day'"
+    );
+    longestRestDaysHonored = restRow?.count || 0;
+  } catch {}
+
+  // 10. Real campaign academy missions completed
+  let campaignMissionsCompletedCount = 0;
+  try {
+    const campRow = db.getFirstSync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM campaign_academy_phase_reports WHERE is_claimed = 1'
+    );
+    campaignMissionsCompletedCount = campRow?.count || 0;
+  } catch {}
+
+  // Base context strictly grounded in verifiable records
   const context: AchievementEvaluationContext = {
     userId,
     characterId,
@@ -186,11 +222,11 @@ export function buildEvaluationContextFromDb(
     distinctExercisesCount,
     distinctCategoriesCount,
     distinctEquipmentCount,
-    personalRecordsBrokenCount: completedWorkoutsCount > 0 ? Math.floor(completedWorkoutsCount * 0.8) : 0,
+    personalRecordsBrokenCount: 0, // Strictly 0 unless verifiable personal records exist
     maxSingleLiftWeightKg,
     maxSingleSetVolumeKg,
     consecutiveTrainingWeeks,
-    longestRestDaysHonored: completedWorkoutsCount > 1 ? 2 : 0,
+    longestRestDaysHonored,
     totalCombatAttacks,
     totalCombatCrits,
     totalCombatDamage,
@@ -200,8 +236,9 @@ export function buildEvaluationContextFromDb(
     coopAttacksCount,
     squadSharedDamageDealt,
     distinctFactionsExploredCount,
-    campaignMissionsCompletedCount: completedWorkoutsCount,
+    campaignMissionsCompletedCount,
     customEquipmentCount,
+    defeatedEnemyIds,
     ...runtimeOverrides,
   };
 
@@ -224,6 +261,57 @@ export function runEvaluationWithDb(
 }
 
 /**
+ * Authoritatively audits all granted achievement awards in the database against the user's
+ * legitimate progression context, and immediately removes any unearned achievements and their notifications.
+ */
+export function reconcileAndPruneUnearnedAchievements(
+  userId: string = 'user_main',
+  characterId: string = 'char_main'
+): { prunedCount: number } {
+  const db = getDatabase();
+  let prunedCount = 0;
+
+  try {
+    const context = buildEvaluationContextFromDb(userId, characterId);
+    const awardRows = db.getAllSync<{ id: string; achievement_id: string }>(
+      'SELECT id, achievement_id FROM achievement_awards'
+    );
+
+    for (const row of awardRows) {
+      const def = ACHIEVEMENT_CATALOG.find((d) => d.id === row.achievement_id);
+      if (!def) {
+        db.runSync('DELETE FROM achievement_awards WHERE id = ?', [row.id]);
+        prunedCount++;
+        continue;
+      }
+
+      // Check if user actually qualifies under strict rules
+      const currentVal = evaluateCriterionMetric(def.criterion, context);
+      const targetVal = def.criterion.targetValue;
+
+      if (currentVal < targetVal) {
+        // Unearned! Delete the award, reset progress, and purge pending notification
+        db.runSync('DELETE FROM achievement_awards WHERE id = ?', [row.id]);
+        db.runSync('DELETE FROM achievement_progress WHERE achievement_id = ?', [def.id]);
+        db.runSync(
+          "DELETE FROM pending_notifications WHERE type = 'achievement' AND (title = ? OR details_json LIKE ?)",
+          [def.name, `%"achievementId":"${def.id}"%`]
+        );
+        prunedCount++;
+      }
+    }
+
+    if (prunedCount > 0) {
+      console.log(`Pruned ${prunedCount} unearned achievement awards from database`);
+    }
+  } catch (err) {
+    console.warn('Error during unearned achievement pruning:', err);
+  }
+
+  return { prunedCount };
+}
+
+/**
  * Historical backfill runner.
  * Inspects all existing workout, XP, and combat records and idempotently awards
  * any achievements the user already qualifies for.
@@ -234,6 +322,7 @@ export function backfillHistoricalAchievements(
   squadId?: string
 ): { awardedCount: number; evaluatedCount: number } {
   try {
+    reconcileAndPruneUnearnedAchievements(userId, characterId);
     const context = buildEvaluationContextFromDb(userId, characterId, squadId);
     // If the user has never completed a workout and has no combat actions, they are a fresh initiate with no history to backfill
     if (context.completedWorkoutsCount === 0 && context.totalCombatAttacks === 0 && context.completedSetsCount === 0) {

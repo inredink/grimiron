@@ -72,12 +72,18 @@ export function evaluateCriterionMetric(
       return context.totalCombatDamage || 0;
 
     case 'solo_boss_defeated':
+      if (criterion.enemyId) {
+        return context.defeatedEnemyIds?.includes(criterion.enemyId) ? 1 : 0;
+      }
       return context.soloBossesDefeatedCount || 0;
 
     case 'distinct_enemies_defeated':
       return context.distinctEnemiesDefeatedCount || 0;
 
     case 'coop_boss_defeated':
+      if (criterion.enemyId) {
+        return context.defeatedEnemyIds?.includes(criterion.enemyId) ? 1 : 0;
+      }
       return context.coopBossesDefeatedCount || 0;
 
     case 'coop_attacks_count':
@@ -99,12 +105,15 @@ export function evaluateCriterionMetric(
       if (criterion.factionId) {
         return context.factionId === criterion.factionId ? 1 : 0;
       }
-      return context.distinctFactionsExploredCount || 1;
+      return context.distinctFactionsExploredCount || 0;
 
     case 'custom_equipment_count':
       return context.customEquipmentCount || 0;
 
     case 'campaign_missions_completed':
+      if (criterion.enemyId) {
+        return context.defeatedEnemyIds?.includes(criterion.enemyId) ? 1 : 0;
+      }
       return context.campaignMissionsCompletedCount || 0;
 
     default:
