@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -43,15 +43,40 @@ export default function RaidScreen() {
 
   const [previewMode, setPreviewMode] = useState<'individual' | 'squad'>('individual');
 
+  // Auto-initialize weekly raid target if auspex scan is pending
+  useEffect(() => {
+    if (!weeklyRaid) {
+      try {
+        setWarfrontSpawnDay(warfrontSettings?.preferredSpawnDay || 'saturday');
+      } catch (err) {
+        console.warn('Auto-initialize raid in RaidScreen warning:', err);
+      }
+    }
+  }, [weeklyRaid, setWarfrontSpawnDay, warfrontSettings?.preferredSpawnDay]);
+
   if (!weeklyRaid) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
           <Ionicons name="skull" size={48} color="#FF5252" />
-          <Text style={styles.loadingTitle}>SCANNING WAR SECTOR...</Text>
+          <Text style={styles.loadingTitle}>CALIBRATING ORBITAL AUSPEX...</Text>
           <Text style={styles.loadingSubtitle}>
-            Calibrating orbital auspex sensors for hostile commanders.
+            Scanning crusade sector for hostile warlords and calibrating raid rungs.
           </Text>
+          <TouchableOpacity
+            style={styles.retryScanBtn}
+            onPress={() => {
+              triggerHaptic.selection();
+              try {
+                setWarfrontSpawnDay('saturday');
+              } catch (e) {
+                console.warn('Target scan trigger error:', e);
+              }
+            }}
+          >
+            <Ionicons name="radio" size={16} color="#0A0E17" />
+            <Text style={styles.retryScanBtnText}>INITIALIZE RAID TARGET SCAN</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -818,6 +843,22 @@ const styles = StyleSheet.create({
     color: '#90A4AE',
     fontSize: 12,
     textAlign: 'center',
+  },
+  retryScanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#00F0FF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  retryScanBtnText: {
+    color: '#0A0E17',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   header: {
     gap: 4,

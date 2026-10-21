@@ -613,16 +613,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Activate SQLite storage adapter for Warfront
       setWarfrontStorageAdapter(sqliteWarfrontStorage);
 
-      // Load Warfront daily rotation, weekly raid, and user settings
+      // Load Warfront daily rotation, weekly raid, and user settings with resilient error isolation
       try {
         const rot = getOrCreateDailyRotation();
-        const wfSettings = getWarfrontSettings();
-        const raid = getOrCreateWeeklyRaid({ preferredSpawnDay: wfSettings.preferredSpawnDay });
         setDailyRotation(rot);
-        setWarfrontSettingsState(wfSettings);
-        setWeeklyRaid(raid);
+      } catch (rotErr) {
+        console.warn('Warfront daily rotation initialization warning:', rotErr);
+      }
+
+      let activeWfSettings: WarfrontSettings = {
+        preferredSpawnDay: 'saturday',
+        categoryFilter: 'all',
+      };
+      try {
+        activeWfSettings = getWarfrontSettings();
+        setWarfrontSettingsState(activeWfSettings);
       } catch (wfErr) {
-        console.warn('Warfront initialization warning:', wfErr);
+        console.warn('Warfront settings initialization warning:', wfErr);
+      }
+
+      try {
+        const raid = getOrCreateWeeklyRaid({ preferredSpawnDay: activeWfSettings.preferredSpawnDay });
+        setWeeklyRaid(raid);
+      } catch (raidErr) {
+        console.warn('Warfront weekly raid initialization warning:', raidErr);
+        try {
+          const fallbackRaid = getOrCreateWeeklyRaid({ preferredSpawnDay: 'saturday', now: new Date() });
+          setWeeklyRaid(fallbackRaid);
+        } catch (fbErr) {
+          console.warn('Fallback raid generation warning:', fbErr);
+        }
       }
 
       setCharacter(prof);

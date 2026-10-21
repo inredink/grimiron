@@ -30,7 +30,33 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
   onDeployRaidWorkout,
   onClaimRewards,
 }) => {
-  if (!weeklyRaid) return null;
+  if (!weeklyRaid) {
+    return (
+      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { padding: 24, alignItems: 'center', justifyContent: 'center' }]}>
+            <Ionicons name="skull" size={48} color="#FF5252" />
+            <Text style={[styles.headerTitle, { marginTop: 12, textAlign: 'center' }]}>
+              CALIBRATING WEEKLY RAID TARGET
+            </Text>
+            <Text style={[styles.configDesc, { textAlign: 'center', marginVertical: 12 }]}>
+              The sector scanner is calibrating hostile boss targets. Tap below to initialize the target scan.
+            </Text>
+            <TouchableOpacity
+              style={[styles.dayButton, styles.dayButtonActive, { paddingHorizontal: 20, paddingVertical: 10 }]}
+              onPress={() => onSetSpawnDay('saturday')}
+            >
+              <Ionicons name="radio" size={14} color="#00E676" />
+              <Text style={styles.dayButtonTextActive}>INITIALIZE TARGET SCAN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 16 }}>
+              <Text style={{ color: '#90A4AE', fontSize: 12 }}>DISMISS</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   const { boss, maxHp, currentHp, status, isRewardClaimed, contributions } = weeklyRaid;
   const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / maxHp) * 100)));

@@ -99,6 +99,7 @@ export default function CharacterScreen() {
     equipmentBonuses,
     gearPowerInfo,
     raidProgression,
+    selectedRaidTierId,
     equipItemAction,
     unequipItemAction,
   } = useApp();
@@ -350,21 +351,26 @@ export default function CharacterScreen() {
             </TouchableOpacity>
           }
         >
-          <View style={styles.raidHorizonRow}>
-            <View style={styles.raidTierBadge}>
-              <Ionicons name="shield-checkmark" size={20} color="#00E676" />
-              <View style={styles.raidTierInfo}>
-                <Text style={styles.raidTierLabel}>HIGHEST RAID TIER UNLOCKED</Text>
-                <Text style={styles.raidTierName}>
-                  {getRaidTierById(raidProgression.highestTierUnlocked).name.toUpperCase()}
-                </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/raid')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.raidHorizonRow}>
+              <View style={styles.raidTierBadge}>
+                <Ionicons name="shield-checkmark" size={20} color="#00E676" />
+                <View style={styles.raidTierInfo}>
+                  <Text style={styles.raidTierLabel}>HIGHEST RAID TIER UNLOCKED</Text>
+                  <Text style={styles.raidTierName}>
+                    {getRaidTierById(raidProgression.highestTierUnlocked).name.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.raidVictoriesBox}>
+                <Text style={styles.raidVictoriesLabel}>RAIDS SLAIN</Text>
+                <Text style={styles.raidVictoriesValue}>{raidProgression.totalRaidVictories}</Text>
               </View>
             </View>
-            <View style={styles.raidVictoriesBox}>
-              <Text style={styles.raidVictoriesLabel}>RAIDS SLAIN</Text>
-              <Text style={styles.raidVictoriesValue}>{raidProgression.totalRaidVictories}</Text>
-            </View>
-          </View>
+          </TouchableOpacity>
         </SciFiCard>
 
         {/* Daily Training Quota & Cap Telemetry */}
@@ -659,10 +665,10 @@ export default function CharacterScreen() {
           <TerminalButton
             title={
               weeklyRaid
-                ? `WEEKLY RAID // ${weeklyRaid.boss.name.toUpperCase()}`
-                : 'WEEKLY RAID BOSS'
+                ? `CRUSADE RAID // ${weeklyRaid.boss.name.toUpperCase()} (T${getRaidTierById(selectedRaidTierId).tierNumber})`
+                : 'CRUSADE RAIDS // 7 TIERS'
             }
-            onPress={() => setIsWeeklyRaidModalVisible(true)}
+            onPress={() => router.push('/(tabs)/raid')}
             variant={weeklyRaid?.status === 'active' ? 'primary' : 'outline'}
             size="md"
             icon={
