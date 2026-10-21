@@ -22,10 +22,65 @@ function ensureColumnExists(
 ): void {
   try {
     const columns = db.getAllSync<{ name: string }>(`PRAGMA table_info(${table});`);
-    if (!columns.some((c) => c.name === column)) {
+    if (columns.length > 0 && !columns.some((c) => c.name === column)) {
       db.execSync(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`);
     }
   } catch {}
+}
+
+/**
+ * Safely executes a CREATE INDEX or DDL statement without failing database initialization.
+ */
+function safeCreateIndex(db: SQLite.SQLiteDatabase, indexSql: string): void {
+  try {
+    db.execSync(indexSql);
+  } catch {}
+}
+
+/**
+ * Ensures a table exists with all required columns.
+ * If the table exists but is missing critical columns:
+ * - If table has 0 rows, it drops the obsolete table and recreates with correct schema.
+ * - If table has rows, it alters the table to safely add any missing columns.
+ */
+function repairOrRecreateTable(
+  db: SQLite.SQLiteDatabase,
+  table: string,
+  requiredColumns: { name: string; definition: string }[],
+  createSql: string
+): void {
+  try {
+    const cols = db.getAllSync<{ name: string }>(`PRAGMA table_info(${table});`);
+    if (cols.length === 0) {
+      db.execSync(createSql);
+      return;
+    }
+    const colNames = cols.map((c) => c.name);
+    const hasMissing = requiredColumns.some((req) => !colNames.includes(req.name));
+    if (hasMissing) {
+      let rowCount = 0;
+      try {
+        rowCount = db.getFirstSync<{ count: number }>(`SELECT COUNT(*) as count FROM ${table};`)?.count || 0;
+      } catch {
+        rowCount = 0;
+      }
+
+      if (rowCount === 0) {
+        db.execSync(`DROP TABLE IF EXISTS ${table};`);
+        db.execSync(createSql);
+      } else {
+        for (const req of requiredColumns) {
+          if (!colNames.includes(req.name)) {
+            try {
+              db.execSync(`ALTER TABLE ${table} ADD COLUMN ${req.name} ${req.definition};`);
+            } catch {}
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`repairOrRecreateTable warning on ${table}:`, err);
+  }
 }
 
 /**
@@ -446,73 +501,6 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
       updated_at TEXT NOT NULL
     );
 
-    -- Character Inventory & Equipment Systems
-    CREATE TABLE IF NOT EXISTS character_inventory (
-      id TEXT PRIMARY KEY,
-      character_id TEXT NOT NULL DEFAULT 'char_main',
-      item_id TEXT NOT NULL,
-      acquired_at TEXT NOT NULL,
-      acquisition_source TEXT NOT NULL,
-      is_equipped INTEGER NOT NULL DEFAULT 0,
-      equipped_slot TEXT
-    );
-    CREATE INDEX IF NOT EXISTS idx_char_inv_char ON character_inventory (character_id);
-    CREATE INDEX IF NOT EXISTS idx_char_inv_item ON character_inventory (item_id);
-
-    CREATE TABLE IF NOT EXISTS character_equipment_loadout (
-      character_id TEXT NOT NULL DEFAULT 'char_main',
-      slot TEXT NOT NULL,
-      item_id TEXT,
-      equipped_at TEXT NOT NULL,
-      PRIMARY KEY (character_id, slot)
-    );
-
-    CREATE TABLE IF NOT EXISTS raid_loot_history (
-      id TEXT PRIMARY KEY,
-      raid_cycle_id TEXT NOT NULL,
-      user_id TEXT NOT NULL DEFAULT 'user_main',
-      character_id TEXT NOT NULL DEFAULT 'char_main',
-      item_id TEXT NOT NULL,
-      rewarded_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_raid_loot_cycle ON raid_loot_history (raid_cycle_id);
-
-    CREATE TABLE IF NOT EXISTS character_raid_progression (
-      character_id TEXT NOT NULL DEFAULT 'char_main',
-      raid_tier_id TEXT NOT NULL,
-      victories_count INTEGER NOT NULL DEFAULT 0,
-      first_victory_at TEXT NOT NULL,
-      last_victory_at TEXT NOT NULL,
-      PRIMARY KEY (character_id, raid_tier_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS character_raid_summary (
-      character_id TEXT PRIMARY KEY,
-      highest_tier_unlocked TEXT NOT NULL DEFAULT 'tier_1_initiation',
-      total_victories INTEGER NOT NULL DEFAULT 0,
-      last_defeated_tier TEXT,
-      last_victory_at TEXT,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS character_progression_milestones (
-      character_id TEXT NOT NULL DEFAULT 'char_main',
-      milestone_type TEXT NOT NULL,
-      milestone_key TEXT NOT NULL,
-      achieved_at TEXT NOT NULL,
-      metadata_json TEXT,
-      PRIMARY KEY (character_id, milestone_type, milestone_key)
-    );
-
-    -- Essential Unique Constraints & Indexes for ON CONFLICT statements across all migrations
-    CREATE UNIQUE INDEX IF NOT EXISTS uq_ach_progress ON achievement_progress (achievement_id, scope, target_id);
-    CREATE UNIQUE INDEX IF NOT EXISTS uq_ach_award ON achievement_awards (achievement_id, scope, target_id);
-    CREATE UNIQUE INDEX IF NOT EXISTS uq_char_mission ON mission_progress (character_id, mission_id);
-    CREATE UNIQUE INDEX IF NOT EXISTS uq_char_camp_node ON campaign_node_progress (character_id, campaign_id, node_id);
-    CREATE INDEX IF NOT EXISTS idx_custom_subfactions_user ON custom_subfactions (user_id);
-    CREATE INDEX IF NOT EXISTS idx_custom_subfactions_parent ON custom_subfactions (parent_faction_id);
-    CREATE INDEX IF NOT EXISTS idx_custom_subfactions_archived ON custom_subfactions (is_archived);
-
     INSERT OR IGNORE INTO character_profile (
       id, universe_id, faction_id, subfaction_id, character_name, total_xp, current_level, created_at, updated_at
     ) VALUES (
@@ -522,6 +510,142 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
     INSERT OR IGNORE INTO warfront_settings (id, preferred_spawn_day, updated_at)
     VALUES (1, 'saturday', datetime('now'));
   `);
+
+  // Idempotently create or repair inventory, equipment, and raid progression tables
+  repairOrRecreateTable(
+    db,
+    'character_inventory',
+    [
+      { name: 'id', definition: 'TEXT PRIMARY KEY' },
+      { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+      { name: 'item_id', definition: 'TEXT' },
+      { name: 'acquired_at', definition: 'TEXT' },
+      { name: 'acquisition_source', definition: 'TEXT' },
+      { name: 'is_equipped', definition: 'INTEGER DEFAULT 0' },
+      { name: 'equipped_slot', definition: 'TEXT' },
+    ],
+    `CREATE TABLE IF NOT EXISTS character_inventory (
+      id TEXT PRIMARY KEY,
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      item_id TEXT NOT NULL,
+      acquired_at TEXT NOT NULL,
+      acquisition_source TEXT NOT NULL,
+      is_equipped INTEGER NOT NULL DEFAULT 0,
+      equipped_slot TEXT
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'character_equipment_loadout',
+    [
+      { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+      { name: 'slot', definition: 'TEXT' },
+      { name: 'item_id', definition: 'TEXT' },
+      { name: 'equipped_at', definition: 'TEXT' },
+    ],
+    `CREATE TABLE IF NOT EXISTS character_equipment_loadout (
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      slot TEXT NOT NULL,
+      item_id TEXT,
+      equipped_at TEXT NOT NULL,
+      PRIMARY KEY (character_id, slot)
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'raid_loot_history',
+    [
+      { name: 'id', definition: 'TEXT PRIMARY KEY' },
+      { name: 'raid_cycle_id', definition: 'TEXT' },
+      { name: 'user_id', definition: "TEXT DEFAULT 'user_main'" },
+      { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+      { name: 'item_id', definition: 'TEXT' },
+      { name: 'rewarded_at', definition: 'TEXT' },
+    ],
+    `CREATE TABLE IF NOT EXISTS raid_loot_history (
+      id TEXT PRIMARY KEY,
+      raid_cycle_id TEXT NOT NULL,
+      user_id TEXT NOT NULL DEFAULT 'user_main',
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      item_id TEXT NOT NULL,
+      rewarded_at TEXT NOT NULL
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'character_raid_progression',
+    [
+      { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+      { name: 'raid_tier_id', definition: 'TEXT' },
+      { name: 'victories_count', definition: 'INTEGER DEFAULT 0' },
+      { name: 'first_victory_at', definition: 'TEXT' },
+      { name: 'last_victory_at', definition: 'TEXT' },
+    ],
+    `CREATE TABLE IF NOT EXISTS character_raid_progression (
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      raid_tier_id TEXT NOT NULL,
+      victories_count INTEGER NOT NULL DEFAULT 0,
+      first_victory_at TEXT NOT NULL,
+      last_victory_at TEXT NOT NULL,
+      PRIMARY KEY (character_id, raid_tier_id)
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'character_raid_summary',
+    [
+      { name: 'character_id', definition: 'TEXT PRIMARY KEY' },
+      { name: 'highest_tier_unlocked', definition: "TEXT DEFAULT 'tier_1_initiation'" },
+      { name: 'total_victories', definition: 'INTEGER DEFAULT 0' },
+      { name: 'last_defeated_tier', definition: 'TEXT' },
+      { name: 'last_victory_at', definition: 'TEXT' },
+      { name: 'updated_at', definition: 'TEXT' },
+    ],
+    `CREATE TABLE IF NOT EXISTS character_raid_summary (
+      character_id TEXT PRIMARY KEY,
+      highest_tier_unlocked TEXT NOT NULL DEFAULT 'tier_1_initiation',
+      total_victories INTEGER NOT NULL DEFAULT 0,
+      last_defeated_tier TEXT,
+      last_victory_at TEXT,
+      updated_at TEXT NOT NULL
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'character_progression_milestones',
+    [
+      { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+      { name: 'milestone_type', definition: 'TEXT' },
+      { name: 'milestone_key', definition: 'TEXT' },
+      { name: 'achieved_at', definition: 'TEXT' },
+      { name: 'metadata_json', definition: 'TEXT' },
+    ],
+    `CREATE TABLE IF NOT EXISTS character_progression_milestones (
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      milestone_type TEXT NOT NULL,
+      milestone_key TEXT NOT NULL,
+      achieved_at TEXT NOT NULL,
+      metadata_json TEXT,
+      PRIMARY KEY (character_id, milestone_type, milestone_key)
+    );`
+  );
+
+  // Safely generate all essential indexes
+  safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_char_inv_char ON character_inventory (character_id);');
+  safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_char_inv_item ON character_inventory (item_id);');
+  safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_raid_loot_cycle ON raid_loot_history (raid_cycle_id);');
+  safeCreateIndex(db, 'CREATE UNIQUE INDEX IF NOT EXISTS uq_ach_progress ON achievement_progress (achievement_id, scope, target_id);');
+  safeCreateIndex(db, 'CREATE UNIQUE INDEX IF NOT EXISTS uq_ach_award ON achievement_awards (achievement_id, scope, target_id);');
+  safeCreateIndex(db, 'CREATE UNIQUE INDEX IF NOT EXISTS uq_char_mission ON mission_progress (character_id, mission_id);');
+  safeCreateIndex(db, 'CREATE UNIQUE INDEX IF NOT EXISTS uq_char_camp_node ON campaign_node_progress (character_id, campaign_id, node_id);');
+  safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_custom_subfactions_user ON custom_subfactions (user_id);');
+  safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_custom_subfactions_parent ON custom_subfactions (parent_faction_id);');
+  safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_custom_subfactions_archived ON custom_subfactions (is_archived);');
 
   // Ensure all columns added in later migrations exist before any indexes are generated on them
   ensureColumnExists(db, 'xp_transactions', 'user_id', "TEXT DEFAULT 'user_main'");
@@ -1189,73 +1313,148 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
 
   // Migration 15: Character Inventory, Loadout & Raid Loot History
   if (!appliedMigrations.includes(15)) {
-    db.execSync(`
-      CREATE TABLE IF NOT EXISTS character_inventory (
-        id TEXT PRIMARY KEY,
-        character_id TEXT NOT NULL DEFAULT 'char_main',
-        item_id TEXT NOT NULL,
-        acquired_at TEXT NOT NULL,
-        acquisition_source TEXT NOT NULL,
-        is_equipped INTEGER NOT NULL DEFAULT 0,
-        equipped_slot TEXT
+    try {
+      repairOrRecreateTable(
+        db,
+        'character_inventory',
+        [
+          { name: 'id', definition: 'TEXT PRIMARY KEY' },
+          { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+          { name: 'item_id', definition: 'TEXT' },
+          { name: 'acquired_at', definition: 'TEXT' },
+          { name: 'acquisition_source', definition: 'TEXT' },
+          { name: 'is_equipped', definition: 'INTEGER DEFAULT 0' },
+          { name: 'equipped_slot', definition: 'TEXT' },
+        ],
+        `CREATE TABLE IF NOT EXISTS character_inventory (
+          id TEXT PRIMARY KEY,
+          character_id TEXT NOT NULL DEFAULT 'char_main',
+          item_id TEXT NOT NULL,
+          acquired_at TEXT NOT NULL,
+          acquisition_source TEXT NOT NULL,
+          is_equipped INTEGER NOT NULL DEFAULT 0,
+          equipped_slot TEXT
+        );`
       );
-      CREATE INDEX IF NOT EXISTS idx_char_inv_char ON character_inventory (character_id);
-      CREATE INDEX IF NOT EXISTS idx_char_inv_item ON character_inventory (item_id);
 
-      CREATE TABLE IF NOT EXISTS character_equipment_loadout (
-        character_id TEXT NOT NULL DEFAULT 'char_main',
-        slot TEXT NOT NULL,
-        item_id TEXT,
-        equipped_at TEXT NOT NULL,
-        PRIMARY KEY (character_id, slot)
+      safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_char_inv_char ON character_inventory (character_id);');
+      safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_char_inv_item ON character_inventory (item_id);');
+
+      repairOrRecreateTable(
+        db,
+        'character_equipment_loadout',
+        [
+          { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+          { name: 'slot', definition: 'TEXT' },
+          { name: 'item_id', definition: 'TEXT' },
+          { name: 'equipped_at', definition: 'TEXT' },
+        ],
+        `CREATE TABLE IF NOT EXISTS character_equipment_loadout (
+          character_id TEXT NOT NULL DEFAULT 'char_main',
+          slot TEXT NOT NULL,
+          item_id TEXT,
+          equipped_at TEXT NOT NULL,
+          PRIMARY KEY (character_id, slot)
+        );`
       );
 
-      CREATE TABLE IF NOT EXISTS raid_loot_history (
-        id TEXT PRIMARY KEY,
-        raid_cycle_id TEXT NOT NULL,
-        user_id TEXT NOT NULL DEFAULT 'user_main',
-        character_id TEXT NOT NULL DEFAULT 'char_main',
-        item_id TEXT NOT NULL,
-        rewarded_at TEXT NOT NULL
+      repairOrRecreateTable(
+        db,
+        'raid_loot_history',
+        [
+          { name: 'id', definition: 'TEXT PRIMARY KEY' },
+          { name: 'raid_cycle_id', definition: 'TEXT' },
+          { name: 'user_id', definition: "TEXT DEFAULT 'user_main'" },
+          { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+          { name: 'item_id', definition: 'TEXT' },
+          { name: 'rewarded_at', definition: 'TEXT' },
+        ],
+        `CREATE TABLE IF NOT EXISTS raid_loot_history (
+          id TEXT PRIMARY KEY,
+          raid_cycle_id TEXT NOT NULL,
+          user_id TEXT NOT NULL DEFAULT 'user_main',
+          character_id TEXT NOT NULL DEFAULT 'char_main',
+          item_id TEXT NOT NULL,
+          rewarded_at TEXT NOT NULL
+        );`
       );
-      CREATE INDEX IF NOT EXISTS idx_raid_loot_cycle ON raid_loot_history (raid_cycle_id);
-    `);
 
-    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (15, datetime('now'));");
+      safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_raid_loot_cycle ON raid_loot_history (raid_cycle_id);');
+
+      db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (15, datetime('now'));");
+    } catch (mig15Err) {
+      console.warn('Migration 15 non-fatal warning:', mig15Err);
+    }
   }
 
   // Migration 16: MMORPG Raid Progression, Tier Ladders & Milestones
   if (!appliedMigrations.includes(16)) {
-    db.execSync(`
-      CREATE TABLE IF NOT EXISTS character_raid_progression (
-        character_id TEXT NOT NULL DEFAULT 'char_main',
-        raid_tier_id TEXT NOT NULL,
-        victories_count INTEGER NOT NULL DEFAULT 0,
-        first_victory_at TEXT NOT NULL,
-        last_victory_at TEXT NOT NULL,
-        PRIMARY KEY (character_id, raid_tier_id)
+    try {
+      repairOrRecreateTable(
+        db,
+        'character_raid_progression',
+        [
+          { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+          { name: 'raid_tier_id', definition: 'TEXT' },
+          { name: 'victories_count', definition: 'INTEGER DEFAULT 0' },
+          { name: 'first_victory_at', definition: 'TEXT' },
+          { name: 'last_victory_at', definition: 'TEXT' },
+        ],
+        `CREATE TABLE IF NOT EXISTS character_raid_progression (
+          character_id TEXT NOT NULL DEFAULT 'char_main',
+          raid_tier_id TEXT NOT NULL,
+          victories_count INTEGER NOT NULL DEFAULT 0,
+          first_victory_at TEXT NOT NULL,
+          last_victory_at TEXT NOT NULL,
+          PRIMARY KEY (character_id, raid_tier_id)
+        );`
       );
 
-      CREATE TABLE IF NOT EXISTS character_raid_summary (
-        character_id TEXT PRIMARY KEY,
-        highest_tier_unlocked TEXT NOT NULL DEFAULT 'tier_1_initiation',
-        total_victories INTEGER NOT NULL DEFAULT 0,
-        last_defeated_tier TEXT,
-        last_victory_at TEXT,
-        updated_at TEXT NOT NULL
+      repairOrRecreateTable(
+        db,
+        'character_raid_summary',
+        [
+          { name: 'character_id', definition: 'TEXT PRIMARY KEY' },
+          { name: 'highest_tier_unlocked', definition: "TEXT DEFAULT 'tier_1_initiation'" },
+          { name: 'total_victories', definition: 'INTEGER DEFAULT 0' },
+          { name: 'last_defeated_tier', definition: 'TEXT' },
+          { name: 'last_victory_at', definition: 'TEXT' },
+          { name: 'updated_at', definition: 'TEXT' },
+        ],
+        `CREATE TABLE IF NOT EXISTS character_raid_summary (
+          character_id TEXT PRIMARY KEY,
+          highest_tier_unlocked TEXT NOT NULL DEFAULT 'tier_1_initiation',
+          total_victories INTEGER NOT NULL DEFAULT 0,
+          last_defeated_tier TEXT,
+          last_victory_at TEXT,
+          updated_at TEXT NOT NULL
+        );`
       );
 
-      CREATE TABLE IF NOT EXISTS character_progression_milestones (
-        character_id TEXT NOT NULL DEFAULT 'char_main',
-        milestone_type TEXT NOT NULL,
-        milestone_key TEXT NOT NULL,
-        achieved_at TEXT NOT NULL,
-        metadata_json TEXT,
-        PRIMARY KEY (character_id, milestone_type, milestone_key)
+      repairOrRecreateTable(
+        db,
+        'character_progression_milestones',
+        [
+          { name: 'character_id', definition: "TEXT DEFAULT 'char_main'" },
+          { name: 'milestone_type', definition: 'TEXT' },
+          { name: 'milestone_key', definition: 'TEXT' },
+          { name: 'achieved_at', definition: 'TEXT' },
+          { name: 'metadata_json', definition: 'TEXT' },
+        ],
+        `CREATE TABLE IF NOT EXISTS character_progression_milestones (
+          character_id TEXT NOT NULL DEFAULT 'char_main',
+          milestone_type TEXT NOT NULL,
+          milestone_key TEXT NOT NULL,
+          achieved_at TEXT NOT NULL,
+          metadata_json TEXT,
+          PRIMARY KEY (character_id, milestone_type, milestone_key)
+        );`
       );
-    `);
 
-    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (16, datetime('now'));");
+      db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (16, datetime('now'));");
+    } catch (mig16Err) {
+      console.warn('Migration 16 non-fatal warning:', mig16Err);
+    }
   }
 
   return db;
