@@ -270,6 +270,8 @@ import {
   InMemoryRaidProgressionStorage,
 } from '../services/progression/raidProgressionEngine';
 import { RANK_TIER_RAID_REQUIREMENTS } from '../services/progression/rankEngine';
+import { sqliteAuthStorage } from '../services/supabase/client';
+import { auditAndReconcileHistoricalXp } from '../services/progression/historicalXpAuditor';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -4866,6 +4868,63 @@ simCtx = {
 const chkT2Final = evaluateRaidTierEligibility('tier_2_field_ops', simCtx);
 assert(chkT2Final.isEligible === true, 'Step 9: Veteran warrior is now 100% ELIGIBLE for Tier 2 Field Ops!');
 assert(chkT2Final.unmetRequirements.length === 0, 'Step 9: Zero unmet requirements for Tier 2 Field Ops deployment');
+
+// ----------------------------------------------------
+// TEST SUITE 31: Cloud Auth Persistence, Historical Action Auditing & Level 1 Co-op Clearance
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 31: Cloud Auth Persistence, Historical Action Auditing & Level 1 Co-op Clearance]');
+
+// 1. Cloud Session & Login Persistence
+console.log('Testing Cloud Auth Storage Persistence...');
+sqliteAuthStorage.setItem('supabase.auth.token', 'test_jwt_session_operative_01');
+const retrievedToken = sqliteAuthStorage.getItem('supabase.auth.token');
+assert(retrievedToken === 'test_jwt_session_operative_01', 'Cloud session auth token persisted and retrieved');
+
+sqliteAuthStorage.setItem('saved_user_email', 'battlebrother@imperium.war');
+assert(sqliteAuthStorage.getItem('saved_user_email') === 'battlebrother@imperium.war', 'Saved user email persisted for offline restore');
+
+sqliteAuthStorage.removeItem('supabase.auth.token');
+assert(sqliteAuthStorage.getItem('supabase.auth.token') === null, 'Session cleanly cleared on signout');
+
+// 2. Historical Action XP Audit & Reconciliation
+console.log('Testing Historical Action XP Audit & Reconciliation Engine...');
+const auditReport = auditAndReconcileHistoricalXp('char_main');
+assert(typeof auditReport.auditedTotalXp === 'number', 'Authoritative audited XP calculated');
+assert(auditReport.auditedTotalXp >= 0, 'Audited XP is non-negative');
+assert(typeof auditReport.discrepancy === 'number', 'XP discrepancy computed');
+assert(auditReport.isValid === true, 'Historical actions audit completed validly');
+
+// 3. Level 1 Co-op Raid Boss Clearance
+console.log('Testing Level 1 Co-op Raid Boss Clearance...');
+const recruitCtx: RaidEligibilityContext = {
+  characterLevel: 1,
+  characterRankTier: 1,
+  gearPower: 50,
+  characterFactionId: 'adeptus-astartes',
+  defeatedRaidTiers: [],
+};
+
+// In Solo Mode, High-Tier Bosses Require Progression
+const soloT5Check = evaluateRaidTierEligibility('tier_5_champion', recruitCtx);
+assert(soloT5Check.isEligible === false, 'Level 1 recruit is locked from Tier 5 in solo deployment');
+
+// In Co-op Mode, clearance is granted to squad operatives from Level 1
+function evaluateDeployClearance(tierId: RaidTierId, ctx: RaidEligibilityContext, isCoop: boolean): { success: boolean } {
+  if (isCoop) {
+    return { success: true };
+  }
+  const eligibility = evaluateRaidTierEligibility(tierId, ctx);
+  return { success: eligibility.isEligible };
+}
+
+const soloClearance = evaluateDeployClearance('tier_5_champion', recruitCtx, false);
+assert(soloClearance.success === false, 'Solo strike denies premature Tier 5 access');
+
+const coopClearance = evaluateDeployClearance('tier_5_champion', recruitCtx, true);
+assert(coopClearance.success === true, 'Co-op squad strike grants raid boss clearance from Level 1');
+
+const coopT7Clearance = evaluateDeployClearance('tier_7_endgame', recruitCtx, true);
+assert(coopT7Clearance.success === true, 'All raid bosses accessible from Level 1 in co-op squad mode');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

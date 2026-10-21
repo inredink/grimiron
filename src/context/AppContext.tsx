@@ -5,6 +5,7 @@ import { Faction, Subfaction } from '../content/types';
 import { warhammer40kUniverse, getFactionById, getSubfactionById } from '../content/warhammer40k';
 import {
   initializeDatabase,
+  getDatabase,
 } from '../services/database/db';
 import {
   getCharacterProfile,
@@ -22,7 +23,7 @@ import {
   loadWorkoutDraft,
   clearWorkoutDraft,
 } from '../services/database/workoutRepository';
-import { calculateProgression } from '../services/progression/rankEngine';
+import { calculateProgression, getLevelFromTotalXp } from '../services/progression/rankEngine';
 import { calculateWorkoutXp } from '../services/progression/xpCalculator';
 import {
   CombatMission,
@@ -231,6 +232,7 @@ import {
   XP_ECONOMY_CONFIG,
   XpAwardResult,
 } from '../services/progression/xpService';
+import { auditAndReconcileHistoricalXp } from '../services/progression/historicalXpAuditor';
 
 export interface FinishWorkoutResult {
   xpEarned: number;
@@ -282,7 +284,7 @@ interface AppContextValue {
   warfrontSettings: WarfrontSettings;
   setWarfrontSpawnDay: (spawnDay: RaidSpawnDay) => void;
   deployDailyEncounter: (encounter: EncounterTemplate) => void;
-  deployWeeklyRaid: (raid: WeeklyRaidCycle, tierId?: RaidTierId) => { success: boolean; reason?: string };
+  deployWeeklyRaid: (raid: WeeklyRaidCycle, tierId?: RaidTierId, isCoop?: boolean) => { success: boolean; reason?: string };
   claimWeeklyRaidRewardsAction: (cycleId: string, tierId?: RaidTierId) => boolean;
   enrollInProgram: (program: TrainingProgramDefinition) => void;
   pauseActiveProgram: () => void;
@@ -452,6 +454,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       initializeRecoverySqliteStorage();
       initializeNotificationSqliteStorage();
       initializeDiagnosticsSqliteProvider();
+
+      // Authoritative Historical XP & Actions Audit:
+      // Verifies all completed workouts, sets, and raid victories to guarantee XP is mathematically accurate
+      try {
+        auditAndReconcileHistoricalXp('char_main');
+      } catch (auditErr) {
+        console.warn('Initial historical XP audit skipped:', auditErr);
+      }
+
       const prof = getCharacterProfile();
       setCharacter(prof);
       const userStats = getUserCareerStats();
@@ -596,6 +607,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     })
                     .catch(() => {});
                 }
+              }
+
+              // Synchronize full character progression, level, and XP to Supabase Cloud
+              coopService
+                .syncCloudData({
+                  displayName: currentLocal.characterName,
+                  factionId: currentLocal.factionId,
+                  totalXp: currentLocal.totalXp,
+                  level: currentLocal.currentLevel,
+                  onboardingCompleted: true,
+                })
+                .catch(() => {});
+            }
+          })
+          .catch(() => {});
+
+        // Check if cloud has higher historical progression for returning warriors
+        coopService
+          .getCloudProgressionMetadata()
+          .then((cloudMeta) => {
+            if (cloudMeta && typeof cloudMeta.totalXp === 'number' && cloudMeta.totalXp > 0) {
+              const currentLocal = getCharacterProfile();
+              if (currentLocal.totalXp === 0) {
+                const db = getDatabase();
+                db.runSync(
+                  'UPDATE character_profile SET total_xp = ?, current_level = ?, updated_at = ? WHERE id = 1',
+                  [cloudMeta.totalXp, cloudMeta.level || getLevelFromTotalXp(cloudMeta.totalXp), new Date().toISOString()]
+                );
+                setCharacter(getCharacterProfile());
               }
             }
           })
@@ -1012,11 +1052,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   const deployWeeklyRaid = useCallback(
-    (raid: WeeklyRaidCycle, tierId?: RaidTierId): { success: boolean; reason?: string } => {
+    (raid: WeeklyRaidCycle, tierId?: RaidTierId, isCoop: boolean = false): { success: boolean; reason?: string } => {
       const targetTierId = tierId || selectedRaidTierId || 'tier_1_initiation';
-      const eligibility = checkRaidEligibility(targetTierId);
-      if (!eligibility.isEligible) {
-        return { success: false, reason: eligibility.primaryLockReason };
+      // In Co-op / Squad mode, raid bosses are available from Level 1!
+      if (!isCoop) {
+        const eligibility = checkRaidEligibility(targetTierId);
+        if (!eligibility.isEligible) {
+          return { success: false, reason: eligibility.primaryLockReason };
+        }
       }
 
       const tierDef = getRaidTierById(targetTierId);
@@ -1024,7 +1067,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveDailyEncounterId(null);
       const mission: CombatMission = {
         id: `raid_${raid.cycleId}`,
-        title: `Raid [${tierDef.codeName}]: ${raid.boss.name}`,
+        title: `${isCoop ? 'Co-op Squad Raid' : 'Raid'} [${tierDef.codeName}]: ${raid.boss.name}`,
         briefing: `${tierDef.loreBriefing}\n\n${raid.boss.tacticalDescription}`,
         difficulty: tierDef.tierNumber >= 6 ? 'crusade' : tierDef.tierNumber >= 4 ? 'boss' : 'incursion',
         enemyId: raid.boss.bossKey,
@@ -1032,10 +1075,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         gloryBonusXp: tierDef.gloryXpReward,
       };
       setCurrentMission(mission);
-      startNewWorkout(`Weekly Raid (${tierDef.name}): ${raid.boss.name}`, mission);
+      startNewWorkout(`${isCoop ? 'Squad Co-op' : 'Weekly Raid'} (${tierDef.name}): ${raid.boss.name}`, mission);
       return { success: true };
     },
-    [selectedRaidTierId, checkRaidEligibility]
+    [selectedRaidTierId, checkRaidEligibility, startNewWorkout]
   );
 
   const claimWeeklyRaidRewardsAction = useCallback((cycleId: string, tierId?: RaidTierId): boolean => {

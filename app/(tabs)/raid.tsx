@@ -23,6 +23,7 @@ import { getLootCandidatesForRaidTier } from '../../src/services/progression/rai
 import { isItemEquipEligible } from '../../src/services/progression/equipmentService';
 import { RaidTierId } from '../../src/types/raidProgression';
 import { getOrCreateWeeklyRaid } from '../../src/services/progression/warfrontEngine';
+import { CoopRaidModal } from '../../src/components/CoopRaidModal';
 
 export default function RaidScreen() {
   const router = useRouter();
@@ -40,9 +41,12 @@ export default function RaidScreen() {
     gearPowerInfo,
     progression,
     currentFaction,
+    activeCoopRaid,
+    setActiveCoopRaid,
   } = useApp();
 
   const [previewMode, setPreviewMode] = useState<'individual' | 'squad'>('individual');
+  const [isCoopModalVisible, setIsCoopModalVisible] = useState(false);
 
   // Immediate authoritative weekly raid cycle resolution (zero-delay deterministic availability)
   const currentWeeklyRaid =
@@ -73,7 +77,8 @@ export default function RaidScreen() {
 
   const handleDeployStrike = () => {
     triggerHaptic.medium();
-    const res = deployWeeklyRaid(currentWeeklyRaid, selectedRaidTierId);
+    const isSquadMode = previewMode === 'squad';
+    const res = deployWeeklyRaid(currentWeeklyRaid, selectedRaidTierId, isSquadMode);
     if (!res.success) {
       triggerHaptic.warning();
       Alert.alert('Raid Clearance Denied', res.reason || 'You do not meet the operational requirements to deploy on this raid.');
@@ -289,28 +294,37 @@ export default function RaidScreen() {
                 TIER {currentTierDef.tierNumber}: {currentTierDef.name.toUpperCase()}
               </Text>
             </View>
-            <View
-              style={[
-                styles.clearanceBadge,
-                eligibility.isEligible ? styles.clearanceBadgeGranted : styles.clearanceBadgeDenied,
-              ]}
-            >
-              <Ionicons
-                name={eligibility.isEligible ? 'shield-checkmark' : 'lock-closed'}
-                size={12}
-                color={eligibility.isEligible ? '#00E676' : '#FF5252'}
-              />
-              <Text
+            {previewMode === 'squad' ? (
+              <View style={[styles.clearanceBadge, styles.clearanceBadgeGranted]}>
+                <Ionicons name="people" size={12} color="#00E676" />
+                <Text style={[styles.clearanceBadgeText, styles.clearanceBadgeTextGranted]}>
+                  CO-OP SQUAD (LVL 1+ CLEARANCE)
+                </Text>
+              </View>
+            ) : (
+              <View
                 style={[
-                  styles.clearanceBadgeText,
-                  eligibility.isEligible
-                    ? styles.clearanceBadgeTextGranted
-                    : styles.clearanceBadgeTextDenied,
+                  styles.clearanceBadge,
+                  eligibility.isEligible ? styles.clearanceBadgeGranted : styles.clearanceBadgeDenied,
                 ]}
               >
-                {eligibility.isEligible ? 'CLEARANCE GRANTED' : 'CLEARANCE LOCKED'}
-              </Text>
-            </View>
+                <Ionicons
+                  name={eligibility.isEligible ? 'shield-checkmark' : 'lock-closed'}
+                  size={12}
+                  color={eligibility.isEligible ? '#00E676' : '#FF5252'}
+                />
+                <Text
+                  style={[
+                    styles.clearanceBadgeText,
+                    eligibility.isEligible
+                      ? styles.clearanceBadgeTextGranted
+                      : styles.clearanceBadgeTextDenied,
+                  ]}
+                >
+                  {eligibility.isEligible ? 'CLEARANCE GRANTED' : 'CLEARANCE LOCKED'}
+                </Text>
+              </View>
+            )}
           </View>
 
           <Text style={styles.tierLoreText}>{currentTierDef.loreBriefing}</Text>
@@ -318,6 +332,15 @@ export default function RaidScreen() {
           {/* Operational Eligibility Requirements Checklist */}
           <View style={styles.requirementsBox}>
             <Text style={styles.requirementsTitle}>OPERATIONAL CLEARANCE CRITERIA</Text>
+
+            {previewMode === 'squad' && (
+              <View style={styles.coopBanner}>
+                <Ionicons name="shield-checkmark" size={14} color="#00E676" />
+                <Text style={styles.coopBannerText}>
+                  Co-op Clearance Active: All squad operatives are authorized to assault raid bosses from Level 1 in cooperative strikes.
+                </Text>
+              </View>
+            )}
             
             <View style={styles.reqItemRow}>
               <Ionicons
@@ -429,6 +452,24 @@ export default function RaidScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {previewMode === 'squad' && (
+          <TouchableOpacity
+            style={styles.openCoopTerminalBtn}
+            onPress={() => {
+              triggerHaptic.selection();
+              setIsCoopModalVisible(true);
+            }}
+          >
+            <Ionicons name="terminal-outline" size={16} color="#00F0FF" />
+            <Text style={styles.openCoopTerminalBtnText}>
+              {activeCoopRaid
+                ? `CO-OP LOBBY: ENGAGED WITH ${activeCoopRaid.bossName.toUpperCase()}`
+                : 'OPEN MULTIPLAYER CO-OP RAID LOBBY & SQUADS'}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color="#00F0FF" />
+          </TouchableOpacity>
+        )}
 
         {/* Boss Dossier Card */}
         <View style={[styles.bossCard, { borderColor: boss.primaryColor }]}>
@@ -719,16 +760,18 @@ export default function RaidScreen() {
 
         {/* Action Button Footer */}
         <View style={styles.actionFooter}>
-          {status === 'active' && eligibility.isEligible && (
+          {status === 'active' && (eligibility.isEligible || previewMode === 'squad') && (
             <TouchableOpacity style={styles.assaultBtn} onPress={handleDeployStrike}>
               <Ionicons name="flame" size={18} color="#FFFFFF" />
               <Text style={styles.assaultBtnText}>
-                DEPLOY CRUSADE STRIKE (TIER {currentTierDef.tierNumber})
+                {previewMode === 'squad'
+                  ? `DEPLOY SQUAD CO-OP STRIKE (TIER ${currentTierDef.tierNumber})`
+                  : `DEPLOY CRUSADE STRIKE (TIER ${currentTierDef.tierNumber})`}
               </Text>
             </TouchableOpacity>
           )}
 
-          {status === 'active' && !eligibility.isEligible && (
+          {status === 'active' && !eligibility.isEligible && previewMode !== 'squad' && (
             <View style={styles.assaultBtnLocked}>
               <Ionicons name="lock-closed" size={18} color="#90A4AE" />
               <View style={styles.assaultBtnLockedTextBox}>
@@ -740,6 +783,21 @@ export default function RaidScreen() {
                 </Text>
               </View>
             </View>
+          )}
+
+          {previewMode === 'squad' && (
+            <TouchableOpacity
+              style={styles.openCoopLobbyBtn}
+              onPress={() => {
+                triggerHaptic.selection();
+                setIsCoopModalVisible(true);
+              }}
+            >
+              <Ionicons name="people-circle-outline" size={18} color="#00F0FF" />
+              <Text style={styles.openCoopLobbyBtnText}>
+                MANAGE SQUAD MEMBERS & CO-OP ATTACKS
+              </Text>
+            </TouchableOpacity>
           )}
 
           {status === 'defeated' && !isRewardClaimed && (
@@ -776,6 +834,13 @@ export default function RaidScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <CoopRaidModal
+        visible={isCoopModalVisible}
+        onClose={() => setIsCoopModalVisible(false)}
+        activeRaid={activeCoopRaid}
+        onSelectActiveRaid={setActiveCoopRaid}
+      />
     </SafeAreaView>
   );
 }
@@ -1752,5 +1817,60 @@ const styles = StyleSheet.create({
     color: '#B0BEC5',
     fontSize: 10,
     fontWeight: '600',
+  },
+  coopBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 230, 118, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#00E67640',
+    padding: 8,
+    marginBottom: 8,
+  },
+  coopBannerText: {
+    color: '#00E676',
+    fontSize: 10,
+    fontWeight: '700',
+    flex: 1,
+    lineHeight: 14,
+  },
+  openCoopTerminalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E2533',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#00F0FF50',
+    marginTop: 8,
+  },
+  openCoopTerminalBtnText: {
+    color: '#00F0FF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  openCoopLobbyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(0, 240, 255, 0.12)',
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#00F0FF60',
+  },
+  openCoopLobbyBtnText: {
+    color: '#00F0FF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
 });

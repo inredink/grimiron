@@ -130,6 +130,89 @@ export const coopService = {
     return this.updateMyProfile({ displayName });
   },
 
+  /**
+   * Synchronizes full warrior progression and cloud profile data to Supabase.
+   */
+  async syncCloudData(data: {
+    displayName?: string;
+    factionId?: string;
+    totalXp?: number;
+    level?: number;
+    gearPower?: number;
+    rankTitle?: string;
+    onboardingCompleted?: boolean;
+  }): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+    try {
+      const user = (await client.auth.getUser()).data.user;
+      if (!user) return false;
+
+      // 1. Update Supabase Auth user_metadata (always supported, completely schema-independent)
+      const metadataUpdates: Record<string, any> = {
+        last_synced_at: new Date().toISOString(),
+      };
+      if (data.displayName !== undefined) metadataUpdates.display_name = data.displayName.trim();
+      if (data.factionId !== undefined) metadataUpdates.faction_id = data.factionId;
+      if (data.totalXp !== undefined) metadataUpdates.total_xp = data.totalXp;
+      if (data.level !== undefined) metadataUpdates.character_level = data.level;
+      if (data.gearPower !== undefined) metadataUpdates.gear_power = data.gearPower;
+      if (data.rankTitle !== undefined) metadataUpdates.rank_title = data.rankTitle;
+      if (data.onboardingCompleted !== undefined) metadataUpdates.onboarding_completed = data.onboardingCompleted;
+
+      await client.auth.updateUser({
+        data: metadataUpdates,
+      });
+
+      // 2. Also update public profiles table
+      if (data.displayName !== undefined || data.factionId !== undefined) {
+        await this.updateMyProfile({
+          displayName: data.displayName,
+          factionId: data.factionId,
+        });
+      }
+
+      return true;
+    } catch (e) {
+      console.warn('coopService.syncCloudData warning:', e);
+      return false;
+    }
+  },
+
+  /**
+   * Retrieves full cloud progression and metadata stored in Supabase.
+   */
+  async getCloudProgressionMetadata(): Promise<{
+    displayName?: string;
+    factionId?: string;
+    totalXp?: number;
+    level?: number;
+    gearPower?: number;
+    rankTitle?: string;
+    onboardingCompleted?: boolean;
+    lastSyncedAt?: string;
+  } | null> {
+    const client = getSupabaseClient();
+    if (!client) return null;
+    try {
+      const user = (await client.auth.getUser()).data.user;
+      if (!user) return null;
+      const meta = user.user_metadata || {};
+      return {
+        displayName: meta.display_name,
+        factionId: meta.faction_id,
+        totalXp: typeof meta.total_xp === 'number' ? meta.total_xp : undefined,
+        level: typeof meta.character_level === 'number' ? meta.character_level : undefined,
+        gearPower: typeof meta.gear_power === 'number' ? meta.gear_power : undefined,
+        rankTitle: meta.rank_title,
+        onboardingCompleted: meta.onboarding_completed === true,
+        lastSyncedAt: meta.last_synced_at,
+      };
+    } catch {
+      return null;
+    }
+  },
+
   async getOnboardingMetadata(): Promise<boolean | null> {
     const client = getSupabaseClient();
     if (!client) return null;

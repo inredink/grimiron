@@ -238,6 +238,12 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS auth_session_store (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS battle_participants (
       id TEXT PRIMARY KEY,
       battle_id TEXT NOT NULL,
@@ -632,6 +638,21 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
       achieved_at TEXT NOT NULL,
       metadata_json TEXT,
       PRIMARY KEY (character_id, milestone_type, milestone_key)
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'auth_session_store',
+    [
+      { name: 'key', definition: 'TEXT PRIMARY KEY' },
+      { name: 'value', definition: 'TEXT NOT NULL' },
+      { name: 'updated_at', definition: 'TEXT NOT NULL' },
+    ],
+    `CREATE TABLE IF NOT EXISTS auth_session_store (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );`
   );
 

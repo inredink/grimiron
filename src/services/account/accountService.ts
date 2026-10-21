@@ -24,6 +24,32 @@ export async function getAccountInfo(): Promise<AccountInfo> {
         userId = data.session.user.id;
         email = data.session.user.email;
         isCloudAuthenticated = true;
+
+        if (email) {
+          try {
+            const db = getDatabase();
+            db.runSync(
+              `INSERT INTO auth_session_store (key, value, updated_at)
+               VALUES ('saved_user_email', ?, datetime('now'))
+               ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;`,
+              [email]
+            );
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
+  // Fallback: If offline or recovering from restart, check persisted saved email
+  if (!email) {
+    try {
+      const db = getDatabase();
+      const row = db.getFirstSync<{ value: string }>(
+        "SELECT value FROM auth_session_store WHERE key = 'saved_user_email'"
+      );
+      if (row?.value) {
+        email = row.value;
+        isCloudAuthenticated = true;
       }
     } catch {}
   }
@@ -169,6 +195,11 @@ export async function resendVerificationEmail(email: string): Promise<{ success:
  * Clears in-memory tokens while preserving local SQLite database.
  */
 export async function signOutAccount(): Promise<{ success: boolean; message: string }> {
+  try {
+    const db = getDatabase();
+    db.runSync("DELETE FROM auth_session_store WHERE key = 'saved_user_email'");
+  } catch {}
+
   const client = getSupabaseClient();
   if (client) {
     try {
@@ -237,6 +268,7 @@ export async function deleteAccountData(
     db.runSync('DELETE FROM campaign_phase_reports;');
     db.runSync('DELETE FROM campaign_final_dossiers;');
     db.runSync('DELETE FROM pending_notifications;');
+    db.runSync('DELETE FROM auth_session_store;');
     db.runSync('DELETE FROM app_settings;');
 
     // 4. Reinitialize clean initiate character

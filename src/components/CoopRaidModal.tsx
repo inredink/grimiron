@@ -290,25 +290,9 @@ export const CoopRaidModal: React.FC<CoopRaidModalProps> = ({
   const handleSelectSquadBoss = () => {
     if (!selectedSquad || !currentBoss) return;
 
-    // Authoritative Multiplayer Progression Check:
-    // Every squad operative must independently satisfy the raid tier clearance requirements.
-    const bossTier: RaidTierId = currentBoss.maxHp >= 25000
-      ? 'tier_5_champion'
-      : currentBoss.maxHp >= 13000
-      ? 'tier_3_veteran'
-      : currentBoss.maxHp >= 8000
-      ? 'tier_2_field_ops'
-      : 'tier_1_initiation';
-
-    const eligibility = checkRaidEligibility(bossTier);
-    if (!eligibility.isEligible) {
-      Alert.alert(
-        'Squad Raid Clearance Denied',
-        `Your operative does not have clearance to deploy against this squad raid boss:\n\n• ${eligibility.primaryLockReason}\n\nAll operatives must independently qualify before deploying on squad operations.`
-      );
-      return;
-    }
-
+    // Co-op Raid Clearance:
+    // In cooperative multiplayer squad mode, raid bosses are available from Level 1
+    // so recruits can join with friends and assault the shared target together!
     const raid: ActiveCoopRaid = {
       groupId: selectedSquad.id,
       groupName: selectedSquad.name,
@@ -706,32 +690,17 @@ export const CoopRaidModal: React.FC<CoopRaidModalProps> = ({
                         )
                       ) : (
                         <View style={{ gap: 6, marginTop: 8 }}>
-                          {(() => {
-                            const bossTier: RaidTierId = currentBoss.maxHp >= 25000
-                              ? 'tier_5_champion'
-                              : currentBoss.maxHp >= 13000
-                              ? 'tier_3_veteran'
-                              : currentBoss.maxHp >= 8000
-                              ? 'tier_2_field_ops'
-                              : 'tier_1_initiation';
-                            const el = checkRaidEligibility(bossTier);
-                            if (!el.isEligible) {
-                              return (
-                                <View style={styles.coopLockedNotice}>
-                                  <Ionicons name="lock-closed" size={13} color="#FF5252" />
-                                  <Text style={styles.coopLockedNoticeText}>
-                                    Squad Clearance Notice: {el.primaryLockReason}
-                                  </Text>
-                                </View>
-                              );
-                            }
-                            return null;
-                          })()}
+                          <View style={styles.coopUnlockedNotice}>
+                            <Ionicons name="shield-checkmark" size={13} color="#00E676" />
+                            <Text style={styles.coopUnlockedNoticeText}>
+                              Co-op Deployment: All squad operatives cleared from Level 1
+                            </Text>
+                          </View>
                           <TerminalButton
                             title={
                               activeRaid?.bossId === currentBoss.id
                                 ? 'TARGET ENGAGED FOR WORKOUTS'
-                                : 'ENGAGE IN WORKOUTS'
+                                : 'ENGAGE IN WORKOUTS (CO-OP)'
                             }
                             onPress={handleSelectSquadBoss}
                           />
@@ -1247,6 +1216,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     color: '#FF8A80',
+    fontWeight: '600',
+  },
+  coopUnlockedNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0, 230, 118, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.3)',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  coopUnlockedNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#00E676',
     fontWeight: '600',
   },
 });
