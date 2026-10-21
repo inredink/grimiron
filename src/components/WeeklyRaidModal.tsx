@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { WeeklyRaidCycle, RaidSpawnDay } from '../types/warfront';
 import { getSafeIoniconsName } from '../utils/iconHelper';
+import { getOrCreateWeeklyRaid } from '../services/progression/warfrontEngine';
 
 interface WeeklyRaidModalProps {
   visible: boolean;
@@ -30,35 +31,14 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
   onDeployRaidWorkout,
   onClaimRewards,
 }) => {
-  if (!weeklyRaid) {
-    return (
-      <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { padding: 24, alignItems: 'center', justifyContent: 'center' }]}>
-            <Ionicons name="skull" size={48} color="#FF5252" />
-            <Text style={[styles.headerTitle, { marginTop: 12, textAlign: 'center' }]}>
-              CALIBRATING WEEKLY RAID TARGET
-            </Text>
-            <Text style={[styles.configDesc, { textAlign: 'center', marginVertical: 12 }]}>
-              The sector scanner is calibrating hostile boss targets. Tap below to initialize the target scan.
-            </Text>
-            <TouchableOpacity
-              style={[styles.dayButton, styles.dayButtonActive, { paddingHorizontal: 20, paddingVertical: 10 }]}
-              onPress={() => onSetSpawnDay('saturday')}
-            >
-              <Ionicons name="radio" size={14} color="#00E676" />
-              <Text style={styles.dayButtonTextActive}>INITIALIZE TARGET SCAN</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 16 }}>
-              <Text style={{ color: '#90A4AE', fontSize: 12 }}>DISMISS</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    );
-  }
+  // Authoritative weekly raid resolution with zero-delay fallback
+  const effectiveRaid =
+    weeklyRaid ||
+    getOrCreateWeeklyRaid({
+      preferredSpawnDay: preferredSpawnDay || 'saturday',
+    });
 
-  const { boss, maxHp, currentHp, status, isRewardClaimed, contributions } = weeklyRaid;
+  const { boss, maxHp, currentHp, status, isRewardClaimed, contributions } = effectiveRaid;
   const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / maxHp) * 100)));
 
   // Determine active phase
@@ -85,7 +65,7 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
               <View>
                 <Text style={styles.headerTitle}>WEEKLY RAID ENCOUNTER</Text>
                 <Text style={styles.headerSubtitle}>
-                  Cycle: {weeklyRaid.cycleId} • {weeklyRaid.scope.toUpperCase()} RAID
+                  Cycle: {effectiveRaid.cycleId} • {effectiveRaid.scope.toUpperCase()} RAID
                 </Text>
               </View>
             </View>
@@ -231,19 +211,19 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
                 <View style={styles.scheduleInfoItem}>
                   <Ionicons name="time-outline" size={13} color="#90A4AE" />
                   <Text style={styles.scheduleInfoText}>
-                    Expires: {new Date(weeklyRaid.expiresAt).toLocaleDateString()}
+                    Expires: {new Date(effectiveRaid.expiresAt).toLocaleDateString()}
                   </Text>
                 </View>
                 <View style={styles.scheduleInfoItem}>
                   <Ionicons name="globe-outline" size={13} color="#90A4AE" />
                   <Text style={styles.scheduleInfoText}>
-                    Zone: {weeklyRaid.timezone || 'Local'}
+                    Zone: {effectiveRaid.timezone || 'Local'}
                   </Text>
                 </View>
                 <View style={styles.scheduleInfoItem}>
                   <Ionicons name="shield-outline" size={13} color="#90A4AE" />
                   <Text style={styles.scheduleInfoText}>
-                    Spawn: {weeklyRaid.spawnDay.toUpperCase()}
+                    Spawn: {effectiveRaid.spawnDay.toUpperCase()}
                   </Text>
                 </View>
               </View>
@@ -436,7 +416,7 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
               <TouchableOpacity
                 style={styles.assaultButton}
                 onPress={() => {
-                  onDeployRaidWorkout(weeklyRaid);
+                  onDeployRaidWorkout(effectiveRaid);
                   onClose();
                 }}
               >
@@ -448,7 +428,7 @@ export const WeeklyRaidModal: React.FC<WeeklyRaidModalProps> = ({
             {status === 'defeated' && !isRewardClaimed && (
               <TouchableOpacity
                 style={styles.claimButton}
-                onPress={() => onClaimRewards(weeklyRaid.cycleId)}
+                onPress={() => onClaimRewards(effectiveRaid.cycleId)}
               >
                 <Ionicons name="trophy" size={18} color="#121212" />
                 <Text style={styles.claimButtonText}>CLAIM SPOILS OF WAR (+500 XP)</Text>
