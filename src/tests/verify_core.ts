@@ -317,11 +317,11 @@ const bodyweightExercise: WorkoutExercise[] = [
   },
 ];
 const bwResult = calculateWorkoutXp(bodyweightExercise, true);
-assert(bwResult.baseWorkoutXp === 100, 'Base workout completion awards 100 XP');
-assert(bwResult.completedSetsXp === 3 * 20, '3 completed sets award 60 XP');
-assert(bwResult.repsXp === 50 * 1, '50 total reps award 50 XP');
+assert(bwResult.baseWorkoutXp === 5, 'Base workout completion awards 5 XP');
+assert(bwResult.completedSetsXp === 3 * 4, '3 completed sets award 12 XP');
+assert(bwResult.repsXp === 50 * 0.2, '50 total reps award 10 XP');
 assert(bwResult.volumeXp === 0, 'Bodyweight (0 weight) awards 0 extra tonnage XP without error');
-assert(bwResult.totalXp === 210, 'Bodyweight workout yields 210 total XP correctly');
+assert(bwResult.totalXp === 27, 'Bodyweight workout yields 27 total XP correctly (within 20-30 XP range)');
 
 // 1.3 Heavy resistance training
 const heavySquats: WorkoutExercise[] = [
@@ -338,10 +338,11 @@ const heavySquats: WorkoutExercise[] = [
   },
 ];
 const heavyResult = calculateWorkoutXp(heavySquats, true);
-assert(heavyResult.baseWorkoutXp === 100, 'Heavy lifting includes 100 base XP');
-assert(heavyResult.completedSetsXp === 60, '3 heavy sets award 60 XP');
-assert(heavyResult.repsXp === 15, '15 reps award 15 XP');
+assert(heavyResult.baseWorkoutXp === 5, 'Heavy lifting includes 5 base XP');
+assert(heavyResult.completedSetsXp === 12, '3 heavy sets award 12 XP');
+assert(heavyResult.repsXp === 3, '15 reps award 3 XP');
 assert(heavyResult.volumeXp > 0, 'Weight moved awards positive tonnage XP');
+assert(heavyResult.totalXp === 29, 'Heavy squat session awards 29 XP (within 20-30 XP range)');
 assert(heavyResult.totalXp > bwResult.totalXp, 'Heavy lifting with weight gives higher total than bodyweight');
 
 // 1.4 Max session cap check
@@ -3532,18 +3533,18 @@ const day2 = '2026-10-21';
 // Initial state
 assert(testStorage.getDailyXpCredited(day1) === 0, 'Fresh calendar day has 0 credited XP');
 
-// Award 1: 450 XP (within 1,000 XP cap)
+// Award 1: 300 XP (within 500 XP authoritative cap)
 const award1 = awardXp({
-  amount: 450,
+  amount: 300,
   sourceType: 'workout_completion',
   targetDate: new Date(`${day1}T10:00:00Z`),
   reason: 'Morning Crusade Session',
 });
-assert(award1.creditedAmount === 450, 'Awards full 450 XP when within daily cap');
+assert(award1.creditedAmount === 300, 'Awards full 300 XP when within daily cap');
 assert(award1.isCapped === false, 'Award 1 is not capped');
-assert(award1.dailyCreditedAfter === 450, 'Daily credited updates to 450 XP');
-assert(award1.dailyAllowanceRemaining === 550, 'Daily allowance remaining is 550 XP');
-assert(award1.totalXpNow === 450, 'Character total XP is 450');
+assert(award1.dailyCreditedAfter === 300, 'Daily credited updates to 300 XP');
+assert(award1.dailyAllowanceRemaining === 200, 'Daily allowance remaining is 200 XP');
+assert(award1.totalXpNow === 300, 'Character total XP is 300');
 
 // Award 2: 50 Recovery XP (within allowance)
 const award2 = awardXp({
@@ -3554,23 +3555,23 @@ const award2 = awardXp({
 });
 assert(award2.creditedAmount === 50, 'Recovery awards full 50 XP');
 assert(award2.isCapped === false, 'Award 2 is not capped');
-assert(award2.dailyCreditedAfter === 500, 'Daily credited updates to 500 XP');
-assert(award2.dailyAllowanceRemaining === 500, 'Daily allowance remaining is 500 XP');
+assert(award2.dailyCreditedAfter === 350, 'Daily credited updates to 350 XP');
+assert(award2.dailyAllowanceRemaining === 150, 'Daily allowance remaining is 150 XP');
 
-// Award 3: 600 XP (exceeds 500 XP remaining allowance -> partial cap)
+// Award 3: 300 XP (exceeds 150 XP remaining allowance -> partial cap)
 const award3 = awardXp({
-  amount: 600,
+  amount: 300,
   sourceType: 'workout_completion',
   targetDate: new Date(`${day1}T18:00:00Z`),
   reason: 'Heavy Evening Leg Battle',
 });
-assert(award3.requestedAmount === 600, 'Requested amount is 600 XP');
-assert(award3.creditedAmount === 500, 'Credited amount clamped to remaining 500 XP allowance');
-assert(award3.spilloverAmount === 100, 'Spillover amount accurately recorded as 100 XP');
+assert(award3.requestedAmount === 300, 'Requested amount is 300 XP');
+assert(award3.creditedAmount === 150, 'Credited amount clamped to remaining 150 XP allowance');
+assert(award3.spilloverAmount === 150, 'Spillover amount accurately recorded as 150 XP');
 assert(award3.isCapped === true, 'Award 3 is marked isCapped: true');
-assert(award3.dailyCreditedAfter === 1000, 'Daily credited reaches hard cap of 1,000 XP');
+assert(award3.dailyCreditedAfter === 500, 'Daily credited reaches hard cap of 500 XP');
 assert(award3.dailyAllowanceRemaining === 0, 'Remaining daily allowance is 0 XP');
-assert(award3.totalXpNow === 1000, 'Character total XP is exactly 1,000 XP');
+assert(award3.totalXpNow === 500, 'Character total XP is exactly 500 XP');
 
 // Award 4: 200 XP when already at cap (allowance = 0 -> 0 credited)
 const award4 = awardXp({
@@ -3583,19 +3584,19 @@ assert(award4.requestedAmount === 200, 'Requested amount is 200 XP');
 assert(award4.creditedAmount === 0, 'Credited amount is 0 XP when cap is already exhausted');
 assert(award4.spilloverAmount === 200, 'Spillover is 200 XP');
 assert(award4.isCapped === true, 'Award 4 is marked isCapped: true');
-assert(award4.totalXpNow === 1000, 'Character total XP is not inflated beyond cap');
+assert(award4.totalXpNow === 500, 'Character total XP is not inflated beyond cap');
 
 // Award 5: Next day automatically resets daily cap
 const award5 = awardXp({
-  amount: 400,
+  amount: 200,
   sourceType: 'workout_completion',
   targetDate: new Date(`${day2}T09:00:00Z`),
   reason: 'Next Day Morning Crusade Session',
 });
-assert(award5.creditedAmount === 400, 'New calendar day awards full 400 XP without interference from yesterday');
+assert(award5.creditedAmount === 200, 'New calendar day awards full 200 XP without interference from yesterday');
 assert(award5.isCapped === false, 'Award 5 is not capped on new calendar day');
-assert(award5.dailyAllowanceRemaining === 600, 'New calendar day has 600 XP remaining allowance');
-assert(award5.totalXpNow === 1400, 'Character cumulative total XP is 1,400 XP');
+assert(award5.dailyAllowanceRemaining === 300, 'New calendar day has 300 XP remaining allowance');
+assert(award5.totalXpNow === 700, 'Character cumulative total XP is 700 XP');
 
 console.log('Testing Strict Idempotency & Replay Protection...');
 // Submit with stable idempotency key

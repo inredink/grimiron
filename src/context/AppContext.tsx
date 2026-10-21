@@ -394,7 +394,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     squadBattleAttacks: 0,
   });
   const [dailyRotation, setDailyRotation] = useState<DailyRotationRecord | null>(null);
-  const [weeklyRaid, setWeeklyRaid] = useState<WeeklyRaidCycle | null>(null);
+  const [weeklyRaid, setWeeklyRaid] = useState<WeeklyRaidCycle | null>(() => {
+    try {
+      return getOrCreateWeeklyRaid({ preferredSpawnDay: 'saturday' });
+    } catch {
+      return null;
+    }
+  });
   const [warfrontSettings, setWarfrontSettingsState] = useState<WarfrontSettings>({
     preferredSpawnDay: 'friday',
     categoryFilter: 'all',
@@ -444,6 +450,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       initializeNotificationSqliteStorage();
       initializeDiagnosticsSqliteProvider();
       const prof = getCharacterProfile();
+      setCharacter(prof);
       const userStats = getUserCareerStats();
       const history = getAllWorkouts();
       const cachedRaid = getActiveRaid();
@@ -1109,6 +1116,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       breakdown,
       settings.rpg_daily_xp_cap
     );
+
+    // Immediately synchronize in-memory React character profile with the credited XP
+    const updatedProf = getCharacterProfile();
+    setCharacter(updatedProf);
 
     let report: CombatAfterActionReport | undefined;
     let battleRecordId: string | undefined;

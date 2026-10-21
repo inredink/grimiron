@@ -9,31 +9,29 @@ import { WorkoutExercise, XpBreakdown } from '../../types/workout';
  */
 export const XP_CONFIG = {
   // Base reward awarded solely for finishing a workout containing at least one completed set.
-  BASE_WORKOUT_XP: 100,
+  // Calibrated so a single exercise cannot grant unearned rank jumps.
+  BASE_WORKOUT_XP: 5,
 
-  // XP awarded per completed working set.
-  XP_PER_SET: 20,
-  // Cap on XP earned strictly from set count (e.g., 20 sets * 20 XP = 400 XP max).
-  MAX_SET_XP: 400,
+  // XP awarded per completed working set (e.g., 3 sets = 12 XP).
+  XP_PER_SET: 4,
+  // Cap on XP earned strictly from set count (up to 25 working sets).
+  MAX_SET_XP: 100,
 
-  // XP awarded per completed repetition across all exercises.
-  // This guarantees high-rep bodyweight exercises (pushups, pullups) earn meaningful XP.
-  XP_PER_REP: 1,
-  // Cap on XP earned strictly from rep count (e.g., 150 reps = 150 XP max).
-  MAX_REP_XP: 150,
+  // XP awarded per completed repetition across all exercises (0.2 XP per rep; 1 XP per 5 reps).
+  XP_PER_REP: 0.2,
+  // Cap on XP earned strictly from rep count (up to 250 reps = 50 XP max).
+  MAX_REP_XP: 50,
 
   // Weight / Tonnage factor:
-  // We use a square-root scaling: sqrt(reps * weight_kg) * 2.
-  // Square-root dampens extreme heavy loads (e.g. 500 lb deadlift vs 135 lb bench)
-  // so beginners and advanced lifters advance on a fair, motivating gradient.
-  VOLUME_SCALING_MULTIPLIER: 2.0,
-  // Maximum volume XP granted for a single set
-  MAX_VOLUME_XP_PER_SET: 25,
+  // Square-root dampens extreme heavy loads so lifters advance equitably without score distortion.
+  VOLUME_SCALING_MULTIPLIER: 0.5,
+  // Maximum volume XP granted for a single set (max 3 XP per set)
+  MAX_VOLUME_XP_PER_SET: 3,
   // Maximum total volume XP granted for an entire workout session
-  MAX_TOTAL_VOLUME_XP: 250,
+  MAX_TOTAL_VOLUME_XP: 50,
 
   // Absolute hard ceiling for a single workout session to prevent input errors or exploits
-  MAX_SESSION_TOTAL_XP: 1000,
+  MAX_SESSION_TOTAL_XP: 250,
 };
 
 /**

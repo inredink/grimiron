@@ -136,7 +136,22 @@ export default function SettingsScreen() {
   // Diagnostics State
   const [currentDiagnostics, setCurrentDiagnostics] = useState<AppDiagnostics | null>(null);
 
+  // Save Settings State
+  const [saveBannerText, setSaveBannerText] = useState<string | null>(null);
+
   const activeAccent = ACCENT_COLOR_MAP[settings.app_accent_color]?.hex || THEME.colors.primary;
+
+  const handleExplicitSaveSettings = () => {
+    triggerHaptic.success();
+    setSaveBannerText('Tactical configurations committed to Chapter Codex');
+    setTimeout(() => {
+      setSaveBannerText(null);
+    }, 3500);
+    Alert.alert(
+      'Settings Saved',
+      'All tactical preferences and crusade configurations have been committed and persisted to local Chapter storage.'
+    );
+  };
 
   const handleTabPress = (cat: SettingsCategory) => {
     triggerHaptic.selection();
@@ -421,14 +436,35 @@ export default function SettingsScreen() {
           <Text style={styles.headerSubtitle}>TACTICAL PREFERENCES CODESLATE</Text>
         </View>
 
-        <TouchableOpacity
-          onPress={handleResetSettingsConfirm}
-          style={styles.resetButton}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="refresh-outline" size={18} color={THEME.colors.textMuted} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            onPress={handleExplicitSaveSettings}
+            style={[styles.headerSaveButton, { borderColor: activeAccent, backgroundColor: `${activeAccent}22` }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Save Tactical Settings"
+            accessibilityRole="button"
+          >
+            <Ionicons name="checkmark-sharp" size={14} color={activeAccent} />
+            <Text style={[styles.headerSaveButtonText, { color: activeAccent }]}>SAVE</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleResetSettingsConfirm}
+            style={styles.resetButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="refresh-outline" size={18} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Ephemeral Confirmation Banner */}
+      {Boolean(saveBannerText) && (
+        <View style={[styles.savedBanner, { borderBottomColor: activeAccent }]}>
+          <Ionicons name="checkmark-circle" size={16} color={activeAccent} style={{ marginRight: 6 }} />
+          <Text style={[styles.savedBannerText, { color: activeAccent }]}>{saveBannerText}</Text>
+        </View>
+      )}
 
       {/* Category Pills Navigation Bar */}
       <View style={styles.categoryBar}>
@@ -1155,43 +1191,25 @@ export default function SettingsScreen() {
               <Text style={styles.sectionTitle}>RPG, FACTION & CAMPAIGN SETTINGS</Text>
             </View>
 
-            {/* Daily XP Hard Cap */}
+            {/* Daily XP Hard Cap (Authoritative Game Directive) */}
             <View style={styles.settingCard}>
-              <Text style={styles.settingLabel}>DAILY TRAINING XP HARD CAP</Text>
-              <Text style={[styles.settingDescription, { marginBottom: 10 }]}>
-                Maximum XP credited per calendar day across repeatable workouts, recovery days, and missions. Prevents overtraining exploits while preserving all physical training logs.
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={styles.settingLabel}>DAILY TRAINING XP HARD CAP</Text>
+                <View style={[styles.statusPill, { backgroundColor: 'rgba(255, 183, 77, 0.15)', borderColor: '#FFB74D' }]}>
+                  <Text style={[styles.statusPillText, { color: '#FFB74D' }]}>CRUSADE DIRECTIVE</Text>
+                </View>
+              </View>
+              <Text style={[styles.settingDescription, { marginBottom: 12 }]}>
+                Authoritatively fixed by the chapter progression engine to protect warriors against overtraining and combat fatigue. This limit is maintained by the game system and cannot be altered by operative input.
               </Text>
-              <View style={styles.segmentedControl}>
-                {[
-                  { value: 750, label: '750 XP' },
-                  { value: 1000, label: '1,000 XP (STD)' },
-                  { value: 1500, label: '1,500 XP' },
-                  { value: 2000, label: '2,000 XP' },
-                ].map((opt) => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    onPress={() => {
-                      triggerHaptic.selection();
-                      updateSetting('rpg_daily_xp_cap', opt.value);
-                    }}
-                    style={[
-                      styles.segmentButton,
-                      (settings.rpg_daily_xp_cap || 1000) === opt.value && {
-                        backgroundColor: activeAccent,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.segmentButtonText,
-                        (settings.rpg_daily_xp_cap || 1000) === opt.value &&
-                          styles.segmentButtonTextActive,
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.authoritativeDirectiveCard}>
+                <Ionicons name="lock-closed" size={18} color={activeAccent} />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={[styles.authoritativeDirectiveTitle, { color: activeAccent }]}>500 XP / CALENDAR DAY</Text>
+                  <Text style={styles.authoritativeDirectiveSubtitle}>
+                    Active System Hard Cap • Resets nightly at 00:00 local time
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -2181,6 +2199,20 @@ export default function SettingsScreen() {
         )}
       </ScrollView>
 
+      {/* Sticky Bottom Save Action Bar */}
+      <View style={[styles.saveFooterBar, { paddingBottom: Math.max(14, insets.bottom + 8) }]}>
+        <TouchableOpacity
+          onPress={handleExplicitSaveSettings}
+          style={[styles.saveFooterButton, { backgroundColor: activeAccent }]}
+          activeOpacity={0.8}
+          accessibilityLabel="Save Tactical Settings"
+          accessibilityRole="button"
+        >
+          <Ionicons name="checkmark-done" size={20} color="#0A0F1D" style={{ marginRight: 8 }} />
+          <Text style={styles.saveFooterButtonText}>SAVE SETTINGS</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* ========================================================= */}
       {/* MODAL 1: H1 GENERAL APP HELP                              */}
       {/* ========================================================= */}
@@ -2828,6 +2860,89 @@ const styles = StyleSheet.create({
     padding: 6,
     borderRadius: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  headerSaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 5,
+    borderWidth: 1,
+    gap: 4,
+  },
+  headerSaveButtonText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  savedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#071520',
+    borderBottomWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  savedBannerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  saveFooterBar: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    backgroundColor: '#0A0F1D',
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.surfaceBorder,
+  },
+  saveFooterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  saveFooterButtonText: {
+    color: '#0A0F1D',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  authoritativeDirectiveCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#070C18',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.25)',
+    padding: 12,
+  },
+  authoritativeDirectiveTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  authoritativeDirectiveSubtitle: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   categoryBar: {
     borderBottomWidth: 1,

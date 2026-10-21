@@ -22,6 +22,7 @@ import { RAID_TIERS, getRaidTierById } from '../../src/content/raidTiers';
 import { getLootCandidatesForRaidTier } from '../../src/services/progression/raidLootEngine';
 import { isItemEquipEligible } from '../../src/services/progression/equipmentService';
 import { RaidTierId } from '../../src/types/raidProgression';
+import { getOrCreateWeeklyRaid } from '../../src/services/progression/warfrontEngine';
 
 export default function RaidScreen() {
   const router = useRouter();
@@ -43,47 +44,15 @@ export default function RaidScreen() {
 
   const [previewMode, setPreviewMode] = useState<'individual' | 'squad'>('individual');
 
-  // Auto-initialize weekly raid target if auspex scan is pending
-  useEffect(() => {
-    if (!weeklyRaid) {
-      try {
-        setWarfrontSpawnDay(warfrontSettings?.preferredSpawnDay || 'saturday');
-      } catch (err) {
-        console.warn('Auto-initialize raid in RaidScreen warning:', err);
-      }
-    }
-  }, [weeklyRaid, setWarfrontSpawnDay, warfrontSettings?.preferredSpawnDay]);
-
-  if (!weeklyRaid) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centerContainer}>
-          <Ionicons name="skull" size={48} color="#FF5252" />
-          <Text style={styles.loadingTitle}>CALIBRATING ORBITAL AUSPEX...</Text>
-          <Text style={styles.loadingSubtitle}>
-            Scanning crusade sector for hostile warlords and calibrating raid rungs.
-          </Text>
-          <TouchableOpacity
-            style={styles.retryScanBtn}
-            onPress={() => {
-              triggerHaptic.selection();
-              try {
-                setWarfrontSpawnDay('saturday');
-              } catch (e) {
-                console.warn('Target scan trigger error:', e);
-              }
-            }}
-          >
-            <Ionicons name="radio" size={16} color="#0A0E17" />
-            <Text style={styles.retryScanBtnText}>INITIALIZE RAID TARGET SCAN</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Immediate authoritative weekly raid cycle resolution (zero-delay deterministic availability)
+  const currentWeeklyRaid =
+    weeklyRaid ||
+    getOrCreateWeeklyRaid({
+      preferredSpawnDay: warfrontSettings?.preferredSpawnDay || 'saturday',
+    });
 
   const { boss, maxHp, currentHp, status, isRewardClaimed, contributions, spawnDay, expiresAt, timezone } =
-    weeklyRaid;
+    currentWeeklyRaid;
   const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / maxHp) * 100)));
 
   // Determine active phase
@@ -104,7 +73,7 @@ export default function RaidScreen() {
 
   const handleDeployStrike = () => {
     triggerHaptic.medium();
-    const res = deployWeeklyRaid(weeklyRaid, selectedRaidTierId);
+    const res = deployWeeklyRaid(currentWeeklyRaid, selectedRaidTierId);
     if (!res.success) {
       triggerHaptic.warning();
       Alert.alert('Raid Clearance Denied', res.reason || 'You do not meet the operational requirements to deploy on this raid.');
@@ -114,7 +83,7 @@ export default function RaidScreen() {
   };
 
   const handleClaimSpoils = () => {
-    const success = claimWeeklyRaidRewardsAction(weeklyRaid.cycleId, selectedRaidTierId);
+    const success = claimWeeklyRaidRewardsAction(currentWeeklyRaid.cycleId, selectedRaidTierId);
     if (success) {
       triggerHaptic.success();
       Alert.alert('Spoils Claimed', `Awarded +${currentTierDef.gloryXpReward} Glory XP for neutralizing ${boss.name}!`);
@@ -140,7 +109,7 @@ export default function RaidScreen() {
             <Text style={styles.headerTitle}>WEEKLY CRUSADE RAID</Text>
           </View>
           <Text style={styles.headerSubtitle}>
-            Cycle: {weeklyRaid.cycleId} • Saturday Reset
+            Cycle: {currentWeeklyRaid.cycleId} • Saturday Reset
           </Text>
         </View>
 
