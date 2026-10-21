@@ -19,7 +19,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   height = 8,
   style,
 }) => {
-  const clampedProgress = Math.min(100, Math.max(0, progress));
+  const safeProgress = typeof progress === 'number' && !isNaN(progress) ? progress : 0;
+  const clampedProgress = Math.min(100, Math.max(0, safeProgress));
 
   return (
     <View style={[styles.container, style]}>

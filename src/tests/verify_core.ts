@@ -4990,6 +4990,48 @@ if (distinctEnemiesDef) {
   assert(evaluateCriterionMetric(distinctEnemiesDef.criterion, patrolCreatureCtx) === 2, 'Distinct enemies defeated evaluates to 2 legitimately');
 }
 
+// ----------------------------------------------------
+// TEST SUITE 33: Android Native Layout Stability & Workout Completion Flow
+// ----------------------------------------------------
+console.log('\n[TEST SUITE 33: Android Native Layout Stability & Workout Completion Flow]');
+
+// 33.1 calculateProgression NaN and undefined immunity (protects Yoga Native Layout Engine)
+const progUndefined = calculateProgression(undefined as any, fakeFaction);
+assert(!isNaN(progUndefined.progressPercent), 'progressPercent is not NaN when XP is undefined');
+assert(progUndefined.progressPercent >= 0 && progUndefined.progressPercent <= 100, 'progressPercent is between 0 and 100 for undefined XP');
+assert(!isNaN(progUndefined.level), 'level is not NaN when XP is undefined');
+
+const progNaN = calculateProgression(NaN as any, fakeFaction);
+assert(!isNaN(progNaN.progressPercent), 'progressPercent is not NaN when XP is NaN');
+assert(progNaN.progressPercent === 0, 'progressPercent is 0 for NaN XP');
+
+const progNegative = calculateProgression(-999, fakeFaction);
+assert(!isNaN(progNegative.progressPercent), 'progressPercent is not NaN for negative XP');
+assert(progNegative.level === 1, 'level defaults to 1 for negative XP');
+
+// 33.2 After Action Report modal metric safety
+const safeAar = buildAfterActionReport(
+  testMission,
+  {
+    ...weakEnemy,
+    visual: { iconName: undefined as any, primaryColor: undefined as any } as any,
+  },
+  bossEncounter,
+  mockSession,
+  100,
+  progUndefined,
+  progNaN
+);
+assert(!isNaN(safeAar.progressPercent), 'AAR progressPercent is strictly a valid number (prevents Yoga NaN% crash)');
+assert(typeof safeAar.totalVolumeKg === 'number' && !isNaN(safeAar.totalVolumeKg), 'AAR totalVolumeKg is a valid finite number');
+assert(typeof safeAar.completedSetsCount === 'number', 'AAR completedSetsCount is a valid number');
+
+console.log('  ✓ calculateProgression handles undefined XP without NaN');
+console.log('  ✓ calculateProgression handles NaN XP without Yoga crash');
+console.log('  ✓ calculateProgression handles negative XP cleanly');
+console.log('  ✓ buildAfterActionReport guarantees finite progressPercent');
+console.log('  ✓ enemy visual properties tolerate missing/undefined values');
+
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');
 console.log('====================================================');

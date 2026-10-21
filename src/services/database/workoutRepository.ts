@@ -35,7 +35,11 @@ export function saveCompletedWorkout(
       ]
     );
 
-    // 2. Clean old exercises/sets for this session if updating
+    // 2. Clean old sets and exercises for this session if updating
+    db.runSync(
+      'DELETE FROM workout_sets WHERE exercise_id IN (SELECT id FROM workout_exercises WHERE session_id = ?)',
+      [session.id]
+    );
     db.runSync('DELETE FROM workout_exercises WHERE session_id = ?', [session.id]);
 
     // 3. Insert exercises and their sets

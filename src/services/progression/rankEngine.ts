@@ -42,18 +42,20 @@ export function calculateProgression(
   faction: Faction,
   defeatedRaidTiers?: RaidTierId[]
 ): CharacterProgression {
-  const safeXp = Math.max(0, Math.floor(totalXp));
+  const safeXp = Math.max(0, Math.floor(Number(totalXp) || 0));
   const currentLevel = getLevelFromTotalXp(safeXp);
 
   const currentLevelBaseXp = getCumulativeXpForLevel(currentLevel);
   const nextLevelXp = getCumulativeXpForLevel(currentLevel + 1);
 
-  const xpInCurrentLevel = safeXp - currentLevelBaseXp;
-  const xpNeededForNextLevel = nextLevelXp - currentLevelBaseXp;
+  const xpInCurrentLevel = Math.max(0, safeXp - currentLevelBaseXp);
+  const xpNeededForNextLevel = Math.max(1, nextLevelXp - currentLevelBaseXp);
 
-  const progressPercent = xpNeededForNextLevel > 0
-    ? Math.min(100, Math.max(0, Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100)))
-    : 100;
+  const rawProgressPercent =
+    xpNeededForNextLevel > 0
+      ? Math.min(100, Math.max(0, Math.round((xpInCurrentLevel / xpNeededForNextLevel) * 100)))
+      : 100;
+  const progressPercent = isNaN(rawProgressPercent) ? 0 : rawProgressPercent;
 
   // Baseline rank determined by XP
   const { currentRank: xpRank, nextRank: xpNextRank } = getRankForXp(faction, safeXp);

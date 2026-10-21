@@ -80,11 +80,11 @@ export function auditAndReconcileHistoricalXp(
     // 1. Audit Completed Workouts
     const completedSessions = db.getAllSync<{
       id: string;
-      name: string;
+      title: string;
       total_xp_earned: number | null;
-      created_at: string;
+      started_at: string;
     }>(
-      'SELECT id, name, total_xp_earned, created_at FROM workout_sessions WHERE is_completed = 1'
+      'SELECT id, title, total_xp_earned, started_at FROM workout_sessions WHERE is_completed = 1'
     );
     completedWorkoutsAudited = completedSessions.length;
 
@@ -99,10 +99,10 @@ export function auditAndReconcileHistoricalXp(
         // Missing transaction! Load sets and reconstruct legitimate XP
         const exercises = db.getAllSync<{
           id: string;
-          exercise_id: string;
+          exercise_ref_id: string | null;
           name: string;
         }>(
-          'SELECT id, exercise_id, name FROM workout_exercises WHERE session_id = ? ORDER BY order_index ASC',
+          'SELECT id, exercise_ref_id, name FROM workout_exercises WHERE session_id = ? ORDER BY sort_order ASC',
           [session.id]
         );
 
@@ -122,7 +122,7 @@ export function auditAndReconcileHistoricalXp(
 
           return {
             id: ex.id,
-            exerciseRefId: ex.exercise_id,
+            exerciseRefId: ex.exercise_ref_id || undefined,
             name: ex.name,
             notes: '',
             sets: sets.map((s) => ({
@@ -142,7 +142,7 @@ export function auditAndReconcileHistoricalXp(
           ? session.total_xp_earned
           : breakdown.totalXp;
 
-        const calendarDay = session.created_at ? session.created_at.substring(0, 10) : new Date().toISOString().substring(0, 10);
+        const calendarDay = session.started_at ? session.started_at.substring(0, 10) : new Date().toISOString().substring(0, 10);
         const idempotencyKey = `audit_repaired_${session.id}`;
 
         // Insert missing transaction safely
@@ -161,10 +161,10 @@ export function auditAndReconcileHistoricalXp(
             'workout_completion',
             calendarDay,
             0,
-            session.name || 'Crusade Training (Reconciled)',
+            session.title || 'Crusade Training (Reconciled)',
             idempotencyKey,
             JSON.stringify({ breakdown, reconciledAt: new Date().toISOString() }),
-            session.created_at || new Date().toISOString(),
+            session.started_at || new Date().toISOString(),
           ]
         );
 

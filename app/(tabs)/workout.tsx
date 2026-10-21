@@ -414,15 +414,23 @@ export default function WorkoutScreen() {
     }
 
     const executeFinish = () => {
-      const result = finishActiveWorkout(combatState, currentMission);
-      if (result) {
-        triggerHaptic.success();
-        setShowRestTimer(false);
-        if (result.report) {
-          setAfterActionReport(result.report);
-        } else {
-          setFinishResult(result);
+      try {
+        const result = finishActiveWorkout(combatState, currentMission);
+        if (result) {
+          triggerHaptic.success();
+          setShowRestTimer(false);
+          if (result.report) {
+            setAfterActionReport(result.report);
+          } else {
+            setFinishResult(result);
+          }
         }
+      } catch (err: any) {
+        console.error('Failed to complete workout session:', err);
+        Alert.alert(
+          'Crusade Session Error',
+          'An issue occurred while recording your mission: ' + (err?.message || 'Unknown error')
+        );
       }
     };
 
@@ -462,6 +470,87 @@ export default function WorkoutScreen() {
       setShowRestTimer(false);
     }
   };
+
+  const renderCompletionModals = () => (
+    <>
+      {/* ==========================================
+          AFTER-ACTION COMBAT & XP REPORT MODAL
+         ========================================== */}
+      <AfterActionReportModal
+        visible={afterActionReport !== null}
+        report={afterActionReport}
+        onClose={() => {
+          setAfterActionReport(null);
+          router.replace('/(tabs)');
+        }}
+      />
+
+      {/* ==========================================
+          FALLBACK WORKOUT COMPLETED SUMMARY MODAL
+         ========================================== */}
+      <Modal
+        visible={finishResult !== null && afterActionReport === null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setFinishResult(null);
+          router.replace('/(tabs)');
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.victoryCard}>
+            <Ionicons name="medal" size={54} color={THEME.colors.primary} />
+            <Text style={styles.victoryTitle}>MISSION ACCOMPLISHED</Text>
+            <Text style={styles.victorySubtitle}>
+              Your training has been recorded in the Chapter Annals.
+            </Text>
+
+            {finishResult && (
+              <View style={styles.rewardBox}>
+                <Text style={styles.rewardTotal}>+{finishResult.xpEarned} XP</Text>
+                <View style={styles.rewardDivider} />
+                <View style={styles.rewardRow}>
+                  <Text style={styles.rewardItemLabel}>Base Mission Completion:</Text>
+                  <Text style={styles.rewardItemValue}>+{finishResult.breakdown.baseWorkoutXp} XP</Text>
+                </View>
+                <View style={styles.rewardRow}>
+                  <Text style={styles.rewardItemLabel}>Completed Working Sets:</Text>
+                  <Text style={styles.rewardItemValue}>+{finishResult.breakdown.completedSetsXp} XP</Text>
+                </View>
+                <View style={styles.rewardRow}>
+                  <Text style={styles.rewardItemLabel}>Repetition Endurance:</Text>
+                  <Text style={styles.rewardItemValue}>+{finishResult.breakdown.repsXp} XP</Text>
+                </View>
+                <View style={styles.rewardRow}>
+                  <Text style={styles.rewardItemLabel}>Tonnage / Volume Factor:</Text>
+                  <Text style={styles.rewardItemValue}>+{finishResult.breakdown.volumeXp} XP</Text>
+                </View>
+                {finishResult.xpAward?.isCapped && (
+                  <View style={styles.dailyCapNoticeBox}>
+                    <Ionicons name="information-circle-outline" size={16} color={THEME.colors.warning} />
+                    <Text style={styles.dailyCapNoticeText}>
+                      Daily Training Quota Reached: Credited {finishResult.xpAward.creditedAmount} of {finishResult.xpAward.requestedAmount} XP ({finishResult.xpAward.spilloverAmount} XP spillover). Training log preserved.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            <TerminalButton
+              title="RETURN TO COMMAND TERMINAL"
+              onPress={() => {
+                setFinishResult(null);
+                router.replace('/(tabs)');
+              }}
+              variant="primary"
+              size="lg"
+              style={{ width: '100%', marginTop: 16 }}
+            />
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
 
   // If no active workout, display clean launcher card
   if (!activeWorkout) {
@@ -725,6 +814,9 @@ export default function WorkoutScreen() {
           }}
           onClaimRewards={claimWeeklyRaidRewardsAction}
         />
+
+        {/* Completion & After-Action Modals */}
+        {renderCompletionModals()}
       </SafeAreaView>
     );
   }
@@ -1024,81 +1116,9 @@ export default function WorkoutScreen() {
       />
 
       {/* ==========================================
-          AFTER-ACTION COMBAT & XP REPORT MODAL
+          AFTER-ACTION & COMPLETION MODALS
          ========================================== */}
-      <AfterActionReportModal
-        visible={afterActionReport !== null}
-        report={afterActionReport}
-        onClose={() => {
-          setAfterActionReport(null);
-          router.replace('/(tabs)');
-        }}
-      />
-
-      {/* ==========================================
-          FALLBACK WORKOUT COMPLETED SUMMARY MODAL
-         ========================================== */}
-      <Modal
-        visible={finishResult !== null && afterActionReport === null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setFinishResult(null);
-          router.replace('/(tabs)');
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.victoryCard}>
-            <Ionicons name="medal" size={54} color={THEME.colors.primary} />
-            <Text style={styles.victoryTitle}>MISSION ACCOMPLISHED</Text>
-            <Text style={styles.victorySubtitle}>
-              Your training has been recorded in the Chapter Annals.
-            </Text>
-
-            {finishResult && (
-              <View style={styles.rewardBox}>
-                <Text style={styles.rewardTotal}>+{finishResult.xpEarned} XP</Text>
-                <View style={styles.rewardDivider} />
-                <View style={styles.rewardRow}>
-                  <Text style={styles.rewardItemLabel}>Base Mission Completion:</Text>
-                  <Text style={styles.rewardItemValue}>+{finishResult.breakdown.baseWorkoutXp} XP</Text>
-                </View>
-                <View style={styles.rewardRow}>
-                  <Text style={styles.rewardItemLabel}>Completed Working Sets:</Text>
-                  <Text style={styles.rewardItemValue}>+{finishResult.breakdown.completedSetsXp} XP</Text>
-                </View>
-                <View style={styles.rewardRow}>
-                  <Text style={styles.rewardItemLabel}>Repetition Endurance:</Text>
-                  <Text style={styles.rewardItemValue}>+{finishResult.breakdown.repsXp} XP</Text>
-                </View>
-                <View style={styles.rewardRow}>
-                  <Text style={styles.rewardItemLabel}>Tonnage / Volume Factor:</Text>
-                  <Text style={styles.rewardItemValue}>+{finishResult.breakdown.volumeXp} XP</Text>
-                </View>
-                {finishResult.xpAward?.isCapped && (
-                  <View style={styles.dailyCapNoticeBox}>
-                    <Ionicons name="information-circle-outline" size={16} color={THEME.colors.warning} />
-                    <Text style={styles.dailyCapNoticeText}>
-                      Daily Training Quota Reached: Credited {finishResult.xpAward.creditedAmount} of {finishResult.xpAward.requestedAmount} XP ({finishResult.xpAward.spilloverAmount} XP spillover). Training log preserved.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            <TerminalButton
-              title="RETURN TO COMMAND TERMINAL"
-              onPress={() => {
-                setFinishResult(null);
-                router.replace('/(tabs)');
-              }}
-              variant="primary"
-              size="lg"
-              style={{ width: '100%', marginTop: 16 }}
-            />
-          </View>
-        </View>
-      </Modal>
+      {renderCompletionModals()}
 
       {/* ==========================================
           COOPERATIVE CRUSADE SQUAD & RAID MODAL

@@ -1188,7 +1188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (encounterState && mission) {
       saveCombatEncounter(completedSession.id, encounterState);
       const newProg = calculateProgression(
-        xpAward.totalXpNow,
+        updatedProf.totalXp,
         currentFaction
       );
       const xpCapInfo = {
@@ -1210,17 +1210,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Record immutable Battle History record
       battleRecordId = `battle_${completedSession.id}`;
-      const durationSeconds =
-        completedSession.finishedAt && completedSession.startedAt
-          ? Math.max(
-              0,
-              Math.floor(
-                (new Date(completedSession.finishedAt).getTime() -
-                  new Date(completedSession.startedAt).getTime()) /
-                  1000
-              )
-            )
-          : undefined;
+      let durationSeconds: number | undefined = undefined;
+      if (completedSession.finishedAt && completedSession.startedAt) {
+        const diff = Math.floor(
+          (new Date(completedSession.finishedAt).getTime() -
+            new Date(completedSession.startedAt).getTime()) /
+            1000
+        );
+        if (!isNaN(diff) && diff >= 0) {
+          durationSeconds = diff;
+        }
+      }
 
       const timeline: BattleTimelineEvent[] = [
         {
