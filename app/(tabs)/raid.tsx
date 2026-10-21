@@ -18,6 +18,10 @@ import { triggerHaptic } from '../../src/utils/haptics';
 import { BOSS_DIFFICULTY_LOOT_TABLES } from '../../src/services/progression/raidLootEngine';
 import { getEquipmentById } from '../../src/content/equipment/catalog';
 import { RARITY_COLORS } from '../../src/components/EquipmentSlotCard';
+import { RAID_TIERS, getRaidTierById } from '../../src/content/raidTiers';
+import { getLootCandidatesForRaidTier } from '../../src/services/progression/raidLootEngine';
+import { isItemEquipEligible } from '../../src/services/progression/equipmentService';
+import { RaidTierId } from '../../src/types/raidProgression';
 
 export default function RaidScreen() {
   const router = useRouter();
@@ -28,6 +32,13 @@ export default function RaidScreen() {
     setWarfrontSpawnDay,
     deployWeeklyRaid,
     claimWeeklyRaidRewardsAction,
+    selectedRaidTierId,
+    setSelectedRaidTierId,
+    checkRaidEligibility,
+    raidProgression,
+    gearPowerInfo,
+    progression,
+    currentFaction,
   } = useApp();
 
   const [previewMode, setPreviewMode] = useState<'individual' | 'squad'>('individual');
@@ -63,17 +74,25 @@ export default function RaidScreen() {
     (a, b) => b.damage - a.damage
   );
 
+  const currentTierDef = getRaidTierById(selectedRaidTierId);
+  const eligibility = checkRaidEligibility(selectedRaidTierId);
+
   const handleDeployStrike = () => {
     triggerHaptic.medium();
-    deployWeeklyRaid(weeklyRaid);
+    const res = deployWeeklyRaid(weeklyRaid, selectedRaidTierId);
+    if (!res.success) {
+      triggerHaptic.warning();
+      Alert.alert('Raid Clearance Denied', res.reason || 'You do not meet the operational requirements to deploy on this raid.');
+      return;
+    }
     router.push('/(tabs)/workout');
   };
 
   const handleClaimSpoils = () => {
-    const success = claimWeeklyRaidRewardsAction(weeklyRaid.cycleId);
+    const success = claimWeeklyRaidRewardsAction(weeklyRaid.cycleId, selectedRaidTierId);
     if (success) {
       triggerHaptic.success();
-      Alert.alert('Spoils Claimed', `Awarded +500 Glory XP for neutralizing ${boss.name}!`);
+      Alert.alert('Spoils Claimed', `Awarded +${currentTierDef.gloryXpReward} Glory XP for neutralizing ${boss.name}!`);
     } else {
       triggerHaptic.warning();
       Alert.alert('Claim Notice', 'Raid spoils could not be claimed or were already redeemed.');
@@ -177,6 +196,187 @@ export default function RaidScreen() {
             <Text style={styles.metaText}>
               Expires: <Text style={styles.metaHighlight}>{new Date(expiresAt).toLocaleDateString()}</Text>
             </Text>
+          </View>
+        </View>
+
+        {/* MMORPG Raid Progression Ladder Tabs */}
+        <View style={styles.raidLadderContainer}>
+          <View style={styles.raidLadderHeaderRow}>
+            <View style={styles.raidLadderTitleBox}>
+              <Ionicons name="git-network-outline" size={15} color="#00F0FF" />
+              <Text style={styles.raidLadderTitle}>CRUSADE RAID PROGRESSION LADDER</Text>
+            </View>
+            <View style={styles.highestUnlockedPill}>
+              <Text style={styles.highestUnlockedPillText}>
+                UNLOCKED: T{getRaidTierById(raidProgression.highestTierUnlocked).tierNumber}
+              </Text>
+            </View>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.ladderScrollRow}>
+            {RAID_TIERS.map((tier) => {
+              const isSelected = selectedRaidTierId === tier.id;
+              const tierEligibility = checkRaidEligibility(tier.id);
+              const isDefeated = (raidProgression.tierVictories[tier.id] || 0) > 0;
+
+              return (
+                <TouchableOpacity
+                  key={tier.id}
+                  style={[
+                    styles.ladderTab,
+                    isSelected && { borderColor: tier.color, backgroundColor: `${tier.color}15` },
+                    !tierEligibility.isEligible && styles.ladderTabLocked,
+                  ]}
+                  onPress={() => {
+                    triggerHaptic.selection();
+                    setSelectedRaidTierId(tier.id);
+                  }}
+                >
+                  <View style={styles.ladderTabHeader}>
+                    <Text style={[styles.ladderTabNum, isSelected && { color: tier.color }]}>
+                      T{tier.tierNumber}
+                    </Text>
+                    <Ionicons
+                      name={
+                        isDefeated
+                          ? 'checkmark-circle'
+                          : tierEligibility.isEligible
+                          ? 'lock-open-outline'
+                          : 'lock-closed'
+                      }
+                      size={12}
+                      color={
+                        isDefeated
+                          ? '#00E676'
+                          : tierEligibility.isEligible
+                          ? '#00F0FF'
+                          : '#90A4AE'
+                      }
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.ladderTabName,
+                      isSelected && { color: '#FFFFFF', fontWeight: '800' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {tier.name.replace(' Raids', '').replace(' Crusade', '')}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Selected Raid Tier Clearance & Requirements Dossier */}
+        <View style={[styles.tierDossierCard, { borderColor: currentTierDef.color }]}>
+          <View style={styles.tierDossierTopRow}>
+            <View style={styles.tierTitleBox}>
+              <Text style={[styles.tierCodeName, { color: currentTierDef.color }]}>
+                [{currentTierDef.codeName}]
+              </Text>
+              <Text style={styles.tierMainTitle}>
+                TIER {currentTierDef.tierNumber}: {currentTierDef.name.toUpperCase()}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.clearanceBadge,
+                eligibility.isEligible ? styles.clearanceBadgeGranted : styles.clearanceBadgeDenied,
+              ]}
+            >
+              <Ionicons
+                name={eligibility.isEligible ? 'shield-checkmark' : 'lock-closed'}
+                size={12}
+                color={eligibility.isEligible ? '#00E676' : '#FF5252'}
+              />
+              <Text
+                style={[
+                  styles.clearanceBadgeText,
+                  eligibility.isEligible
+                    ? styles.clearanceBadgeTextGranted
+                    : styles.clearanceBadgeTextDenied,
+                ]}
+              >
+                {eligibility.isEligible ? 'CLEARANCE GRANTED' : 'CLEARANCE LOCKED'}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.tierLoreText}>{currentTierDef.loreBriefing}</Text>
+
+          {/* Operational Eligibility Requirements Checklist */}
+          <View style={styles.requirementsBox}>
+            <Text style={styles.requirementsTitle}>OPERATIONAL CLEARANCE CRITERIA</Text>
+            
+            <View style={styles.reqItemRow}>
+              <Ionicons
+                name={eligibility.checks.level.met ? 'checkmark-circle' : 'close-circle'}
+                size={14}
+                color={eligibility.checks.level.met ? '#00E676' : '#FF5252'}
+              />
+              <Text style={styles.reqLabel}>Level Clearance:</Text>
+              <Text style={[styles.reqValue, !eligibility.checks.level.met && styles.reqValueFailed]}>
+                {eligibility.checks.level.required} ({eligibility.checks.level.current})
+              </Text>
+            </View>
+
+            <View style={styles.reqItemRow}>
+              <Ionicons
+                name={eligibility.checks.rank.met ? 'checkmark-circle' : 'close-circle'}
+                size={14}
+                color={eligibility.checks.rank.met ? '#00E676' : '#FF5252'}
+              />
+              <Text style={styles.reqLabel}>Military Rank:</Text>
+              <Text style={[styles.reqValue, !eligibility.checks.rank.met && styles.reqValueFailed]}>
+                {eligibility.checks.rank.required} ({eligibility.checks.rank.current})
+              </Text>
+            </View>
+
+            <View style={styles.reqItemRow}>
+              <Ionicons
+                name={eligibility.checks.gearPower.met ? 'checkmark-circle' : 'close-circle'}
+                size={14}
+                color={eligibility.checks.gearPower.met ? '#00E676' : '#FF5252'}
+              />
+              <Text style={styles.reqLabel}>Gear Power:</Text>
+              <Text style={[styles.reqValue, !eligibility.checks.gearPower.met && styles.reqValueFailed]}>
+                {eligibility.checks.gearPower.required} ({eligibility.checks.gearPower.current})
+              </Text>
+            </View>
+
+            <View style={styles.reqItemRow}>
+              <Ionicons
+                name={eligibility.checks.prerequisiteRaid.met ? 'checkmark-circle' : 'close-circle'}
+                size={14}
+                color={eligibility.checks.prerequisiteRaid.met ? '#00E676' : '#FF5252'}
+              />
+              <Text style={styles.reqLabel}>Prerequisite Trial:</Text>
+              <Text style={[styles.reqValue, !eligibility.checks.prerequisiteRaid.met && styles.reqValueFailed]}>
+                {eligibility.checks.prerequisiteRaid.required} ({eligibility.checks.prerequisiteRaid.current})
+              </Text>
+            </View>
+          </View>
+
+          {/* Tier Combat Targets & Spoils Preview */}
+          <View style={styles.tierTargetStatsRow}>
+            <View style={styles.tierTargetStat}>
+              <Text style={styles.tierTargetLabel}>TARGET HEALTH</Text>
+              <Text style={styles.tierTargetValue}>
+                {previewMode === 'individual'
+                  ? `${currentTierDef.soloHp.toLocaleString()} HP`
+                  : `${currentTierDef.squadHp.toLocaleString()} HP`}
+              </Text>
+            </View>
+            <View style={styles.tierTargetStat}>
+              <Text style={styles.tierTargetLabel}>RECOM SETS</Text>
+              <Text style={styles.tierTargetValue}>{currentTierDef.recommendedSets} Sets</Text>
+            </View>
+            <View style={styles.tierTargetStat}>
+              <Text style={styles.tierTargetLabel}>GLORY REWARD</Text>
+              <Text style={styles.tierTargetValue}>+{currentTierDef.gloryXpReward} XP</Text>
+            </View>
           </View>
         </View>
 
@@ -467,21 +667,51 @@ export default function RaidScreen() {
           <View style={styles.lootTableHeader}>
             <Ionicons name="trophy-outline" size={16} color="#00F0FF" />
             <Text style={styles.lootTableTitle}>
-              RAID SPOILS // {boss.difficultyTier?.toUpperCase() || 'STANDARD'} REWARD TABLE
+              RAID SPOILS // TIER {currentTierDef.tierNumber} REWARD TABLE
             </Text>
           </View>
           <Text style={styles.lootTableSubtitle}>
-            Neutralizing this raid boss grants +500 Glory XP and eligible wargear drops matching your faction rank:
+            Neutralizing this raid boss grants +{currentTierDef.gloryXpReward} Glory XP and eligible wargear drops:
           </Text>
           <View style={styles.lootItemsList}>
-            {(BOSS_DIFFICULTY_LOOT_TABLES[boss.difficultyTier || 'standard'] || []).map((itemId) => {
+            {(getLootCandidatesForRaidTier(selectedRaidTierId) || []).map((itemId) => {
               const item = getEquipmentById(itemId);
               if (!item) return null;
               const color = RARITY_COLORS[item.rarity] || '#FFFFFF';
+              const equipCheck = isItemEquipEligible(
+                item,
+                currentFaction.id,
+                progression.level,
+                progression.currentRankTier
+              );
+
               return (
                 <View key={item.id} style={[styles.lootItemRow, { borderLeftColor: color }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.lootItemName, { color }]}>{item.name}</Text>
+                    <View style={styles.lootItemTitleRow}>
+                      <Text style={[styles.lootItemName, { color }]}>{item.name}</Text>
+                      <View
+                        style={[
+                          styles.lootEquipBadge,
+                          equipCheck.eligible
+                            ? styles.lootEquipBadgeReady
+                            : styles.lootEquipBadgeLocked,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.lootEquipBadgeText,
+                            equipCheck.eligible
+                              ? styles.lootEquipBadgeTextReady
+                              : styles.lootEquipBadgeTextLocked,
+                          ]}
+                        >
+                          {equipCheck.eligible
+                            ? 'EQUIP READY'
+                            : `REQ LVL ${item.requirements.minLevel || 1}`}
+                        </Text>
+                      </View>
+                    </View>
                     <Text style={styles.lootItemStats}>
                       Tier {item.tier} {item.rarity.toUpperCase()} • {item.slot.replace(/_/g, ' ').toUpperCase()}
                       {item.stats.bonusDamage ? ` • +${item.stats.bonusDamage} DMG` : ''}
@@ -497,17 +727,35 @@ export default function RaidScreen() {
 
         {/* Action Button Footer */}
         <View style={styles.actionFooter}>
-          {status === 'active' && (
+          {status === 'active' && eligibility.isEligible && (
             <TouchableOpacity style={styles.assaultBtn} onPress={handleDeployStrike}>
               <Ionicons name="flame" size={18} color="#FFFFFF" />
-              <Text style={styles.assaultBtnText}>DEPLOY ASSAULT STRIKE</Text>
+              <Text style={styles.assaultBtnText}>
+                DEPLOY CRUSADE STRIKE (TIER {currentTierDef.tierNumber})
+              </Text>
             </TouchableOpacity>
+          )}
+
+          {status === 'active' && !eligibility.isEligible && (
+            <View style={styles.assaultBtnLocked}>
+              <Ionicons name="lock-closed" size={18} color="#90A4AE" />
+              <View style={styles.assaultBtnLockedTextBox}>
+                <Text style={styles.assaultBtnLockedText}>
+                  CLEARANCE LOCKED (TIER {currentTierDef.tierNumber})
+                </Text>
+                <Text style={styles.assaultBtnLockedSubtext} numberOfLines={1}>
+                  {eligibility.primaryLockReason}
+                </Text>
+              </View>
+            </View>
           )}
 
           {status === 'defeated' && !isRewardClaimed && (
             <TouchableOpacity style={styles.claimBtn} onPress={handleClaimSpoils}>
               <Ionicons name="trophy" size={18} color="#121212" />
-              <Text style={styles.claimBtnText}>CLAIM VICTORY SPOILS (+500 XP)</Text>
+              <Text style={styles.claimBtnText}>
+                CLAIM VICTORY SPOILS (+{currentTierDef.gloryXpReward} XP)
+              </Text>
             </TouchableOpacity>
           )}
 
@@ -656,6 +904,258 @@ const styles = StyleSheet.create({
   metaHighlight: {
     color: '#CFD8DC',
     fontWeight: '700',
+  },
+  raidLadderContainer: {
+    backgroundColor: '#161922',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#26303E',
+  },
+  raidLadderHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  raidLadderTitleBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  raidLadderTitle: {
+    color: '#00F0FF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  highestUnlockedPill: {
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#00E67650',
+  },
+  highestUnlockedPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#00E676',
+    letterSpacing: 0.5,
+  },
+  ladderScrollRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  ladderTab: {
+    minWidth: 84,
+    backgroundColor: '#202632',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2F3B4D',
+    alignItems: 'center',
+  },
+  ladderTabLocked: {
+    opacity: 0.65,
+  },
+  ladderTabHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 2,
+  },
+  ladderTabNum: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#90A4AE',
+  },
+  ladderTabName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#CFD8DC',
+    textAlign: 'center',
+  },
+  tierDossierCard: {
+    backgroundColor: '#131822',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1.5,
+    gap: 10,
+  },
+  tierDossierTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  tierTitleBox: {
+    flex: 1,
+    marginRight: 8,
+  },
+  tierCodeName: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  tierMainTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.6,
+    marginTop: 2,
+  },
+  clearanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  clearanceBadgeGranted: {
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    borderColor: '#00E676',
+  },
+  clearanceBadgeDenied: {
+    backgroundColor: 'rgba(255, 51, 75, 0.15)',
+    borderColor: '#FF334B',
+  },
+  clearanceBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  clearanceBadgeTextGranted: {
+    color: '#00E676',
+  },
+  clearanceBadgeTextDenied: {
+    color: '#FF5252',
+  },
+  tierLoreText: {
+    fontSize: 11,
+    color: '#90A4AE',
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
+  requirementsBox: {
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#26303E',
+    gap: 6,
+  },
+  requirementsTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#00F0FF',
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  reqItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reqLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#CFD8DC',
+    width: 125,
+  },
+  reqValue: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#00E676',
+  },
+  reqValueFailed: {
+    color: '#FF5252',
+    fontWeight: '700',
+  },
+  tierTargetStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E2533',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  tierTargetStat: {
+    alignItems: 'center',
+  },
+  tierTargetLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#90A4AE',
+    letterSpacing: 0.5,
+  },
+  tierTargetValue: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFD700',
+    marginTop: 1,
+  },
+  lootItemTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lootEquipBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 3,
+    borderWidth: 1,
+  },
+  lootEquipBadgeReady: {
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    borderColor: '#00E676',
+  },
+  lootEquipBadgeLocked: {
+    backgroundColor: 'rgba(255, 184, 0, 0.15)',
+    borderColor: '#FFB800',
+  },
+  lootEquipBadgeText: {
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  lootEquipBadgeTextReady: {
+    color: '#00E676',
+  },
+  lootEquipBadgeTextLocked: {
+    color: '#FFB800',
+  },
+  assaultBtnLocked: {
+    backgroundColor: '#1E2533',
+    borderWidth: 1.5,
+    borderColor: '#37474F',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  assaultBtnLockedTextBox: {
+    alignItems: 'center',
+  },
+  assaultBtnLockedText: {
+    color: '#90A4AE',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  assaultBtnLockedSubtext: {
+    color: '#FF5252',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
   },
   modeTabs: {
     flexDirection: 'row',

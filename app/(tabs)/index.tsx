@@ -38,6 +38,7 @@ import { MissionObjectiveDefinition } from '../../src/types/mission';
 import { Ionicons } from '@expo/vector-icons';
 import { getRankForXp } from '../../src/content/warhammer40k';
 import { triggerHaptic } from '../../src/utils/haptics';
+import { getRaidTierById } from '../../src/content/raidTiers';
 
 export default function CharacterScreen() {
   const router = useRouter();
@@ -96,6 +97,8 @@ export default function CharacterScreen() {
     loadout,
     equippedItems,
     equipmentBonuses,
+    gearPowerInfo,
+    raidProgression,
     equipItemAction,
     unequipItemAction,
   } = useApp();
@@ -287,6 +290,8 @@ export default function CharacterScreen() {
           loadout={loadout}
           equippedItems={equippedItems}
           equipmentBonuses={equipmentBonuses}
+          gearPower={gearPowerInfo.gearPower}
+          gearTierLabel={gearPowerInfo.primaryTierLabel}
           onOpenInventory={(slot) => {
             setSelectedEquipmentSlot(slot);
             setIsEquipmentModalVisible(true);
@@ -320,8 +325,47 @@ export default function CharacterScreen() {
                 />
               </View>
             </View>
+
+            {progression.isRankTrialPending && (
+              <View style={styles.trialAlertRow}>
+                <Ionicons name="alert-circle" size={16} color="#FFB800" />
+                <Text style={styles.trialAlertText}>
+                  {progression.pendingMilestoneRequirement}
+                </Text>
+              </View>
+            )}
           </SciFiCard>
         )}
+
+        {/* MMORPG Raid Progression Horizon */}
+        <SciFiCard
+          title="CRUSADE RAID CLEARANCE HORIZON"
+          variant="normal"
+          rightAction={
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/raid')}
+              style={styles.raidSectorBtn}
+            >
+              <Text style={styles.raidSectorBtnText}>VIEW LADDER</Text>
+            </TouchableOpacity>
+          }
+        >
+          <View style={styles.raidHorizonRow}>
+            <View style={styles.raidTierBadge}>
+              <Ionicons name="shield-checkmark" size={20} color="#00E676" />
+              <View style={styles.raidTierInfo}>
+                <Text style={styles.raidTierLabel}>HIGHEST RAID TIER UNLOCKED</Text>
+                <Text style={styles.raidTierName}>
+                  {getRaidTierById(raidProgression.highestTierUnlocked).name.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.raidVictoriesBox}>
+              <Text style={styles.raidVictoriesLabel}>RAIDS SLAIN</Text>
+              <Text style={styles.raidVictoriesValue}>{raidProgression.totalRaidVictories}</Text>
+            </View>
+          </View>
+        </SciFiCard>
 
         {/* Daily Training Quota & Cap Telemetry */}
         <SciFiCard
@@ -979,6 +1023,85 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 4,
+  },
+  trialAlertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 184, 0, 0.12)',
+    borderWidth: 1,
+    borderColor: '#FFB800',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 10,
+  },
+  trialAlertText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#FFB800',
+    fontWeight: '700',
+    lineHeight: 15,
+  },
+  raidSectorBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: `${THEME.colors.primary}20`,
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+  },
+  raidSectorBtnText: {
+    color: THEME.colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  raidHorizonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  raidTierBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  raidTierInfo: {
+    flex: 1,
+  },
+  raidTierLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.5,
+  },
+  raidTierName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#00E676',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  raidVictoriesBox: {
+    alignItems: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+  },
+  raidVictoriesLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: THEME.colors.textMuted,
+    letterSpacing: 0.5,
+  },
+  raidVictoriesValue: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: THEME.colors.primary,
   },
   statsGrid: {
     flexDirection: 'row',

@@ -25,6 +25,8 @@ export interface CharacterProgression {
   xpNeededForNextRank?: number;
   rankProgressPercent: number; // 0 to 100
   portraitUrl?: string;
+  pendingMilestoneRequirement?: string;
+  isRankTrialPending?: boolean;
 }
 
 export interface UserStats {

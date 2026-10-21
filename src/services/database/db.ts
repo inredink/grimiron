@@ -462,6 +462,33 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
     );
     CREATE INDEX IF NOT EXISTS idx_raid_loot_cycle ON raid_loot_history (raid_cycle_id);
 
+    CREATE TABLE IF NOT EXISTS character_raid_progression (
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      raid_tier_id TEXT NOT NULL,
+      victories_count INTEGER NOT NULL DEFAULT 0,
+      first_victory_at TEXT NOT NULL,
+      last_victory_at TEXT NOT NULL,
+      PRIMARY KEY (character_id, raid_tier_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS character_raid_summary (
+      character_id TEXT PRIMARY KEY,
+      highest_tier_unlocked TEXT NOT NULL DEFAULT 'tier_1_initiation',
+      total_victories INTEGER NOT NULL DEFAULT 0,
+      last_defeated_tier TEXT,
+      last_victory_at TEXT,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS character_progression_milestones (
+      character_id TEXT NOT NULL DEFAULT 'char_main',
+      milestone_type TEXT NOT NULL,
+      milestone_key TEXT NOT NULL,
+      achieved_at TEXT NOT NULL,
+      metadata_json TEXT,
+      PRIMARY KEY (character_id, milestone_type, milestone_key)
+    );
+
     -- Essential Unique Constraints & Indexes for ON CONFLICT statements across all migrations
     CREATE UNIQUE INDEX IF NOT EXISTS uq_ach_progress ON achievement_progress (achievement_id, scope, target_id);
     CREATE UNIQUE INDEX IF NOT EXISTS uq_ach_award ON achievement_awards (achievement_id, scope, target_id);
@@ -1137,6 +1164,40 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
     `);
 
     db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (15, datetime('now'));");
+  }
+
+  // Migration 16: MMORPG Raid Progression, Tier Ladders & Milestones
+  if (!appliedMigrations.includes(16)) {
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS character_raid_progression (
+        character_id TEXT NOT NULL DEFAULT 'char_main',
+        raid_tier_id TEXT NOT NULL,
+        victories_count INTEGER NOT NULL DEFAULT 0,
+        first_victory_at TEXT NOT NULL,
+        last_victory_at TEXT NOT NULL,
+        PRIMARY KEY (character_id, raid_tier_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS character_raid_summary (
+        character_id TEXT PRIMARY KEY,
+        highest_tier_unlocked TEXT NOT NULL DEFAULT 'tier_1_initiation',
+        total_victories INTEGER NOT NULL DEFAULT 0,
+        last_defeated_tier TEXT,
+        last_victory_at TEXT,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS character_progression_milestones (
+        character_id TEXT NOT NULL DEFAULT 'char_main',
+        milestone_type TEXT NOT NULL,
+        milestone_key TEXT NOT NULL,
+        achieved_at TEXT NOT NULL,
+        metadata_json TEXT,
+        PRIMARY KEY (character_id, milestone_type, milestone_key)
+      );
+    `);
+
+    db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (16, datetime('now'));");
   }
 
   return db;

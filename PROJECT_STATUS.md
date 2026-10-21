@@ -1,6 +1,6 @@
 # Project Status: GrimIron
 
-## Current Status: Milestone 11 (Dedicated Character Page, Equipment Slots, Faction Gear Progression & Raid Loot) Completed ✅
+## Current Status: Milestone 12 (MMORPG Character Progression, 7-Tier Raid Ladder, Gear Power & Endgame Advancement) Completed ✅
 
 **Date**: October 2026
 **Framework**: React Native with Expo SDK 57, TypeScript, Expo Router, expo-sqlite, expo-keep-awake, expo-image-picker, expo-file-system, and Supabase (Auth, Postgres, RLS, Realtime).
@@ -9,7 +9,32 @@
 
 ### What Works Right Now
 
-1. **Dedicated Character Page & MMORPG-Style Equipment Arsenal (`app/(tabs)/index.tsx`, `src/components/EquipmentSlotCard.tsx`, `src/components/EquipmentInventoryModal.tsx`)**:
+1. **MMORPG-Style Character Progression & 7-Tier Raid Progression Ladder (`src/content/raidTiers.ts`, `src/types/raidProgression.ts`, `src/services/progression/raidProgressionEngine.ts`, `app/(tabs)/raid.tsx`, `app/(tabs)/index.tsx`)**:
+   - **4 Core Distinct Progression Vectors**:
+     - **Character Level**: Determined by cumulative workout XP along an exponential curve, bounded by the configurable daily training XP cap.
+     - **Faction Military Rank**: Faction-specific canonical military hierarchies (Neophyte to Chapter Master, Conscript to Lord General, Shas'la to Shas'o, etc.) attuned to Promotion Trial milestones.
+     - **Equipment Tier & Gear Power Score**: Calculated purely from *actively equipped* items in the 7 combat slots. Unequipped inventory items add exactly 0 Gear Power, preventing score inflation. Platforms (battlesuits, Terminator armor, Dreadnought chassis) confer platform bonuses.
+     - **Raid Progression Clearance Tiers**: 7 structured tiers with stable IDs, sequential prerequisite boss clears, minimum level gates, minimum rank gates, and minimum gear power requirements:
+       1. `tier_1_initiation`: Initiation Raids (Level 1, Rank 1, 0 Gear Power, Solo HP 1,800 / Squad HP 5,000, +300 Glory XP).
+       2. `tier_2_field_ops`: Field Operations (Level 5, Rank 2, 140 Gear Power, requires Tier 1 clear, Solo HP 2,800 / Squad HP 8,000, +450 Glory XP).
+       3. `tier_3_veteran`: Veteran Raids (Level 10, Rank 3, 270 Gear Power, requires Tier 2 clear, Solo HP 4,200 / Squad HP 13,000, +600 Glory XP).
+       4. `tier_4_elite`: Elite Raids (Level 15, Rank 4, 410 Gear Power, requires Tier 3 clear, Solo HP 6,000 / Squad HP 19,000, +800 Glory XP).
+       5. `tier_5_champion`: Champion Raids (Level 20, Rank 5, 550 Gear Power, requires Tier 4 clear, Solo HP 8,500 / Squad HP 27,000, +1,000 Glory XP).
+       6. `tier_6_legendary`: Legendary Raids (Level 25, Rank 6, 690 Gear Power, requires Tier 5 clear, Solo HP 12,000 / Squad HP 38,000, +1,300 Glory XP).
+       7. `tier_7_endgame`: Endgame Crusade (Level 30, Rank 7, 840 Gear Power, requires Tier 6 clear, Solo HP 16,000 / Squad HP 52,000, +1,600 Glory XP).
+   - **Authoritative Clearance Gating**:
+     - Pure verification function `evaluateRaidTierEligibility` checks all 4 requirements independently with plain-English unmet requirement descriptions.
+     - Button lockout and server/domain-level validation prevent unauthorized deployment or target selection.
+     - **Multiplayer Squad Lockout Protection (`evaluateMultiplayerRaidEligibility`, `CoopRaidModal.tsx`)**: High-ranked squad members cannot carry under-leveled or under-geared players into advanced raids; every operative must independently satisfy clearance criteria.
+   - **Promotion Trial Milestones (`src/services/progression/rankEngine.ts`)**:
+     - Advancing to Rank 3+ requires defeating corresponding raid tier bosses (e.g. Rank 3 requires Initiation clear; Rank 4 requires Field Ops clear; Rank 5 requires Veteran clear).
+     - Characters with sufficient XP but missing raid clears are held at the trial boundary with active `isRankTrialPending` banners and explicit guidance.
+   - **Loot Drop Equip Separation (`src/services/progression/raidLootEngine.ts`, `src/services/progression/equipmentService.ts`)**:
+     - High-tier raid spoils can be collected and safely stored in inventory as trophies, but cannot be equipped into combat slots until the character satisfies the item's individual level and rank requirements.
+   - **Idempotent SQLite Persistence (Migration 16, `src/services/database/raidProgressionRepository.ts`)**:
+     - Tables `character_raid_progression`, `character_raid_summary`, and `character_progression_milestones` persist tier clears, victory timestamps, and unlock states. Farming earlier tiers increments victory counts idempotently without resetting or skipping progression.
+
+2. **Dedicated Character Page & MMORPG-Style Equipment Arsenal (`app/(tabs)/index.tsx`, `src/components/EquipmentSlotCard.tsx`, `src/components/EquipmentInventoryModal.tsx`)**:
    - **Tactical Overview & Equipment Integration**: Centralized Character terminal with character callsign, rank title, parent faction, selected subfaction, cumulative XP, daily training cap quota, career statistics, and an MMORPG-style wargear arsenal card.
    - **Multi-Faction Equipment Slot Configurations (`src/content/equipment/factionArchetypes.ts`)**:
      - Supports 7 distinct equipment slots: Primary Weapon, Secondary Weapon, Armor, Helmet, Insignia, Tactical Gear, and Exosuit / Platform.
@@ -121,8 +146,8 @@
 
 14. **Quality Assurance & Verification**:
     - 100% clean TypeScript check (`npm run typecheck` passes with 0 errors).
-    - Automated test suite (`npm test`) covering **17 comprehensive test suites** and 170+ assertions with 100% green output.
-    - Full project audit script (`npm run audit`) verifying 0 critical errors across safe area insets, 146 symbol assets, and haptic feedback architecture.
+    - Comprehensive unit test suite (`npm test`) covering **24 core test suites** and 250+ assertions with 100% green output, including Test Suite 24 verifying 7-tier raid ladders, gear power calculation, inventory isolation, squad eligibility, promotion trials, and loot equip gating.
+    - Expo doctor audit (`npx expo-doctor`) passing 21/21 checks cleanly with 0 issues detected.
 
 ---
 

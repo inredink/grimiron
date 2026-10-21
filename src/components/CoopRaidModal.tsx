@@ -25,6 +25,7 @@ import {
 } from '../types/coop';
 import { getQueueStats } from '../services/database/coopQueueRepository';
 import { useApp } from '../context/AppContext';
+import { RaidTierId } from '../types/raidProgression';
 
 interface CoopRaidModalProps {
   visible: boolean;
@@ -43,6 +44,7 @@ export const CoopRaidModal: React.FC<CoopRaidModalProps> = ({
     claimCoopRaidVictoryAction,
     isCoopVictoryClaimed,
     syncUserProfileFromCloud,
+    checkRaidEligibility,
   } = useApp();
 
   const isConfigured = coopService.isConfigured();
@@ -287,6 +289,25 @@ export const CoopRaidModal: React.FC<CoopRaidModalProps> = ({
 
   const handleSelectSquadBoss = () => {
     if (!selectedSquad || !currentBoss) return;
+
+    // Authoritative Multiplayer Progression Check:
+    // Every squad operative must independently satisfy the raid tier clearance requirements.
+    const bossTier: RaidTierId = currentBoss.maxHp >= 25000
+      ? 'tier_5_champion'
+      : currentBoss.maxHp >= 13000
+      ? 'tier_3_veteran'
+      : currentBoss.maxHp >= 8000
+      ? 'tier_2_field_ops'
+      : 'tier_1_initiation';
+
+    const eligibility = checkRaidEligibility(bossTier);
+    if (!eligibility.isEligible) {
+      Alert.alert(
+        'Squad Raid Clearance Denied',
+        `Your operative does not have clearance to deploy against this squad raid boss:\n\n• ${eligibility.primaryLockReason}\n\nAll operatives must independently qualify before deploying on squad operations.`
+      );
+      return;
+    }
 
     const raid: ActiveCoopRaid = {
       groupId: selectedSquad.id,
@@ -684,15 +705,37 @@ export const CoopRaidModal: React.FC<CoopRaidModalProps> = ({
                           />
                         )
                       ) : (
-                        <TerminalButton
-                          title={
-                            activeRaid?.bossId === currentBoss.id
-                              ? 'TARGET ENGAGED FOR WORKOUTS'
-                              : 'ENGAGE IN WORKOUTS'
-                          }
-                          onPress={handleSelectSquadBoss}
-                          style={{ marginTop: 8 }}
-                        />
+                        <View style={{ gap: 6, marginTop: 8 }}>
+                          {(() => {
+                            const bossTier: RaidTierId = currentBoss.maxHp >= 25000
+                              ? 'tier_5_champion'
+                              : currentBoss.maxHp >= 13000
+                              ? 'tier_3_veteran'
+                              : currentBoss.maxHp >= 8000
+                              ? 'tier_2_field_ops'
+                              : 'tier_1_initiation';
+                            const el = checkRaidEligibility(bossTier);
+                            if (!el.isEligible) {
+                              return (
+                                <View style={styles.coopLockedNotice}>
+                                  <Ionicons name="lock-closed" size={13} color="#FF5252" />
+                                  <Text style={styles.coopLockedNoticeText}>
+                                    Squad Clearance Notice: {el.primaryLockReason}
+                                  </Text>
+                                </View>
+                              );
+                            }
+                            return null;
+                          })()}
+                          <TerminalButton
+                            title={
+                              activeRaid?.bossId === currentBoss.id
+                                ? 'TARGET ENGAGED FOR WORKOUTS'
+                                : 'ENGAGE IN WORKOUTS'
+                            }
+                            onPress={handleSelectSquadBoss}
+                          />
+                        </View>
                       )}
 
                       {/* Privacy Note */}
@@ -1188,5 +1231,22 @@ const styles = StyleSheet.create({
   attackDetail: {
     fontSize: 10,
     color: THEME.colors.textMuted,
+  },
+  coopLockedNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 82, 82, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 82, 82, 0.35)',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  coopLockedNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#FF8A80',
+    fontWeight: '600',
   },
 });

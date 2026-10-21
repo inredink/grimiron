@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { CharacterProfile, CharacterProgression, UserStats } from '../types/character';
 import { WorkoutSession, WorkoutExercise, ExerciseSet, XpBreakdown } from '../types/workout';
 import { Faction, Subfaction } from '../content/types';
@@ -209,6 +209,20 @@ import { initializeNotificationSqliteStorage } from '../services/database/notifi
 import { initializeDiagnosticsSqliteProvider } from '../services/database/diagnosticsRepository';
 import { initializeXpSqliteStorage } from '../services/database/xpRepository';
 import {
+  GearPowerCalculationResult,
+  RaidTierId,
+  RaidTierDefinition,
+  RaidEligibilityResult,
+  CharacterRaidProgressionRecord,
+} from '../types/raidProgression';
+import {
+  calculateGearPower,
+  evaluateRaidTierEligibility,
+  getRaidProgressionStorageAdapter,
+} from '../services/progression/raidProgressionEngine';
+import { initializeRaidProgressionSqliteStorage } from '../services/database/raidProgressionRepository';
+import { getRaidTierById, RAID_TIERS } from '../content/raidTiers';
+import {
   awardXp,
   getDailyXpCredited,
   getDailyXpRemaining,
@@ -250,6 +264,11 @@ interface AppContextValue {
   loadout: EquippedLoadout;
   equippedItems: EquipmentDefinition[];
   equipmentBonuses: AggregatedEquipmentBonus;
+  gearPowerInfo: GearPowerCalculationResult;
+  raidProgression: CharacterRaidProgressionRecord;
+  selectedRaidTierId: RaidTierId;
+  setSelectedRaidTierId: (tierId: RaidTierId) => void;
+  checkRaidEligibility: (tierId: RaidTierId) => RaidEligibilityResult;
   equipItemAction: (slot: EquipmentSlot, itemId: string) => { success: boolean; message: string };
   unequipItemAction: (slot: EquipmentSlot) => { success: boolean; message: string };
   activeMissions: ActiveMissionRecord[];
@@ -260,8 +279,8 @@ interface AppContextValue {
   warfrontSettings: WarfrontSettings;
   setWarfrontSpawnDay: (spawnDay: RaidSpawnDay) => void;
   deployDailyEncounter: (encounter: EncounterTemplate) => void;
-  deployWeeklyRaid: (raid: WeeklyRaidCycle) => void;
-  claimWeeklyRaidRewardsAction: (cycleId: string) => boolean;
+  deployWeeklyRaid: (raid: WeeklyRaidCycle, tierId?: RaidTierId) => { success: boolean; reason?: string };
+  claimWeeklyRaidRewardsAction: (cycleId: string, tierId?: RaidTierId) => boolean;
   enrollInProgram: (program: TrainingProgramDefinition) => void;
   pauseActiveProgram: () => void;
   resumeActiveProgram: () => void;
@@ -406,11 +425,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     equippedItemIds: [],
   });
 
+  // Raid Progression & Tier Clearance State
+  const [raidProgression, setRaidProgression] = useState<CharacterRaidProgressionRecord>({
+    characterId: 'char_main',
+    highestTierUnlocked: 'tier_1_initiation',
+    tierVictories: {},
+    totalRaidVictories: 0,
+  });
+  const [selectedRaidTierId, setSelectedRaidTierId] = useState<RaidTierId>('tier_1_initiation');
+
   const loadData = useCallback(() => {
     try {
       initializeDatabase();
       initializeXpSqliteStorage();
       initializeEquipmentSqliteStorage();
+      initializeRaidProgressionSqliteStorage();
       initializeRecoverySqliteStorage();
       initializeNotificationSqliteStorage();
       initializeDiagnosticsSqliteProvider();
@@ -418,6 +447,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const userStats = getUserCareerStats();
       const history = getAllWorkouts();
       const cachedRaid = getActiveRaid();
+      const curRaidProg = getRaidProgressionStorageAdapter().getProgression('char_main');
+      setRaidProgression(curRaidProg);
 
       // Clean up any erroneous initiate achievements if fresh account
       try {
@@ -699,9 +730,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     customSubfactions
   );
 
+  const gearPowerInfo: GearPowerCalculationResult = useMemo(() => {
+    return calculateGearPower(equippedItems);
+  }, [equippedItems]);
+
+  const defeatedRaidTiers = useMemo(() => {
+    return getRaidProgressionStorageAdapter().getDefeatedTiers('char_main');
+  }, [raidProgression]);
+
   const progression: CharacterProgression = calculateProgression(
     character.totalXp,
-    currentFaction
+    currentFaction,
+    defeatedRaidTiers
+  );
+
+  const checkRaidEligibility = useCallback(
+    (tierId: RaidTierId): RaidEligibilityResult => {
+      const defTiers = getRaidProgressionStorageAdapter().getDefeatedTiers('char_main');
+      return evaluateRaidTierEligibility(tierId, {
+        characterLevel: progression.level,
+        characterRankTier: progression.currentRankTier,
+        gearPower: gearPowerInfo.gearPower,
+        characterFactionId: currentFaction?.id || 'adeptus-astartes',
+        defeatedRaidTiers: defTiers,
+      });
+    },
+    [progression.level, progression.currentRankTier, gearPowerInfo.gearPower, currentFaction?.id]
   );
 
   const enrollInProgram = useCallback((program: TrainingProgramDefinition) => {
@@ -924,38 +978,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   const deployWeeklyRaid = useCallback(
-    (raid: WeeklyRaidCycle) => {
+    (raid: WeeklyRaidCycle, tierId?: RaidTierId): { success: boolean; reason?: string } => {
+      const targetTierId = tierId || selectedRaidTierId || 'tier_1_initiation';
+      const eligibility = checkRaidEligibility(targetTierId);
+      if (!eligibility.isEligible) {
+        return { success: false, reason: eligibility.primaryLockReason };
+      }
+
+      const tierDef = getRaidTierById(targetTierId);
       setActiveRaidCycleId(raid.cycleId);
       setActiveDailyEncounterId(null);
       const mission: CombatMission = {
         id: `raid_${raid.cycleId}`,
-        title: `Raid: ${raid.boss.name}`,
-        briefing: raid.boss.tacticalDescription,
-        difficulty: 'boss',
+        title: `Raid [${tierDef.codeName}]: ${raid.boss.name}`,
+        briefing: `${tierDef.loreBriefing}\n\n${raid.boss.tacticalDescription}`,
+        difficulty: tierDef.tierNumber >= 6 ? 'crusade' : tierDef.tierNumber >= 4 ? 'boss' : 'incursion',
         enemyId: raid.boss.bossKey,
-        recommendedSets: 16,
-        gloryBonusXp: 400,
+        recommendedSets: tierDef.recommendedSets,
+        gloryBonusXp: tierDef.gloryXpReward,
       };
       setCurrentMission(mission);
-      startNewWorkout(`Weekly Raid: ${raid.boss.name}`, mission);
+      startNewWorkout(`Weekly Raid (${tierDef.name}): ${raid.boss.name}`, mission);
+      return { success: true };
     },
-    []
+    [selectedRaidTierId, checkRaidEligibility]
   );
 
-  const claimWeeklyRaidRewardsAction = useCallback((cycleId: string): boolean => {
+  const claimWeeklyRaidRewardsAction = useCallback((cycleId: string, tierId?: RaidTierId): boolean => {
+    const targetTierId = tierId || selectedRaidTierId || 'tier_1_initiation';
     const result = claimWeeklyRaidRewards(
       cycleId,
       currentFaction.id,
       progression.level,
       progression.currentRankTier,
-      'char_main'
+      'char_main',
+      targetTierId
     );
     if (result.success) {
+      getRaidProgressionStorageAdapter().recordRaidVictory(targetTierId, 'char_main');
+      const updatedProg = getRaidProgressionStorageAdapter().getProgression('char_main');
+      setRaidProgression(updatedProg);
+
       if (result.gloryXpAwarded > 0) {
         awardXp({
           amount: result.gloryXpAwarded,
           sourceType: 'raid_boss_defeat',
-          idempotencyKey: `raid_${cycleId}`,
+          idempotencyKey: `raid_${cycleId}_${targetTierId}`,
           reason: result.message,
           dailyCap: settings.rpg_daily_xp_cap,
         });
@@ -964,7 +1032,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     }
     return false;
-  }, [loadData, settings.rpg_daily_xp_cap, currentFaction.id, progression.level, progression.currentRankTier]);
+  }, [loadData, settings.rpg_daily_xp_cap, currentFaction.id, progression.level, progression.currentRankTier, selectedRaidTierId]);
 
   const equipItemAction = useCallback(
     (slot: EquipmentSlot, itemId: string): { success: boolean; message: string } => {
@@ -1757,6 +1825,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loadout,
         equippedItems,
         equipmentBonuses,
+        gearPowerInfo,
+        raidProgression,
+        selectedRaidTierId,
+        setSelectedRaidTierId,
+        checkRaidEligibility,
         equipItemAction,
         unequipItemAction,
         activeMissions,

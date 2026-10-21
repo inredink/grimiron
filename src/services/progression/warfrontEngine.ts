@@ -24,6 +24,8 @@ import {
 } from './bossGenerator';
 import { evaluateRaidBossLoot } from './raidLootEngine';
 import { EquipmentDefinition } from '../../types/equipment';
+import { RaidTierId } from '../../types/raidProgression';
+import { getRaidTierById } from '../../content/raidTiers';
 
 /**
  * Pluggable Storage Adapter for Warfront.
@@ -672,6 +674,13 @@ export function isEnemyEscaped(enemyName: string): boolean {
   return escapedNames.some((n) => n.trim().toLowerCase() === enemyName.trim().toLowerCase());
 }
 
+export interface WeeklyRaidClaimResult {
+  success: boolean;
+  gloryXpAwarded: number;
+  message: string;
+  awardedItem?: EquipmentDefinition;
+}
+
 /**
  * Claims weekly raid spoils if defeated and not previously claimed.
  * Distributes eligible, faction-appropriate equipment drops from raid loot tables.
@@ -681,13 +690,9 @@ export function claimWeeklyRaidRewards(
   characterFactionId?: string,
   characterLevel: number = 1,
   characterRankTier: number = 1,
-  characterId: string = 'char_main'
-): {
-  success: boolean;
-  gloryXpAwarded: number;
-  message: string;
-  awardedItem?: EquipmentDefinition;
-} {
+  characterId: string = 'char_main',
+  raidTierId?: RaidTierId
+): WeeklyRaidClaimResult {
   const raid = activeStorageAdapter.getWeeklyRaid(cycleId);
   if (!raid) {
     return { success: false, gloryXpAwarded: 0, message: 'Raid cycle not found.' };
@@ -713,7 +718,8 @@ export function claimWeeklyRaidRewards(
   raid.updatedAt = new Date().toISOString();
   activeStorageAdapter.saveWeeklyRaid(raid);
 
-  const gloryXpAwarded = 500;
+  const tierDef = raidTierId ? getRaidTierById(raidTierId) : null;
+  const gloryXpAwarded = tierDef ? tierDef.gloryXpReward : 500;
   let lootMsg = '';
   let awardedItem: EquipmentDefinition | undefined;
 
@@ -721,7 +727,7 @@ export function claimWeeklyRaidRewards(
     try {
       const lootResult = evaluateRaidBossLoot(
         cycleId,
-        raid.boss,
+        raidTierId ? { ...raid.boss, raidTierId } : raid.boss,
         characterFactionId,
         characterLevel,
         characterRankTier,
@@ -729,7 +735,7 @@ export function claimWeeklyRaidRewards(
       );
       if (lootResult.awardedItem) {
         awardedItem = lootResult.awardedItem;
-        lootMsg = ` Loot: ${awardedItem.name} (${awardedItem.rarity.toUpperCase()})!`;
+        lootMsg = ` ${lootResult.message}`;
       }
     } catch (e) {
       console.warn('Loot evaluation error:', e);

@@ -188,6 +188,30 @@ npm run audit
   - All collected items, loadouts, and loot drop logs are stored locally in `character_inventory`, `character_equipment_loadout`, and `raid_loot_history`.
   - Switching allegiances grants the new faction's starter gear while permanently preserving previously earned items in inventory.
 
+### 12. ⚔️ MMORPG Character Progression, 7-Tier Raid Ladder & Endgame Advancement
+- **4 Distinct, Decoupled Progression Vectors**:
+  - **Character Level**: Determined by cumulative XP earned from legitimate workouts, bounded by the daily training XP cap.
+  - **Faction Military Rank**: Narrative rank titles (Rank 1 to 7) attuned to Promotion Trials requiring raid clears.
+  - **Equipment Tier & Gear Power Score**: Gear Power is centrally calculated strictly from *actively equipped* items in your 7 slots. Items stored in inventory contribute 0 Gear Power, preventing artificial score inflation. Platform wargear (battlesuits, Terminator armor, Dreadnought chassis) grants dedicated platform bonuses.
+  - **Raid Progression Clearance Tiers**: 7 distinct, sequential raid clearance tiers with stable IDs, boss health scaling, and glory rewards:
+    1. *Initiation Raids* (`tier_1_initiation`): Level 1+, Rank 1+, 0 Gear Power (Solo HP 1,800 / Squad HP 5,000, +300 Glory XP).
+    2. *Field Operations* (`tier_2_field_ops`): Level 5+, Rank 2+, 140 Gear Power, requires Tier 1 clear (Solo HP 2,800 / Squad HP 8,000, +450 Glory XP).
+    3. *Veteran Raids* (`tier_3_veteran`): Level 10+, Rank 3+, 270 Gear Power, requires Tier 2 clear (Solo HP 4,200 / Squad HP 13,000, +600 Glory XP).
+    4. *Elite Raids* (`tier_4_elite`): Level 15+, Rank 4+, 410 Gear Power, requires Tier 3 clear (Solo HP 6,000 / Squad HP 19,000, +800 Glory XP).
+    5. *Champion Raids* (`tier_5_champion`): Level 20+, Rank 5+, 550 Gear Power, requires Tier 4 clear (Solo HP 8,500 / Squad HP 27,000, +1,000 Glory XP).
+    6. *Legendary Raids* (`tier_6_legendary`): Level 25+, Rank 6+, 690 Gear Power, requires Tier 5 clear (Solo HP 12,000 / Squad HP 38,000, +1,300 Glory XP).
+    7. *Endgame Crusade* (`tier_7_endgame`): Level 30+, Rank 7+, 840 Gear Power, requires Tier 6 clear (Solo HP 16,000 / Squad HP 52,000, +1,600 Glory XP).
+- **Authoritative Clearance Gating & Zero Carry Policy**:
+  - Access requirements are evaluated authoritatively before display, selection, and deployment.
+  - Multiplayer raids independently verify each squad operative's individual qualifications. Low-level or under-geared players cannot be carried into advanced tiers by high-ranked squad members.
+- **Promotion Trial Milestones**:
+  - Advancing beyond Rank 2 requires clearing corresponding raid tier encounters (e.g. Rank 3 requires Initiation clear; Rank 4 requires Field Ops clear; Rank 5 requires Veteran clear).
+  - Operatives with sufficient XP but unfulfilled trials are held with an active Promotion Trial banner and clear guidance.
+- **Loot Drop Equip Eligibility vs. Inventory Storage**:
+  - Advanced raid boss drops can be collected and safely kept in your inventory as trophies. However, equipping them into combat slots strictly requires satisfying the item's individual level and rank requirements.
+- **SQLite Raid Progression Persistence (Migration 16)**:
+  - Tables `character_raid_progression`, `character_raid_summary`, and `character_progression_milestones` persist tier clears, victory counters, and unlocked tiers idempotently across app restarts and allegiance switches.
+
 ---
 
 ## 📂 Project Architecture

@@ -47,6 +47,8 @@ interface EquipmentSlotCardProps {
   loadout: EquippedLoadout;
   equippedItems: EquipmentDefinition[];
   equipmentBonuses: AggregatedEquipmentBonus;
+  gearPower?: number;
+  gearTierLabel?: string;
   onOpenInventory: (slot?: EquipmentSlot) => void;
 }
 
@@ -55,6 +57,8 @@ export const EquipmentSlotCard: React.FC<EquipmentSlotCardProps> = ({
   loadout,
   equippedItems,
   equipmentBonuses,
+  gearPower,
+  gearTierLabel,
   onOpenInventory,
 }) => {
   const slotConfig = getFactionSlotConfig(factionId);
@@ -81,6 +85,21 @@ export const EquipmentSlotCard: React.FC<EquipmentSlotCardProps> = ({
         </TouchableOpacity>
       }
     >
+      {/* Gear Power & MMORPG Arsenal Tier Banner */}
+      <View style={styles.gearPowerHeaderRow}>
+        <View style={styles.gearPowerBox}>
+          <Ionicons name="shield-sharp" size={14} color="#00F0FF" />
+          <Text style={styles.gearPowerLabel}>GEAR POWER</Text>
+          <Text style={styles.gearPowerValue}>{gearPower ?? 0}</Text>
+        </View>
+        {gearTierLabel && (
+          <View style={styles.gearTierPill}>
+            <Ionicons name="ribbon-outline" size={12} color="#E5A93C" />
+            <Text style={styles.gearTierPillText}>{gearTierLabel.toUpperCase()}</Text>
+          </View>
+        )}
+      </View>
+
       {/* Combat Power Summary Bar */}
       <View style={styles.summaryBar}>
         <View style={styles.summaryStat}>
@@ -196,6 +215,52 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.8,
+  },
+  gearPowerHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0A101D',
+    borderWidth: 1,
+    borderColor: '#00F0FF40',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 8,
+  },
+  gearPowerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  gearPowerLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#00F0FF',
+    letterSpacing: 0.8,
+  },
+  gearPowerValue: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  gearTierPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(229, 169, 60, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E5A93C60',
+  },
+  gearTierPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#E5A93C',
+    letterSpacing: 0.6,
   },
   summaryBar: {
     flexDirection: 'row',

@@ -247,6 +247,28 @@ import {
   generateFinalDossier,
   inMemoryAcademyStorage,
 } from '../services/progression/campaignAcademyEngine';
+import {
+  RaidTierId,
+  RaidTierDefinition,
+  RaidEligibilityContext,
+  RaidEligibilityResult,
+  GearPowerCalculationResult,
+  CharacterRaidProgressionRecord,
+} from '../types/raidProgression';
+import {
+  RAID_TIERS,
+  getRaidTierById,
+  getAllRaidTiers,
+  getNextRaidTier,
+} from '../content/raidTiers';
+import {
+  calculateGearPower,
+  evaluateRaidTierEligibility,
+  evaluateMultiplayerRaidEligibility,
+  getHighestUnlockedRaidTier,
+  InMemoryRaidProgressionStorage,
+} from '../services/progression/raidProgressionEngine';
+import { RANK_TIER_RAID_REQUIREMENTS } from '../services/progression/rankEngine';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -4261,6 +4283,341 @@ assert(
 );
 assert(updatedInv.some((i) => i.itemId === 'astartes_boltgun'), 'Past Space Marine boltgun is preserved');
 assert(updatedInv.some((i) => i.itemId === 'tau_pulse_rifle'), 'New T\'au pulse rifle is added to inventory');
+
+// =========================================================================
+// TEST SUITE 24: MMORPG PROGRESSION, RAID TIERS & GEAR POWER ADVANCEMENT
+// =========================================================================
+console.log('\n====================================================');
+console.log('TEST SUITE 24: MMORPG PROGRESSION, RAID TIERS & GEAR POWER');
+console.log('====================================================');
+
+// 24.1 Seven-Tier Raid Ladder Definitions and Sequence
+console.log('Testing 7-Tier Raid Progression Ladder Structure...');
+assert(RAID_TIERS.length === 7, 'Exactly 7 distinct raid tiers defined');
+const expectedTierIds: RaidTierId[] = [
+  'tier_1_initiation',
+  'tier_2_field_ops',
+  'tier_3_veteran',
+  'tier_4_elite',
+  'tier_5_champion',
+  'tier_6_legendary',
+  'tier_7_endgame',
+];
+RAID_TIERS.forEach((tier, index) => {
+  assert(tier.id === expectedTierIds[index], `Tier ${index + 1} ID matches ${expectedTierIds[index]}`);
+  assert(tier.tierNumber === index + 1, `Tier number is strictly ordered (${tier.tierNumber})`);
+  assert(tier.minLevel > 0, `Tier ${tier.name} specifies minimum character level (${tier.minLevel})`);
+  assert(tier.minRankTier > 0, `Tier ${tier.name} specifies minimum rank tier (${tier.minRankTier})`);
+  assert(tier.soloHp > 0 && tier.squadHp > tier.soloHp, `Squad HP is properly scaled higher than solo HP for ${tier.name}`);
+  assert(tier.gloryXpReward > 0, `Tier ${tier.name} awards glory XP (${tier.gloryXpReward})`);
+  if (index > 0) {
+    assert(
+      tier.requiredPreviousTierId === expectedTierIds[index - 1],
+      `Tier ${tier.name} requires clearing previous tier ${expectedTierIds[index - 1]}`
+    );
+    assert(
+      tier.minLevel > RAID_TIERS[index - 1].minLevel,
+      `Tier ${tier.name} min level (${tier.minLevel}) is strictly greater than previous tier (${RAID_TIERS[index - 1].minLevel})`
+    );
+    assert(
+      tier.minGearPower > RAID_TIERS[index - 1].minGearPower,
+      `Tier ${tier.name} min gear power (${tier.minGearPower}) is strictly greater than previous tier (${RAID_TIERS[index - 1].minGearPower})`
+    );
+  } else {
+    assert(tier.requiredPreviousTierId === undefined, 'Tier 1 has no previous raid requirement');
+    assert(tier.minGearPower === 0, 'Tier 1 is accessible with baseline 0 gear power');
+  }
+});
+
+// Helper functions
+const t1Def = getRaidTierById('tier_1_initiation');
+assert(t1Def.name === 'Initiation Raids', 'getRaidTierById correctly retrieves Tier 1');
+const nextAfterT1 = getNextRaidTier('tier_1_initiation');
+assert(nextAfterT1?.id === 'tier_2_field_ops', 'getNextRaidTier correctly identifies Tier 2 after Tier 1');
+const nextAfterT7 = getNextRaidTier('tier_7_endgame');
+assert(nextAfterT7 === null, 'getNextRaidTier returns null for final endgame tier');
+
+// 24.2 Gear Power Calculation - Strict Active Equipment Isolation
+console.log('Testing Gear Power Calculation and Inventory Isolation...');
+const emptyGearPower = calculateGearPower([]);
+assert(emptyGearPower.gearPower === 0, 'Empty loadout yields 0 gear power');
+assert(emptyGearPower.itemCount === 0, 'Item count is 0');
+assert(emptyGearPower.primaryTierLabel === 'Unarmed Recruit', 'Label is Unarmed Recruit');
+
+// Setup character with starter equipment
+const gearTestCharId = 'char_gear_isolation_test_01';
+initializeStarterEquipment(gearTestCharId, 'adeptus-astartes');
+const equippedAstartesDefs = getEquippedDefinitions(gearTestCharId);
+const initialGearPower = calculateGearPower(equippedAstartesDefs);
+assert(initialGearPower.gearPower > 0, `Equipped starter wargear yields positive gear power (${initialGearPower.gearPower})`);
+assert(initialGearPower.itemCount === 6, 'All 6 starter slots are actively equipped');
+
+// Critical Isolation Check: Grant 3 powerful endgame weapons to inventory without equipping them
+grantInventoryItem(gearTestCharId, 'astartes_storm_shield_thunder_hammer', 'admin_grant');
+grantInventoryItem(gearTestCharId, 'astartes_artificer_armor', 'admin_grant');
+grantInventoryItem(gearTestCharId, 'astartes_master_power_sword', 'admin_grant');
+
+// Verify inventory grew, but active equipped definitions and gear power DID NOT change!
+const inventoryAfterGrants = getCharacterInventory(gearTestCharId);
+assert(inventoryAfterGrants.length === 6 + 3, 'Inventory has 9 total items');
+const activeDefsAfterGrants = getEquippedDefinitions(gearTestCharId);
+const gearPowerAfterGrants = calculateGearPower(activeDefsAfterGrants);
+assert(
+  gearPowerAfterGrants.gearPower === initialGearPower.gearPower,
+  `Unequipped inventory items NEVER increase gear power (Remains ${gearPowerAfterGrants.gearPower})`
+);
+
+// Platform bonus in gear power calculation
+const mockPlatformSuit: EquipmentDefinition = {
+  id: 'test_platform_suit',
+  name: 'Centurion Warsuit',
+  description: 'Heavy assault harness.',
+  slot: 'platform',
+  compatibleFactions: ['adeptus-astartes'],
+  tier: 4,
+  rarity: 'epic',
+  requirements: { minLevel: 15, minRankTier: 4 },
+  isPlatform: true,
+  stats: { defenseRating: 80, bonusDamage: 30 },
+  iconName: 'shield',
+};
+const platformGearPower = calculateGearPower([mockPlatformSuit]);
+// 4*25 + 55 + (30*1.5=45) + (80*1.2=96) + platformBonus(50) = 100 + 55 + 45 + 96 + 50 = 346
+assert(platformGearPower.gearPower >= 340, `Platform suit contributes platform bonus score (${platformGearPower.gearPower})`);
+
+// 24.3 Authoritative Raid Eligibility Evaluation (Individual)
+console.log('Testing Authoritative Raid Eligibility Evaluation...');
+const freshRecruitContext: RaidEligibilityContext = {
+  characterLevel: 1,
+  characterRankTier: 1,
+  gearPower: initialGearPower.gearPower,
+  characterFactionId: 'adeptus-astartes',
+  defeatedRaidTiers: [],
+};
+
+// Fresh recruit vs Tier 1 Initiation
+const t1Eligibility = evaluateRaidTierEligibility('tier_1_initiation', freshRecruitContext);
+assert(t1Eligibility.isEligible === true, 'Fresh recruit is eligible for Tier 1 Initiation raid');
+assert(t1Eligibility.unmetRequirements.length === 0, 'No unmet requirements for Tier 1');
+assert(t1Eligibility.checks.level.met === true, 'Level check passes for Tier 1');
+assert(t1Eligibility.checks.rank.met === true, 'Rank check passes for Tier 1');
+assert(t1Eligibility.checks.gearPower.met === true, 'Gear power check passes for Tier 1');
+assert(t1Eligibility.checks.prerequisiteRaid.met === true, 'Prerequisite raid check passes for Tier 1');
+
+// Fresh recruit vs Tier 2 Field Ops (Locked!)
+const t2Eligibility = evaluateRaidTierEligibility('tier_2_field_ops', freshRecruitContext);
+assert(t2Eligibility.isEligible === false, 'Fresh recruit is strictly LOCKED from Tier 2 Field Ops');
+assert(t2Eligibility.unmetRequirements.length >= 3, 'Multiple requirements unmet for Tier 2');
+assert(t2Eligibility.checks.level.met === false, 'Level 1 fails minLevel 5');
+assert(t2Eligibility.checks.rank.met === false, 'Rank 1 fails minRankTier 2');
+assert(t2Eligibility.checks.prerequisiteRaid.met === false, 'Missing prerequisite Tier 1 boss defeat');
+assert(
+  t2Eligibility.unmetRequirements.some((r) => r.includes('Character Level 5 required')),
+  'Clear unmet requirement message includes required character level'
+);
+assert(
+  t2Eligibility.unmetRequirements.some((r) => r.includes('Faction Rank Tier 2 required')),
+  'Clear unmet requirement message includes required rank tier'
+);
+assert(
+  t2Eligibility.unmetRequirements.some((r) => r.includes('Initiation Raids')),
+  'Clear unmet requirement message includes prerequisite raid clear'
+);
+
+// Advanced recruit satisfying Tier 2 requirements
+const fieldOpsVeteranContext: RaidEligibilityContext = {
+  characterLevel: 6,
+  characterRankTier: 2,
+  gearPower: 160,
+  characterFactionId: 'adeptus-astartes',
+  defeatedRaidTiers: ['tier_1_initiation'],
+};
+const t2EligibleCheck = evaluateRaidTierEligibility('tier_2_field_ops', fieldOpsVeteranContext);
+assert(t2EligibleCheck.isEligible === true, 'Field ops veteran satisfies all Tier 2 requirements');
+assert(t2EligibleCheck.unmetRequirements.length === 0, 'Zero unmet requirements for eligible Tier 2');
+
+// Field ops veteran attempting Tier 3 (Locked by gear power, level, rank, and prerequisite)
+const t3BlockedCheck = evaluateRaidTierEligibility('tier_3_veteran', fieldOpsVeteranContext);
+assert(t3BlockedCheck.isEligible === false, 'Field ops veteran is locked from Tier 3 Veteran raid');
+assert(t3BlockedCheck.checks.gearPower.met === false, 'Gear power 160 is less than Tier 3 requirement 270');
+assert(t3BlockedCheck.checks.prerequisiteRaid.met === false, 'Tier 2 victory missing for Tier 3 entry');
+
+// 24.4 Multiplayer Squad Clearance Gating (Zero Exploits / No Carries)
+console.log('Testing Multiplayer Squad Raid Clearance Verification...');
+const squadLeaderMax: RaidEligibilityContext & { callsign: string } = {
+  callsign: 'Lord-Captain Guilliman',
+  characterLevel: 22,
+  characterRankTier: 5,
+  gearPower: 600,
+  characterFactionId: 'adeptus-astartes',
+  defeatedRaidTiers: ['tier_1_initiation', 'tier_2_field_ops', 'tier_3_veteran', 'tier_4_elite'],
+};
+
+const rookieSquadmate: RaidEligibilityContext & { callsign: string } = {
+  callsign: 'Scout Neophyte',
+  characterLevel: 2,
+  characterRankTier: 1,
+  gearPower: 80,
+  characterFactionId: 'adeptus-astartes',
+  defeatedRaidTiers: [],
+};
+
+const undergearedVeteran: RaidEligibilityContext & { callsign: string } = {
+  callsign: 'Brother Undergeared',
+  characterLevel: 16,
+  characterRankTier: 4,
+  gearPower: 250, // Needs 420 for Tier 4
+  characterFactionId: 'adeptus-astartes',
+  defeatedRaidTiers: ['tier_1_initiation', 'tier_2_field_ops', 'tier_3_veteran'],
+};
+
+// Attempt Tier 4 Elite Raid deployment with mixed squad
+const mixedSquadResult = evaluateMultiplayerRaidEligibility('tier_4_elite', [
+  squadLeaderMax,
+  rookieSquadmate,
+  undergearedVeteran,
+]);
+assert(mixedSquadResult.allEligible === false, 'Multiplayer deployment is REJECTED when squad members are under-qualified');
+assert(mixedSquadResult.ineligibleParticipants.length === 2, 'Exactly 2 ineligible squad operatives identified');
+const rookieEntry = mixedSquadResult.ineligibleParticipants.find((p) => p.callsign === 'Scout Neophyte');
+assert(Boolean(rookieEntry), 'Scout Neophyte is flagged as ineligible');
+assert(rookieEntry!.reasons.length >= 3, 'Neophyte has level, rank, gear power, and prior raid locks');
+
+const undergearedEntry = mixedSquadResult.ineligibleParticipants.find((p) => p.callsign === 'Brother Undergeared');
+assert(Boolean(undergearedEntry), 'Brother Undergeared is flagged as ineligible');
+assert(
+  undergearedEntry!.reasons.some((r) => r.includes('Gear Power 410 required')),
+  'Brother Undergeared is correctly flagged for insufficient Gear Power (250 < 410)'
+);
+
+// Fully qualified veteran squad
+const qualifiedOperative: RaidEligibilityContext & { callsign: string } = {
+  callsign: 'Veteran Sergeant',
+  characterLevel: 18,
+  characterRankTier: 4,
+  gearPower: 450,
+  characterFactionId: 'adeptus-astartes',
+  defeatedRaidTiers: ['tier_1_initiation', 'tier_2_field_ops', 'tier_3_veteran'],
+};
+const eliteSquadResult = evaluateMultiplayerRaidEligibility('tier_4_elite', [
+  squadLeaderMax,
+  qualifiedOperative,
+]);
+assert(eliteSquadResult.allEligible === true, 'All qualified squad members are approved for Tier 4 raid deployment');
+assert(eliteSquadResult.ineligibleParticipants.length === 0, 'Zero ineligible members in elite squad');
+
+// 24.5 In-Memory Raid Progression Storage & Idempotent Unlocking
+console.log('Testing Raid Progression Storage & Idempotent Tier Advancement...');
+const raidStorage = new InMemoryRaidProgressionStorage();
+const testProgCharId = 'char_raid_prog_test_01';
+
+// Initial state
+const initialProg = raidStorage.getProgression(testProgCharId);
+assert(initialProg.highestTierUnlocked === 'tier_1_initiation', 'Character starts with Tier 1 Initiation unlocked');
+assert(initialProg.totalRaidVictories === 0, 'Initial raid victories count is 0');
+assert(raidStorage.getDefeatedTiers(testProgCharId).length === 0, 'Initial defeated tiers list is empty');
+
+// First Tier 1 Victory -> Unlocks Tier 2
+const raidVic1 = raidStorage.recordRaidVictory('tier_1_initiation', testProgCharId);
+assert(raidVic1.newlyUnlockedTier === 'tier_2_field_ops', 'Defeating Tier 1 unlocks Tier 2 Field Ops');
+assert(raidVic1.record.highestTierUnlocked === 'tier_2_field_ops', 'Highest tier unlocked is now Tier 2');
+assert(raidVic1.record.tierVictories['tier_1_initiation'] === 1, 'Tier 1 victories recorded as 1');
+assert(raidStorage.getDefeatedTiers(testProgCharId).includes('tier_1_initiation'), 'Defeated tiers includes tier_1_initiation');
+
+// Duplicate Tier 1 Victory (Farming Tier 1) -> Idempotent! Does not jump to Tier 3 or re-unlock
+const raidVic2 = raidStorage.recordRaidVictory('tier_1_initiation', testProgCharId);
+assert(raidVic2.newlyUnlockedTier === undefined, 'Subsequent Tier 1 victory does not re-trigger an unlock');
+assert(raidVic2.record.highestTierUnlocked === 'tier_2_field_ops', 'Highest unlocked tier remains Tier 2');
+assert(raidVic2.record.tierVictories['tier_1_initiation'] === 2, 'Tier 1 victory count increments to 2');
+assert(raidVic2.record.totalRaidVictories === 2, 'Total victories count increments to 2');
+
+// Tier 2 Victory -> Unlocks Tier 3
+const raidVic3 = raidStorage.recordRaidVictory('tier_2_field_ops', testProgCharId);
+assert(raidVic3.newlyUnlockedTier === 'tier_3_veteran', 'Defeating Tier 2 unlocks Tier 3 Veteran');
+assert(raidVic3.record.highestTierUnlocked === 'tier_3_veteran', 'Highest unlocked tier is now Tier 3');
+const defeatedList = raidStorage.getDefeatedTiers(testProgCharId);
+assert(defeatedList.length === 2, 'Two unique tiers defeated');
+assert(defeatedList.includes('tier_1_initiation') && defeatedList.includes('tier_2_field_ops'), 'Tier 1 and 2 in defeated list');
+
+// 24.6 Faction Rank Promotion Milestones Linked to Raid Progression
+console.log('Testing Faction Rank Promotion Milestone Attunement...');
+const spaceMarineFaction = getFactionById('adeptus-astartes')!;
+assert(Boolean(spaceMarineFaction), 'Space Marine faction retrieved');
+
+// Rank 3 (Battle-Brother) requires 15,000 XP in standard curve, and requires Initiation Raid (Tier 1) victory
+const rank3MinXp = spaceMarineFaction.ranks.find((r) => r.tier === 3)!.minXp;
+assert(rank3MinXp > 0, `Rank 3 requires ${rank3MinXp} XP`);
+
+// Case A: Player has sufficient XP for Rank 3, but HAS NOT completed any raid milestones
+const unearnedProgression = calculateProgression(rank3MinXp + 500, spaceMarineFaction, []);
+assert(unearnedProgression.level >= 5, 'Character level advanced according to XP');
+assert(unearnedProgression.currentRankTier === 2, 'Rank tier is HELD at Rank 2 due to pending raid milestone');
+assert(unearnedProgression.isRankTrialPending === true, 'isRankTrialPending flag is active');
+assert(
+  unearnedProgression.pendingMilestoneRequirement?.includes('Promotion Trial') === true,
+  'pendingMilestoneRequirement clearly states promotion trial requirement'
+);
+assert(
+  unearnedProgression.pendingMilestoneRequirement?.includes('Initiation Raids') === true,
+  'pendingMilestoneRequirement references Initiation Raids requirement'
+);
+
+// Case B: Player has sufficient XP AND completed Tier 1 Initiation Raid
+const earnedProgression = calculateProgression(rank3MinXp + 500, spaceMarineFaction, ['tier_1_initiation']);
+assert(earnedProgression.currentRankTier === 3, 'With raid milestone completed, warrior is promoted to Rank 3');
+assert(earnedProgression.isRankTrialPending === false, 'isRankTrialPending is false');
+assert(earnedProgression.pendingMilestoneRequirement === undefined, 'No pending milestone requirement');
+
+// 24.7 Loot Drop Equip Eligibility vs Inventory Ownership
+console.log('Testing Loot Drop Equip Requirements vs Inventory Storage...');
+const dropCharId = 'char_loot_equip_test_01';
+initializeStarterEquipment(dropCharId, 'adeptus-astartes');
+
+// Advanced high-tier drop: Space Marine Ryza Plasma Gun (Tier 3, Level 10, Rank Tier 3)
+const plasmaGun = getEquipmentById('astartes_plasma_gun');
+assert(Boolean(plasmaGun), 'Ryza plasma gun exists in catalog');
+assert(plasmaGun!.requirements.minLevel === 10, 'Plasma gun requires character level 10');
+assert(plasmaGun!.requirements.minRankTier === 3, 'Plasma gun requires rank tier 3');
+
+// Low level operative (Level 3, Rank 1) acquires this item as raid spoils
+grantInventoryItem(dropCharId, 'astartes_plasma_gun', 'raid_drop');
+const dropCharInv = getCharacterInventory(dropCharId);
+const storedGun = dropCharInv.find((i) => i.itemId === 'astartes_plasma_gun');
+assert(Boolean(storedGun), 'High-tier spoils can be safely collected and stored in player inventory');
+
+// Authoritative equip check blocks premature equipment
+const lowCharEligibility = isItemEquipEligible(plasmaGun!, 'adeptus-astartes', 3, 1);
+assert(lowCharEligibility.eligible === false, 'Low level warrior cannot equip Tier 3 plasma gun');
+assert(
+  lowCharEligibility.reason?.includes('Level 10') === true,
+  'Equip eligibility specifies Level 10 requirement'
+);
+
+// High level warrior (Level 12, Rank 3) passes equip eligibility
+const highCharEligibility = isItemEquipEligible(plasmaGun!, 'adeptus-astartes', 12, 3);
+assert(highCharEligibility.eligible === true, 'Veteran warrior meets all equip prerequisites');
+assert(highCharEligibility.reason === undefined, 'No equip restriction reason for qualified warrior');
+
+// Attempting equip via equipment service safely succeeds for qualified warrior
+const equipAttempt = equipItem(dropCharId, 'primary_weapon', 'astartes_plasma_gun', 12, 3, 'adeptus-astartes');
+assert(equipAttempt.success === true, 'Equip operation succeeds for qualified warrior');
+const updatedLoadout = getCharacterLoadout(dropCharId);
+assert(updatedLoadout.primary_weapon === 'astartes_plasma_gun', 'Loadout now actively has plasma gun equipped');
+
+// 24.8 Multi-Faction Tiered Progression Equipment Expansion
+console.log('Testing Multi-Faction Tiered Progression Arsenal...');
+const majorFactionKeys = ['adeptus-astartes', 'astra-militarum', 'tau-empire', 'orks', 'necrons'];
+for (const fKey of majorFactionKeys) {
+  const factionItems = Object.values(EQUIPMENT_CATALOG).filter((item) =>
+    item.compatibleFactions.includes('all') || item.compatibleFactions.includes(fKey)
+  );
+  assert(factionItems.length >= 8, `Faction ${fKey} has at least 8 distinct progression items (Found ${factionItems.length})`);
+
+  const tiersPresent = new Set(factionItems.map((i) => i.tier));
+  assert(tiersPresent.has(1), `Faction ${fKey} has Tier 1 items`);
+  assert(tiersPresent.has(2) || tiersPresent.has(3), `Faction ${fKey} has mid-tier (Tier 2/3) items`);
+  assert(tiersPresent.has(4) || tiersPresent.has(5), `Faction ${fKey} has high-tier (Tier 4/5) items`);
+}
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

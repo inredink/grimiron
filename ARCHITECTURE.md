@@ -496,6 +496,103 @@ To prevent power creep and preserve workout effort as the primary driver of vict
 - Every claimed drop is recorded in SQLite table `raid_loot_history(character_id, raid_id, item_id, claimed_at)` with duplicate protection.
 - Inventory is decoupled from faction switches: changing allegiances provisions the new army's basic kit while permanently retaining previously acquired wargear in `character_inventory`.
 
+---
+
+## 11. MMORPG Character Progression, 7-Tier Raid Ladder & Endgame Advancement
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 4 Core Progression Vectors                  │
+├──────────────────────────────┬──────────────────────────────┤
+│ 1. Character Level           │ 2. Faction Military Rank     │
+│ Cumulative workout XP curve  │ Military title hierarchy     │
+│ Configurable daily XP cap    │ Gated by Promotion Trials    │
+├──────────────────────────────┼──────────────────────────────┤
+│ 3. Equipment Gear Power      │ 4. Raid Progression Tier     │
+│ Pure equipped-only score     │ 7 structured clearance tiers │
+│ Unequipped inventory = 0     │ Authoritative gating checks  │
+└──────────────────────────────┴──────────────────────────────┘
+```
+
+### 1. Distinction Among the Four Core Progression Concepts
+1. **Character Level**: Represents physical training volume and discipline over time. Progresses via cumulative XP along an exponential curve, bounded by the configurable daily training XP cap.
+2. **Faction Rank**: Canonical military hierarchy within the sworn army. Advancement requires meeting both minimum XP and completing Promotion Trials.
+3. **Equipment Tier & Gear Power**: Tactical potency score derived strictly from *currently equipped* wargear. Items stored in inventory contribute exactly 0 Gear Power.
+4. **Raid Progression Tier**: A 7-rung clearance ladder with increasing tactical demands, boss health, and glory rewards.
+
+### 2. The 7-Tier Raid Progression Ladder
+```
+Tier 1: Initiation Raids    (Level 1+, Rank 1+, 0 GP, Solo HP 1.8k / Squad HP 5k, +300 XP)
+   │
+   ▼ (Tier 1 Clear)
+Tier 2: Field Operations    (Level 5+, Rank 2+, 140 GP, Solo HP 2.8k / Squad HP 8k, +450 XP)
+   │
+   ▼ (Tier 2 Clear)
+Tier 3: Veteran Raids       (Level 10+, Rank 3+, 270 GP, Solo HP 4.2k / Squad HP 13k, +600 XP)
+   │
+   ▼ (Tier 3 Clear)
+Tier 4: Elite Raids         (Level 15+, Rank 4+, 410 GP, Solo HP 6.0k / Squad HP 19k, +800 XP)
+   │
+   ▼ (Tier 4 Clear)
+Tier 5: Champion Raids      (Level 20+, Rank 5+, 550 GP, Solo HP 8.5k / Squad HP 27k, +1,000 XP)
+   │
+   ▼ (Tier 5 Clear)
+Tier 6: Legendary Raids     (Level 25+, Rank 6+, 690 GP, Solo HP 12k / Squad HP 38k, +1,300 XP)
+   │
+   ▼ (Tier 6 Clear)
+Tier 7: Endgame Crusade     (Level 30+, Rank 7+, 840 GP, Solo HP 16k / Squad HP 52k, +1,600 XP)
+```
+
+### 3. Authoritative Eligibility Verification & Anti-Carry Gating
+- Pure evaluation function `evaluateRaidTierEligibility(tierId, context)` independently validates:
+  1. Minimum Character Level
+  2. Minimum Faction Military Rank Tier
+  3. Minimum Gear Power Score
+  4. Prerequisite Raid Clearance
+- Returns `{ isEligible, unmetRequirements, primaryLockReason, checks }`.
+- **Squad Co-op Gating (`evaluateMultiplayerRaidEligibility`)**: Iterates through every squad participant. If any operative fails any requirement, the deployment is blocked and individual deficiency reports are generated. Undergeared or recruit players cannot enter high-tier raids simply because they have a high-ranked squadmate.
+
+### 4. Promotion Trials Attuned to Raid Clears
+- Progression engine `calculateProgression(totalXp, faction, defeatedRaidTiers)` integrates milestone requirements:
+  - Rank 3 requires Initiation clear (`tier_1_initiation`).
+  - Rank 4 requires Field Operations clear (`tier_2_field_ops`).
+  - Rank 5 requires Veteran clear (`tier_3_veteran`).
+  - Rank 6 requires Elite clear (`tier_4_elite`).
+  - Rank 7 requires Champion clear (`tier_5_champion`).
+- Warriors who meet the XP requirement but have not cleared the required trial are held at the trial boundary with `isRankTrialPending: true` and an explicit directive.
+
+### 5. SQLite Persistence: Migration 16 Schema
+```sql
+CREATE TABLE IF NOT EXISTS character_raid_progression (
+  id TEXT PRIMARY KEY,
+  character_id TEXT NOT NULL,
+  highest_tier_unlocked TEXT NOT NULL DEFAULT 'tier_1_initiation',
+  total_raid_victories INTEGER NOT NULL DEFAULT 0,
+  last_defeated_tier TEXT,
+  last_victory_at TEXT,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS character_raid_summary (
+  id TEXT PRIMARY KEY,
+  character_id TEXT NOT NULL,
+  tier_id TEXT NOT NULL,
+  victory_count INTEGER NOT NULL DEFAULT 0,
+  first_cleared_at TEXT NOT NULL,
+  last_cleared_at TEXT NOT NULL,
+  UNIQUE(character_id, tier_id)
+);
+
+CREATE TABLE IF NOT EXISTS character_progression_milestones (
+  id TEXT PRIMARY KEY,
+  character_id TEXT NOT NULL,
+  milestone_type TEXT NOT NULL,
+  milestone_key TEXT NOT NULL,
+  unlocked_at TEXT NOT NULL,
+  UNIQUE(character_id, milestone_type, milestone_key)
+);
+```
+
 
 
 
