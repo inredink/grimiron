@@ -34,27 +34,56 @@ export const sqliteXpStorage: XpStorageAdapter = {
 
   recordTransaction: (tx: XpTransactionRow): void => {
     const db = getDatabase();
-    db.runSync(
-      `INSERT INTO xp_transactions (
-        id, user_id, character_id, session_id, amount, requested_amount,
-        source_type, calendar_day, is_capped, reason, idempotency_key, details_json, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        tx.id,
-        tx.user_id,
-        tx.character_id,
-        tx.session_id,
-        tx.amount,
-        tx.requested_amount,
-        tx.source_type,
-        tx.calendar_day,
-        tx.is_capped,
-        tx.reason,
-        tx.idempotency_key,
-        tx.details_json,
-        tx.created_at,
-      ]
-    );
+    try {
+      db.runSync(
+        `INSERT INTO xp_transactions (
+          id, user_id, character_id, session_id, amount, requested_amount,
+          source_type, calendar_day, is_capped, reason, idempotency_key, details_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          tx.id,
+          tx.user_id,
+          tx.character_id,
+          tx.session_id,
+          tx.amount,
+          tx.requested_amount,
+          tx.source_type,
+          tx.calendar_day,
+          tx.is_capped,
+          tx.reason,
+          tx.idempotency_key,
+          tx.details_json,
+          tx.created_at,
+        ]
+      );
+    } catch (err: any) {
+      // If a foreign key constraint check fails because session_id is not yet committed,
+      // fallback to inserting with session_id = null so credited XP is NEVER dropped.
+      if (tx.session_id && String(err).includes('FOREIGN KEY')) {
+        db.runSync(
+          `INSERT INTO xp_transactions (
+            id, user_id, character_id, session_id, amount, requested_amount,
+            source_type, calendar_day, is_capped, reason, idempotency_key, details_json, created_at
+          ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            tx.id,
+            tx.user_id,
+            tx.character_id,
+            tx.amount,
+            tx.requested_amount,
+            tx.source_type,
+            tx.calendar_day,
+            tx.is_capped,
+            tx.reason,
+            tx.idempotency_key,
+            tx.details_json,
+            tx.created_at,
+          ]
+        );
+      } else {
+        throw err;
+      }
+    }
   },
 
   getRecentTransactions: (limit: number = 20): XpTransactionRow[] => {

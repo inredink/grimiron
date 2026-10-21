@@ -17,19 +17,10 @@ export function saveCompletedWorkout(
 ): XpAwardResult {
   const db = getDatabase();
 
-  // 1. Centrally award XP with strict idempotency and daily cap enforcement
-  const awardResult = awardXp({
-    amount: xpEarned,
-    sourceType: 'workout_completion',
-    sessionId: session.id,
-    idempotencyKey: `workout_${session.id}`,
-    reason: session.title || 'Crusade Training',
-    details: { breakdown },
-    dailyCap,
-  });
+  let awardResult!: XpAwardResult;
 
   db.withTransactionSync(() => {
-    // 2. Insert or update session, saving credited amount as total_xp_earned
+    // 1. Insert or update session first so it exists for foreign key constraints
     db.runSync(
       `INSERT OR REPLACE INTO workout_sessions (
         id, title, started_at, finished_at, notes, total_xp_earned, is_completed
@@ -40,14 +31,14 @@ export function saveCompletedWorkout(
         session.startedAt,
         session.finishedAt || new Date().toISOString(),
         session.notes || '',
-        awardResult.creditedAmount,
+        0, // placeholder, updated after awarding
       ]
     );
 
-    // 3. Clean old exercises/sets for this session if updating
+    // 2. Clean old exercises/sets for this session if updating
     db.runSync('DELETE FROM workout_exercises WHERE session_id = ?', [session.id]);
 
-    // 4. Insert exercises and their sets
+    // 3. Insert exercises and their sets
     for (let i = 0; i < session.exercises.length; i++) {
       const exercise = session.exercises[i];
       db.runSync(
@@ -82,6 +73,23 @@ export function saveCompletedWorkout(
         );
       }
     }
+
+    // 4. Centrally award XP (session now safely exists in workout_sessions)
+    awardResult = awardXp({
+      amount: xpEarned,
+      sourceType: 'workout_completion',
+      sessionId: session.id,
+      idempotencyKey: `workout_${session.id}`,
+      reason: session.title || 'Crusade Training',
+      details: { breakdown },
+      dailyCap,
+    });
+
+    // 5. Update session's total_xp_earned with the actual credited amount
+    db.runSync('UPDATE workout_sessions SET total_xp_earned = ? WHERE id = ?', [
+      awardResult.creditedAmount,
+      session.id,
+    ]);
   });
 
   return awardResult;
