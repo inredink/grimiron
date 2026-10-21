@@ -144,6 +144,7 @@ import {
   calculateEquipmentBonuses,
   equipItem,
   unequipItem,
+  clearCharacterEquipment,
   initializeStarterEquipment,
   initializeEquipmentSqliteStorage,
 } from '../services/database/equipmentRepository';
@@ -186,6 +187,7 @@ import {
 import { AppSettings, DEFAULT_APP_SETTINGS } from '../types/settings';
 import {
   getAllSettings,
+  getSetting,
   saveSetting,
   resetAllSettings,
 } from '../services/database/settingsRepository';
@@ -271,6 +273,7 @@ interface AppContextValue {
   checkRaidEligibility: (tierId: RaidTierId) => RaidEligibilityResult;
   equipItemAction: (slot: EquipmentSlot, itemId: string) => { success: boolean; message: string };
   unequipItemAction: (slot: EquipmentSlot) => { success: boolean; message: string };
+  clearEquipmentAction: () => void;
   activeMissions: ActiveMissionRecord[];
   activeEnrollment: UserProgramEnrollment | null;
   campaignTelemetry: CampaignTelemetryContext;
@@ -518,7 +521,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Load character equipment and inventory
       try {
         let curInv = getCharacterInventory('char_main');
-        if (curInv.length === 0) {
+        const isExplicitlyCleared = getSetting('starter_equipment_cleared') === true;
+        if (curInv.length === 0 && !isExplicitlyCleared) {
           initializeStarterEquipment('char_main', prof.factionId);
           curInv = getCharacterInventory('char_main');
         }
@@ -1092,6 +1096,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
     [loadData]
   );
+
+  const clearEquipmentAction = useCallback((): void => {
+    clearCharacterEquipment('char_main');
+    saveSetting('starter_equipment_cleared', true);
+    setInventory([]);
+    setLoadout({});
+    setEquippedItems([]);
+    setEquipmentBonuses(calculateEquipmentBonuses([]));
+  }, []);
 
   const finishActiveWorkout = (
     encounterState?: CombatEncounterState,
@@ -1866,6 +1879,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         checkRaidEligibility,
         equipItemAction,
         unequipItemAction,
+        clearEquipmentAction,
         activeMissions,
         activeEnrollment,
         campaignTelemetry,

@@ -79,6 +79,7 @@ import {
   getCharacterLoadout,
   grantInventoryItem,
   initializeStarterEquipment,
+  clearCharacterEquipment,
   equipItem,
   unequipItem,
   getEquippedDefinitions,
@@ -4385,6 +4386,20 @@ const mockPlatformSuit: EquipmentDefinition = {
 const platformGearPower = calculateGearPower([mockPlatformSuit]);
 // 4*25 + 55 + (30*1.5=45) + (80*1.2=96) + platformBonus(50) = 100 + 55 + 45 + 96 + 50 = 346
 assert(platformGearPower.gearPower >= 340, `Platform suit contributes platform bonus score (${platformGearPower.gearPower})`);
+
+// Test Clear / Reset to 0 Items
+clearCharacterEquipment(gearTestCharId);
+const zeroInventory = getCharacterInventory(gearTestCharId);
+assert(zeroInventory.length === 0, 'Inventory is successfully cleared to 0 items');
+const zeroLoadout = getCharacterLoadout(gearTestCharId);
+assert(Object.keys(zeroLoadout).length === 0, 'All loadout slots are unequipped');
+const zeroDefs = getEquippedDefinitions(gearTestCharId);
+assert(zeroDefs.length === 0, 'No active equipped definitions');
+const zeroGearPower = calculateGearPower(zeroDefs);
+assert(zeroGearPower.gearPower === 0, 'Zero equipment yields 0 gear power');
+assert(zeroGearPower.primaryTierLabel === 'Unarmed Recruit', 'Tier label is Unarmed Recruit');
+const zeroBonuses = calculateEquipmentBonuses(zeroDefs);
+assert(zeroBonuses.totalDefenseRating === 0 && zeroBonuses.totalBonusDamage === 0, 'Zero equipment gives 0 bonuses safely');
 
 // 24.3 Authoritative Raid Eligibility Evaluation (Individual)
 console.log('Testing Authoritative Raid Eligibility Evaluation...');

@@ -102,6 +102,7 @@ export default function CharacterScreen() {
     selectedRaidTierId,
     equipItemAction,
     unequipItemAction,
+    clearEquipmentAction,
   } = useApp();
 
   const [isWalkthroughModalVisible, setIsWalkthroughModalVisible] = useState(false);
@@ -554,7 +555,7 @@ export default function CharacterScreen() {
           />
 
           <TerminalButton
-            title={`CRUSADE ARSENAL // WARGEAR (${inventory.length} OWNED)`}
+            title={`CRUSADE ARSENAL // WARGEAR (${inventory.length} ITEMS)`}
             onPress={() => {
               setSelectedEquipmentSlot(undefined);
               setIsEquipmentModalVisible(true);
@@ -874,6 +875,7 @@ export default function CharacterScreen() {
         onUnequipItem={(slot) => {
           unequipItemAction(slot);
         }}
+        onClearEquipment={clearEquipmentAction}
       />
     </SafeAreaView>
   );

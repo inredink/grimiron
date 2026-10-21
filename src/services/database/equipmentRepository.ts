@@ -145,6 +145,16 @@ export const sqliteEquipmentStorage: EquipmentStorageAdapter = {
     );
     return true;
   },
+
+  clearInventory: (characterId: string): void => {
+    const db = getDatabase();
+    try {
+      db.runSync(`DELETE FROM character_inventory WHERE character_id = ?`, [characterId]);
+      db.runSync(`DELETE FROM character_equipment_loadout WHERE character_id = ?`, [characterId]);
+    } catch (e) {
+      console.error('Error clearing inventory:', e);
+    }
+  },
 };
 
 export function initializeEquipmentSqliteStorage(): void {

@@ -18,6 +18,7 @@ export interface EquipmentStorageAdapter {
   getLoadout(characterId: string): EquippedLoadout;
   saveLoadoutSlot(characterId: string, slot: EquipmentSlot, itemId: string | null): void;
   recordRaidLoot(raidCycleId: string, characterId: string, itemId: string): boolean;
+  clearInventory?(characterId: string): void;
   clearAll?(): void;
 }
 
@@ -25,6 +26,11 @@ export class InMemoryEquipmentStorage implements EquipmentStorageAdapter {
   private inventory: Map<string, InventoryItemRecord[]> = new Map();
   private loadouts: Map<string, EquippedLoadout> = new Map();
   private raidLoot: Set<string> = new Set();
+
+  clearInventory(characterId: string): void {
+    this.inventory.set(characterId, []);
+    this.loadouts.set(characterId, {});
+  }
 
   getInventory(characterId: string): InventoryItemRecord[] {
     return this.inventory.get(characterId) || [];
@@ -245,6 +251,15 @@ export function unequipItem(
 ): { success: boolean; message: string } {
   activeEquipmentStorage.saveLoadoutSlot(characterId, slot, null);
   return { success: true, message: `Unequipped ${slot.replace(/_/g, ' ')}.` };
+}
+
+/**
+ * Empties a character's inventory and un-equips all loadout items.
+ */
+export function clearCharacterEquipment(characterId: string = 'char_main'): void {
+  if (activeEquipmentStorage.clearInventory) {
+    activeEquipmentStorage.clearInventory(characterId);
+  }
 }
 
 /**

@@ -99,6 +99,7 @@ export interface AppSettings {
 
   // Category 7: App Meta & Diagnostics
   onboarding_completed: boolean;
+  starter_equipment_cleared: boolean;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -177,6 +178,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 
   // Category 7: App Meta & Diagnostics
   onboarding_completed: false,
+  starter_equipment_cleared: false,
 };
 
 export const ACCENT_COLOR_MAP: Record<AccentColor, { hex: string; label: string; loreName: string }> = {

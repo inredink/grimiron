@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,6 +46,7 @@ interface EquipmentInventoryModalProps {
   initialSelectedSlot?: EquipmentSlot;
   onEquipItem: (slot: EquipmentSlot, itemId: string) => void;
   onUnequipItem: (slot: EquipmentSlot) => void;
+  onClearEquipment?: () => void;
 }
 
 export const EquipmentInventoryModal: React.FC<EquipmentInventoryModalProps> = ({
@@ -60,6 +62,7 @@ export const EquipmentInventoryModal: React.FC<EquipmentInventoryModalProps> = (
   initialSelectedSlot,
   onEquipItem,
   onUnequipItem,
+  onClearEquipment,
 }) => {
   const [selectedSlotFilter, setSelectedSlotFilter] = useState<EquipmentSlot | 'all'>(
     initialSelectedSlot || 'all'
@@ -77,6 +80,28 @@ export const EquipmentInventoryModal: React.FC<EquipmentInventoryModalProps> = (
   const equippedItemIdsSet = useMemo(() => {
     return new Set(Object.values(loadout).filter(Boolean) as string[]);
   }, [loadout]);
+
+  const inventoryItemMap = useMemo(() => {
+    return new Map(inventory.map((inv) => [inv.itemId, inv]));
+  }, [inventory]);
+
+  const handleResetInventory = () => {
+    Alert.alert(
+      'Clear All Equipment?',
+      'This will unequip all wargear and remove standard-issue recruit equipment, reducing your inventory to 0 items.\n\nTier 1 Initiation raids do not require gear, so you can still battle and earn raid loot from scratch.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset to 0 Items',
+          style: 'destructive',
+          onPress: () => {
+            triggerHaptic.warning();
+            onClearEquipment?.();
+          },
+        },
+      ]
+    );
+  };
 
   // Filtered list of items
   const displayedItems = useMemo(() => {
@@ -225,13 +250,39 @@ export const EquipmentInventoryModal: React.FC<EquipmentInventoryModalProps> = (
 
         {/* Item List */}
         <ScrollView style={styles.listScroll} contentContainerStyle={styles.listContent}>
+          {activeTab === 'owned' && inventory.length > 0 && (
+            <View style={styles.provenanceNotice}>
+              <View style={styles.provenanceNoticeHeader}>
+                <Ionicons name="information-circle-outline" size={16} color={THEME.colors.primary} />
+                <Text style={styles.provenanceNoticeTitle}>RECRUIT WARGEAR NOTICE</Text>
+              </View>
+              <Text style={styles.provenanceNoticeBody}>
+                Standard-issue recruit equipment was automatically assigned upon enlistment so you do not enter battle unarmed. These are basic starter items, not earned raid loot. Defeat weekly raid bosses to earn rare, high-tier spoils!
+              </Text>
+              {Boolean(onClearEquipment) && (
+                <TouchableOpacity
+                  style={styles.clearInventoryBtn}
+                  onPress={handleResetInventory}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="trash-outline" size={14} color="#FF5252" />
+                  <Text style={styles.clearInventoryBtnText}>START AT 0 ITEMS (CLEAR STARTER GEAR)</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           {displayedItems.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="shield-outline" size={48} color={THEME.colors.textMuted} />
-              <Text style={styles.emptyTitle}>NO WARGEAR FOUND</Text>
+              <Text style={styles.emptyTitle}>
+                {activeTab === 'owned' && inventory.length === 0 ? '0 ITEMS IN INVENTORY' : 'NO WARGEAR FOUND'}
+              </Text>
               <Text style={styles.emptyDesc}>
                 {activeTab === 'owned'
-                  ? 'No equipment owned in this category yet. Win weekly raids and complete campaign missions to claim rare loot!'
+                  ? inventory.length === 0
+                    ? 'Your inventory is completely empty. No recruit gear is equipped. Win weekly raid encounters or complete campaign operations to forge and claim rare wargear!'
+                    : 'No equipment owned in this category yet. Win weekly raids and complete campaign missions to claim rare loot!'
                   : 'No faction armory blueprints cataloged for this category.'}
               </Text>
             </View>
@@ -239,6 +290,10 @@ export const EquipmentInventoryModal: React.FC<EquipmentInventoryModalProps> = (
             displayedItems.map((item) => {
               const isEquipped = loadout[item.slot] === item.id;
               const isOwned = ownedItemIdsSet.has(item.id);
+              const invRecord = inventoryItemMap.get(item.id);
+              const isStarterKit = invRecord?.acquisitionSource === 'starter_kit';
+              const isRaidDrop = invRecord?.acquisitionSource === 'raid_drop';
+              const isCampaignDrop = invRecord?.acquisitionSource === 'campaign_milestone';
               const eligibility = isItemEquipEligible(
                 item,
                 factionId,
@@ -259,7 +314,7 @@ export const EquipmentInventoryModal: React.FC<EquipmentInventoryModalProps> = (
                   {/* Top Row */}
                   <View style={styles.cardTopRow}>
                     <View style={styles.itemTitleWrap}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                         <Text style={[styles.cardItemName, { color: rarityColor }]}>
                           {item.name}
                         </Text>
@@ -267,14 +322,30 @@ export const EquipmentInventoryModal: React.FC<EquipmentInventoryModalProps> = (
                           <Badge
                             label="EQUIPPED"
                             variant="primary"
-                            style={{ marginLeft: 8 }}
+                          />
+                        )}
+                        {isOwned && isStarterKit && (
+                          <Badge
+                            label="STANDARD ISSUE"
+                            variant="neutral"
+                          />
+                        )}
+                        {isOwned && isRaidDrop && (
+                          <Badge
+                            label="RAID SPOILS"
+                            variant="success"
+                          />
+                        )}
+                        {isOwned && isCampaignDrop && (
+                          <Badge
+                            label="CAMPAIGN LOOT"
+                            variant="secondary"
                           />
                         )}
                         {!isOwned && (
                           <Badge
                             label="ARMORY"
-                            variant="secondary"
-                            style={{ marginLeft: 8 }}
+                            variant="neutral"
                           />
                         )}
                       </View>
@@ -506,6 +577,50 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     gap: 12,
+  },
+  provenanceNotice: {
+    backgroundColor: 'rgba(0, 240, 255, 0.05)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.25)',
+    padding: 12,
+    marginBottom: 4,
+  },
+  provenanceNoticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  provenanceNoticeTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: THEME.colors.primary,
+    letterSpacing: 0.8,
+  },
+  provenanceNoticeBody: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    lineHeight: 16,
+  },
+  clearInventoryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 82, 82, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 82, 82, 0.4)',
+    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 10,
+    gap: 6,
+  },
+  clearInventoryBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FF5252',
+    letterSpacing: 0.6,
   },
   emptyContainer: {
     alignItems: 'center',
