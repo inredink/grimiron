@@ -281,6 +281,11 @@ export function reconcileAndPruneUnearnedAchievements(
       const def = ACHIEVEMENT_CATALOG.find((d) => d.id === row.achievement_id);
       if (!def) {
         db.runSync('DELETE FROM achievement_awards WHERE id = ?', [row.id]);
+        db.runSync('DELETE FROM achievement_progress WHERE achievement_id = ?', [row.achievement_id]);
+        db.runSync(
+          "DELETE FROM pending_notifications WHERE details_json LIKE ? OR title LIKE ?",
+          [`%"achievementId":"${row.achievement_id}"%`, `%${row.achievement_id}%`]
+        );
         prunedCount++;
         continue;
       }
@@ -298,6 +303,9 @@ export function reconcileAndPruneUnearnedAchievements(
           [def.name, `%"achievementId":"${def.id}"%`]
         );
         prunedCount++;
+      } else {
+        // Legitimate award: ensure reward_xp matches current rebalanced catalog
+        db.runSync('UPDATE achievement_awards SET reward_xp = ? WHERE id = ?', [def.rewardXp, row.id]);
       }
     }
 

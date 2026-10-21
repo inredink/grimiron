@@ -136,24 +136,37 @@ export function getXpStorageAdapter(): XpStorageAdapter {
 }
 
 /**
- * Returns the calendar day string (YYYY-MM-DD) for a given date in the specified or local timezone.
+ * Returns the calendar day string (YYYY-MM-DD) for a given date in the user's local timezone.
  */
-export function getCalendarDay(date: Date = new Date(), timeZone?: string): string {
-  const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  try {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    return formatter.format(date);
-  } catch {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+export function getCalendarDay(dateInput: Date | string | number = new Date(), timeZone?: string): string {
+  let date: Date;
+  if (typeof dateInput === 'string' || typeof dateInput === 'number') {
+    date = new Date(dateInput);
+  } else {
+    date = dateInput;
   }
+  if (isNaN(date.getTime())) {
+    date = new Date();
+  }
+
+  const tz = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try {
+    if (tz && tz !== 'UTC') {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return formatter.format(date);
+    }
+  } catch {}
+
+  // Fallback to device local date components (never raw UTC string)
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 /**

@@ -154,6 +154,9 @@ export const MissionCard: React.FC<MissionCardProps> = ({
               </View>
             );
           })}
+          <Text style={{ fontSize: 9, color: THEME.colors.primary, marginTop: 6, fontWeight: '700' }}>
+            Tap to inspect operation briefing & objective instructions ›
+          </Text>
         </View>
       )}
 

@@ -1711,23 +1711,29 @@ assert(initialEval.unlockedNodeIds.includes('node_damocles_dropzone'), 'Dropzone
 assert(!initialEval.unlockedNodeIds.includes('node_damocles_outpost'), 'Outpost node is locked initially');
 assert(!initialEval.unlockedNodeIds.includes('node_damocles_fortress_prime'), 'Fortress Prime is locked initially');
 
-// Progress state: Player completes 1 workout
+// Progress state: Player completes multi-workout week 1 training (5 workouts, 20k kg, 35 sets)
 const step1Context: CampaignTelemetryContext = {
   ...initialContext,
-  totalWorkouts: 1,
+  totalWorkouts: 5,
+  totalVolumeKg: 21000,
+  totalSets: 36,
+  totalCombatDamage: 1600,
 };
 const step1Eval = evaluateFullCampaign(campaign!, step1Context);
-assert(step1Eval.completedNodeIds.includes('node_damocles_dropzone'), 'Dropzone node completed after 1 workout');
+assert(step1Eval.completedNodeIds.includes('node_damocles_dropzone'), 'Dropzone node completed after week 1 workouts & volume');
 assert(step1Eval.unlockedNodeIds.includes('node_damocles_outpost'), 'Outpost node unlocked as successor to Dropzone');
 
 // 13.8 Branch Point Unlocking: Outpost completion opens Route Alpha AND Route Beta
 const step2Context: CampaignTelemetryContext = {
   ...step1Context,
-  totalWorkouts: 2,
-  totalCombatDamage: 450, // Meets outpost requirements (2 workouts, 400 damage)
+  totalWorkouts: 10,
+  totalVolumeKg: 52000,
+  totalSets: 80,
+  totalCombatDamage: 4500,
+  defeatedEnemyIds: ['enemy_ork_boyz'],
 };
 const step2Eval = evaluateFullCampaign(campaign!, step2Context);
-assert(step2Eval.completedNodeIds.includes('node_damocles_outpost'), 'Outpost completed after 2 workouts and 450 damage');
+assert(step2Eval.completedNodeIds.includes('node_damocles_outpost'), 'Outpost completed after 10 workouts, 50k kg volume, 4k damage and ork boyz defeat');
 assert(step2Eval.unlockedNodeIds.includes('node_damocles_mines'), 'Route Alpha (Subterranean Mines) unlocked');
 assert(step2Eval.unlockedNodeIds.includes('node_damocles_orbital_array'), 'Route Beta (Orbital Uplink Spire) unlocked');
 
@@ -1735,16 +1741,16 @@ assert(step2Eval.unlockedNodeIds.includes('node_damocles_orbital_array'), 'Route
 // Player A uses GVT (high sets/volume)
 const playerGvtContext: CampaignTelemetryContext = {
   characterId: 'char_gvt',
-  totalWorkouts: 3,
-  totalSets: 30,
-  totalVolumeKg: 8500, // Meets 3,000 kg volume for Mines
-  totalCombatDamage: 1200,
-  totalCombatAttacks: 15,
+  totalWorkouts: 15,
+  totalSets: 125,
+  totalVolumeKg: 90000, // Meets 85,000 kg volume for Mines
+  totalCombatDamage: 8000,
+  totalCombatAttacks: 70,
   defeatedEnemyIds: ['enemy_ork_boyz'],
   completedFactionMissionIds: [],
   activeProgramId: 'prog_gvt_classic',
-  completedProgramSessionsCount: 3,
-  completedProgramBlockNumber: 1,
+  completedProgramSessionsCount: 15,
+  completedProgramBlockNumber: 2,
   squadBattleAttacks: 0,
 };
 const playerGvtEval = evaluateFullCampaign(campaign!, playerGvtContext);
@@ -1753,16 +1759,16 @@ assert(playerGvtEval.completedNodeIds.includes('node_damocles_mines'), 'Player u
 // Player B uses Calisthenics (bodyweight/attacks)
 const playerCalisthenicsContext: CampaignTelemetryContext = {
   characterId: 'char_cal',
-  totalWorkouts: 3,
-  totalSets: 18,
+  totalWorkouts: 15,
+  totalSets: 125,
   totalVolumeKg: 0, // Zero barbell volume
-  totalCombatDamage: 950, // Meets 800 damage for Orbital Array
-  totalCombatAttacks: 18, // Meets 12 attacks for Orbital Array
+  totalCombatDamage: 8000, // Meets 7,500 damage for Orbital Array
+  totalCombatAttacks: 85, // Meets 80 attacks for Orbital Array
   defeatedEnemyIds: ['enemy_ork_boyz'],
   completedFactionMissionIds: [],
   activeProgramId: 'prog_calisthenics_recon',
-  completedProgramSessionsCount: 3,
-  completedProgramBlockNumber: 1,
+  completedProgramSessionsCount: 15,
+  completedProgramBlockNumber: 2,
   squadBattleAttacks: 0,
 };
 const playerCalEval = evaluateFullCampaign(campaign!, playerCalisthenicsContext);
@@ -1775,8 +1781,10 @@ assert(playerCalEval.unlockedNodeIds.includes('node_damocles_fortress_prime'), '
 // 13.10 Boss Defeat Closes Campaign Sector
 const finalBossContext: CampaignTelemetryContext = {
   ...playerGvtContext,
-  totalWorkouts: 4,
-  totalCombatDamage: 2500,
+  totalWorkouts: 20,
+  totalSets: 165,
+  totalVolumeKg: 125000,
+  totalCombatDamage: 13000,
   defeatedEnemyIds: ['enemy_ork_boyz', 'enemy_helbrute'], // Warlord neutralized
 };
 const finalEval = evaluateFullCampaign(campaign!, finalBossContext);

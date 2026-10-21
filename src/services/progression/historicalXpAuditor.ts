@@ -2,6 +2,7 @@ import { calculateWorkoutXp } from './xpCalculator';
 import { getLevelFromTotalXp } from './rankEngine';
 import { getRaidTierById } from '../../content/raidTiers';
 import { RaidTierId } from '../../types/raidProgression';
+import { getCalendarDay } from './xpService';
 
 declare const require: any;
 
@@ -89,13 +90,23 @@ export function auditAndReconcileHistoricalXp(
     completedWorkoutsAudited = completedSessions.length;
 
     for (const session of completedSessions) {
+      const legitimateCalendarDay = getCalendarDay(session.started_at);
+
       // Check if an xp_transactions entry exists for this session
-      const existingTx = db.getFirstSync<{ id: string; amount: number }>(
-        'SELECT id, amount FROM xp_transactions WHERE session_id = ?',
+      const existingTx = db.getFirstSync<{ id: string; amount: number; calendar_day: string }>(
+        'SELECT id, amount, calendar_day FROM xp_transactions WHERE session_id = ?',
         [session.id]
       );
 
-      if (!existingTx) {
+      if (existingTx) {
+        // Guarantee legitimate local calendar day so historical workouts never bleed into today's daily cap
+        if (existingTx.calendar_day !== legitimateCalendarDay) {
+          db.runSync('UPDATE xp_transactions SET calendar_day = ? WHERE id = ?', [
+            legitimateCalendarDay,
+            existingTx.id,
+          ]);
+        }
+      } else {
         // Missing transaction! Load sets and reconstruct legitimate XP
         const exercises = db.getAllSync<{
           id: string;
@@ -142,10 +153,10 @@ export function auditAndReconcileHistoricalXp(
           ? session.total_xp_earned
           : breakdown.totalXp;
 
-        const calendarDay = session.started_at ? session.started_at.substring(0, 10) : new Date().toISOString().substring(0, 10);
+        const calendarDay = legitimateCalendarDay;
         const idempotencyKey = `audit_repaired_${session.id}`;
 
-        // Insert missing transaction safely
+        // Insert missing transaction safely with accurate local calendar day
         db.runSync(
           `INSERT INTO xp_transactions (
             id, user_id, character_id, session_id, amount, requested_amount,
@@ -204,7 +215,7 @@ export function auditAndReconcileHistoricalXp(
         );
 
         if (!raidTx) {
-          const calendarDay = rv.first_victory_at ? rv.first_victory_at.substring(0, 10) : new Date().toISOString().substring(0, 10);
+          const calendarDay = getCalendarDay(rv.first_victory_at || new Date());
           db.runSync(
             `INSERT INTO xp_transactions (
               id, user_id, character_id, session_id, amount, requested_amount,

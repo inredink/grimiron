@@ -423,25 +423,33 @@ export default function CharacterScreen() {
                 </TouchableOpacity>
               }
             >
-              <Text style={styles.activeMissionDesc} numberOfLines={2}>
-                {missionDef.shortDescription}
-              </Text>
-              {missionDef.objectives.map((obj: MissionObjectiveDefinition) => {
-                const progRecord = firstRecord.objectives?.find((o) => o.objectiveId === obj.id);
-                const currentVal = progRecord ? progRecord.currentValue : 0;
-                const pct = Math.min(100, Math.round((currentVal / obj.targetValue) * 100));
-                return (
-                  <View key={obj.id} style={{ marginTop: 8 }}>
-                    <ProgressBar
-                      progress={pct}
-                      label={obj.description}
-                      valueText={`${currentVal} / ${obj.targetValue}`}
-                      color={THEME.colors.primary}
-                      height={6}
-                    />
-                  </View>
-                );
-              })}
+              <TouchableOpacity
+                onPress={() => setIsMissionModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.activeMissionDesc} numberOfLines={2}>
+                  {missionDef.shortDescription}
+                </Text>
+                {missionDef.objectives.map((obj: MissionObjectiveDefinition) => {
+                  const progRecord = firstRecord.objectives?.find((o) => o.objectiveId === obj.id);
+                  const currentVal = progRecord ? progRecord.currentValue : 0;
+                  const pct = Math.min(100, Math.round((currentVal / obj.targetValue) * 100));
+                  return (
+                    <View key={obj.id} style={{ marginTop: 8 }}>
+                      <ProgressBar
+                        progress={pct}
+                        label={obj.description}
+                        valueText={`${currentVal} / ${obj.targetValue}`}
+                        color={THEME.colors.primary}
+                        height={6}
+                      />
+                    </View>
+                  );
+                })}
+                <Text style={{ fontSize: 10, color: THEME.colors.primary, marginTop: 8, fontWeight: '700' }}>
+                  Tap to view operation details & objective requirements ›
+                </Text>
+              </TouchableOpacity>
             </SciFiCard>
           );
         })()}

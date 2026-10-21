@@ -24,6 +24,9 @@ export function evaluateCriterionMetric(
 ): number {
   switch (criterion.type) {
     case 'count_workouts':
+      if (criterion.factionId) {
+        return context.factionId === criterion.factionId ? (context.completedWorkoutsCount || 0) : 0;
+      }
       return context.completedWorkoutsCount || 0;
 
     case 'count_sets':

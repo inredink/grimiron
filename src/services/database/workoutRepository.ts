@@ -79,12 +79,14 @@ export function saveCompletedWorkout(
     }
 
     // 4. Centrally award XP (session now safely exists in workout_sessions)
+    const workoutTargetDate = session.startedAt ? new Date(session.startedAt) : new Date();
     awardResult = awardXp({
       amount: xpEarned,
       sourceType: 'workout_completion',
       sessionId: session.id,
       idempotencyKey: `workout_${session.id}`,
       reason: session.title || 'Crusade Training',
+      targetDate: workoutTargetDate,
       details: { breakdown },
       dailyCap,
     });

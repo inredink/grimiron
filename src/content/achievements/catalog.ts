@@ -18,7 +18,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'flag-outline',
     criterion: { type: 'count_workouts', targetValue: 1 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_wo_initiation_rite',
@@ -29,7 +29,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'shield-outline',
     criterion: { type: 'count_workouts', targetValue: 3 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_wo_field_tested',
@@ -40,7 +40,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'checkmark-circle-outline',
     criterion: { type: 'count_workouts', targetValue: 5 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_wo_veteran_scout',
@@ -51,7 +51,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'compass-outline',
     criterion: { type: 'count_workouts', targetValue: 10 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_wo_line_infantry',
@@ -62,7 +62,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'body-outline',
     criterion: { type: 'count_workouts', targetValue: 15 },
-    rewardXp: 300,
+    rewardXp: 5,
   },
   {
     id: 'ach_wo_iron_discipline',
@@ -73,7 +73,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'barbell-outline',
     criterion: { type: 'count_workouts', targetValue: 20 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_wo_quarter_century',
@@ -84,7 +84,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'medal-outline',
     criterion: { type: 'count_workouts', targetValue: 25 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_wo_battle_tested',
@@ -95,7 +95,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'ribbon-outline',
     criterion: { type: 'count_workouts', targetValue: 30 },
-    rewardXp: 600,
+    rewardXp: 10,
   },
   {
     id: 'ach_wo_forty_missions',
@@ -106,7 +106,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'shield-half-outline',
     criterion: { type: 'count_workouts', targetValue: 40 },
-    rewardXp: 750,
+    rewardXp: 10,
   },
   {
     id: 'ach_wo_half_hundred',
@@ -117,7 +117,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'trophy-outline',
     criterion: { type: 'count_workouts', targetValue: 50 },
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_wo_relentless_sixty',
@@ -128,7 +128,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'fitness-outline',
     criterion: { type: 'count_workouts', targetValue: 60 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_wo_seventy_five',
@@ -139,7 +139,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'diamond-outline',
     criterion: { type: 'count_workouts', targetValue: 75 },
-    rewardXp: 1500,
+    rewardXp: 15,
   },
   {
     id: 'ach_wo_century_club',
@@ -150,7 +150,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'star-outline',
     criterion: { type: 'count_workouts', targetValue: 100 },
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_wo_one_twenty_five',
@@ -161,7 +161,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'earth-outline',
     criterion: { type: 'count_workouts', targetValue: 125 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_wo_one_fifty',
@@ -172,7 +172,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'bonfire-outline',
     criterion: { type: 'count_workouts', targetValue: 150 },
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_wo_two_hundred',
@@ -183,7 +183,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'medal-outline',
     criterion: { type: 'count_workouts', targetValue: 200 },
-    rewardXp: 4000,
+    rewardXp: 20,
   },
   {
     id: 'ach_wo_two_fifty',
@@ -194,7 +194,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: { type: 'count_workouts', targetValue: 250 },
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_wo_three_hundred',
@@ -205,7 +205,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'planet-outline',
     criterion: { type: 'count_workouts', targetValue: 300 },
-    rewardXp: 6000,
+    rewardXp: 25,
   },
   {
     id: 'ach_wo_quick_strike',
@@ -216,7 +216,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'flash-outline',
     criterion: { type: 'distinct_exercises', targetValue: 3 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_wo_thorough_drills',
@@ -227,7 +227,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'layers-outline',
     criterion: { type: 'distinct_exercises', targetValue: 5 },
-    rewardXp: 300,
+    rewardXp: 10,
   },
   {
     id: 'ach_wo_extended_campaign',
@@ -238,7 +238,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'git-network-outline',
     criterion: { type: 'distinct_exercises', targetValue: 7 },
-    rewardXp: 500,
+    rewardXp: 15,
   },
   {
     id: 'ach_wo_ironclad_finisher',
@@ -249,7 +249,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'lock-closed-outline',
     criterion: { type: 'count_sets', targetValue: 12 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
 
   // =========================================================================
@@ -264,7 +264,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'radio-button-on-outline',
     criterion: { type: 'count_sets', targetValue: 1 },
-    rewardXp: 50,
+    rewardXp: 5,
   },
   {
     id: 'ach_vol_ten_sets',
@@ -275,7 +275,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'layers-outline',
     criterion: { type: 'count_sets', targetValue: 10 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_vol_fifty_sets',
@@ -286,7 +286,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'flame-outline',
     criterion: { type: 'count_sets', targetValue: 50 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_vol_hundred_sets',
@@ -297,7 +297,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'shield-outline',
     criterion: { type: 'count_sets', targetValue: 100 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_two_fifty_sets',
@@ -308,7 +308,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'barbell-outline',
     criterion: { type: 'count_sets', targetValue: 250 },
-    rewardXp: 750,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_five_hundred_sets',
@@ -319,7 +319,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'trophy-outline',
     criterion: { type: 'count_sets', targetValue: 500 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_thousand_sets',
@@ -330,7 +330,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'medal-outline',
     criterion: { type: 'count_sets', targetValue: 1000 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_hundred_reps',
@@ -341,7 +341,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'repeat-outline',
     criterion: { type: 'count_reps', targetValue: 100 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_vol_five_hundred_reps',
@@ -352,7 +352,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'sync-outline',
     criterion: { type: 'count_reps', targetValue: 500 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_vol_thousand_reps',
@@ -363,7 +363,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'stats-chart-outline',
     criterion: { type: 'count_reps', targetValue: 1000 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_two_five_hundred_reps',
@@ -374,7 +374,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'pulse-outline',
     criterion: { type: 'count_reps', targetValue: 2500 },
-    rewardXp: 800,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_five_thousand_reps',
@@ -385,7 +385,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flash-outline',
     criterion: { type: 'count_reps', targetValue: 5000 },
-    rewardXp: 1500,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_ten_thousand_reps',
@@ -396,7 +396,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'star-outline',
     criterion: { type: 'count_reps', targetValue: 10000 },
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_first_ton',
@@ -407,7 +407,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'speedometer-outline',
     criterion: { type: 'total_volume_kg', targetValue: 1000 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_vol_five_tons',
@@ -418,7 +418,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'fitness-outline',
     criterion: { type: 'total_volume_kg', targetValue: 5000 },
-    rewardXp: 300,
+    rewardXp: 5,
   },
   {
     id: 'ach_vol_ten_tons',
@@ -429,7 +429,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'barbell-outline',
     criterion: { type: 'total_volume_kg', targetValue: 10000 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_twenty_five_tons',
@@ -440,7 +440,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'car-outline',
     criterion: { type: 'total_volume_kg', targetValue: 25000 },
-    rewardXp: 800,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_fifty_tons',
@@ -451,7 +451,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'shield-outline',
     criterion: { type: 'total_volume_kg', targetValue: 50000 },
-    rewardXp: 1500,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_hundred_tons',
@@ -462,7 +462,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'nuclear-outline',
     criterion: { type: 'total_volume_kg', targetValue: 100000 },
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_quarter_million_kg',
@@ -473,7 +473,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: { type: 'total_volume_kg', targetValue: 250000 },
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_vol_dense_session',
@@ -484,7 +484,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flash-outline',
     criterion: { type: 'single_set_volume_kg', targetValue: 1500 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_iron_endurance',
@@ -495,7 +495,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'hardware-chip-outline',
     criterion: { type: 'single_set_volume_kg', targetValue: 2500 },
-    rewardXp: 750,
+    rewardXp: 15,
   },
 
   // =========================================================================
@@ -510,7 +510,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'grid-outline',
     criterion: { type: 'distinct_exercises', targetValue: 3 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_var_five_movements',
@@ -521,7 +521,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'apps-outline',
     criterion: { type: 'distinct_exercises', targetValue: 5 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_var_ten_movements',
@@ -532,7 +532,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'briefcase-outline',
     criterion: { type: 'distinct_exercises', targetValue: 10 },
-    rewardXp: 300,
+    rewardXp: 10,
   },
   {
     id: 'ach_var_fifteen_movements',
@@ -543,7 +543,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'construct-outline',
     criterion: { type: 'distinct_exercises', targetValue: 15 },
-    rewardXp: 450,
+    rewardXp: 10,
   },
   {
     id: 'ach_var_twenty_movements',
@@ -554,7 +554,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'book-outline',
     criterion: { type: 'distinct_exercises', targetValue: 20 },
-    rewardXp: 600,
+    rewardXp: 15,
   },
   {
     id: 'ach_var_thirty_movements',
@@ -565,7 +565,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'library-outline',
     criterion: { type: 'distinct_exercises', targetValue: 30 },
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_var_fifty_movements',
@@ -576,7 +576,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'infinite-outline',
     criterion: { type: 'distinct_exercises', targetValue: 50 },
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_var_three_equipment',
@@ -587,7 +587,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'options-outline',
     criterion: { type: 'distinct_equipment', targetValue: 3 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_var_five_equipment',
@@ -598,7 +598,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'hammer-outline',
     criterion: { type: 'distinct_equipment', targetValue: 5 },
-    rewardXp: 350,
+    rewardXp: 10,
   },
   {
     id: 'ach_var_seven_equipment',
@@ -609,7 +609,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'hardware-chip-outline',
     criterion: { type: 'distinct_equipment', targetValue: 7 },
-    rewardXp: 750,
+    rewardXp: 15,
   },
   {
     id: 'ach_var_all_categories',
@@ -620,7 +620,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'pie-chart-outline',
     criterion: { type: 'distinct_categories', targetValue: 4 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_var_push_pull_squat',
@@ -631,7 +631,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'triangle-outline',
     criterion: { type: 'distinct_categories', targetValue: 3 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_var_calisthenics_adept',
@@ -642,7 +642,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'walk-outline',
     criterion: { type: 'distinct_exercises', targetValue: 5 },
-    rewardXp: 300,
+    rewardXp: 10,
   },
   {
     id: 'ach_var_kettlebell_pioneer',
@@ -653,7 +653,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'radio-outline',
     criterion: { type: 'distinct_equipment', targetValue: 1 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_var_cable_technician',
@@ -664,7 +664,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'git-commit-outline',
     criterion: { type: 'distinct_equipment', targetValue: 2 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_var_core_foundations',
@@ -675,7 +675,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'shield-checkmark-outline',
     criterion: { type: 'distinct_exercises', targetValue: 4 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
 
   // =========================================================================
@@ -690,7 +690,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'trending-up-outline',
     criterion: { type: 'pr_broken_count', targetValue: 1 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_pr_three_records',
@@ -701,7 +701,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'analytics-outline',
     criterion: { type: 'pr_broken_count', targetValue: 3 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_pr_five_records',
@@ -712,7 +712,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'arrow-up-circle-outline',
     criterion: { type: 'pr_broken_count', targetValue: 5 },
-    rewardXp: 350,
+    rewardXp: 5,
   },
   {
     id: 'ach_pr_ten_records',
@@ -723,7 +723,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'trophy-outline',
     criterion: { type: 'pr_broken_count', targetValue: 10 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_pr_fifteen_records',
@@ -734,7 +734,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'rocket-outline',
     criterion: { type: 'pr_broken_count', targetValue: 15 },
-    rewardXp: 750,
+    rewardXp: 10,
   },
   {
     id: 'ach_pr_twenty_records',
@@ -745,7 +745,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'medal-outline',
     criterion: { type: 'pr_broken_count', targetValue: 20 },
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_pr_thirty_records',
@@ -756,7 +756,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flash-outline',
     criterion: { type: 'pr_broken_count', targetValue: 30 },
-    rewardXp: 1500,
+    rewardXp: 15,
   },
   {
     id: 'ach_pr_fifty_records',
@@ -767,7 +767,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'star-outline',
     criterion: { type: 'pr_broken_count', targetValue: 50 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_pr_hundred_records',
@@ -778,7 +778,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: { type: 'pr_broken_count', targetValue: 100 },
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_weight_forty_kg',
@@ -789,7 +789,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'barbell-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 40 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_pr_weight_sixty_kg',
@@ -800,7 +800,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'disc-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 60 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_pr_weight_eighty_kg',
@@ -811,7 +811,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'shield-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 80 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_pr_weight_hundred_kg',
@@ -822,7 +822,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'ribbon-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 100 },
-    rewardXp: 600,
+    rewardXp: 10,
   },
   {
     id: 'ach_pr_weight_one_twenty_kg',
@@ -833,7 +833,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'fitness-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 120 },
-    rewardXp: 900,
+    rewardXp: 15,
   },
   {
     id: 'ach_pr_weight_one_forty_kg',
@@ -844,7 +844,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'trophy-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 140 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_pr_weight_one_sixty_kg',
@@ -855,7 +855,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'construct-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 160 },
-    rewardXp: 1600,
+    rewardXp: 15,
   },
   {
     id: 'ach_pr_weight_one_eighty_kg',
@@ -866,7 +866,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'bonfire-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 180 },
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_pr_weight_two_hundred_kg',
@@ -877,7 +877,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'medal-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 200 },
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_pr_weight_two_twenty_kg',
@@ -888,7 +888,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'diamond-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 220 },
-    rewardXp: 4000,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_weight_two_fifty_kg',
@@ -899,7 +899,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: { type: 'single_lift_weight_kg', targetValue: 250 },
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_calisthenics_reps',
@@ -910,7 +910,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'body-outline',
     criterion: { type: 'count_reps', targetValue: 20 },
-    rewardXp: 300,
+    rewardXp: 10,
   },
   {
     id: 'ach_pr_reps_thirty',
@@ -921,7 +921,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'pulse-outline',
     criterion: { type: 'count_reps', targetValue: 30 },
-    rewardXp: 500,
+    rewardXp: 15,
   },
 
   // =========================================================================
@@ -936,7 +936,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'calendar-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 2 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_three_weeks',
@@ -947,7 +947,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'time-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 3 },
-    rewardXp: 300,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_one_month',
@@ -958,7 +958,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'checkmark-done-circle-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 4 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_con_six_weeks',
@@ -969,7 +969,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'git-commit-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 6 },
-    rewardXp: 700,
+    rewardXp: 10,
   },
   {
     id: 'ach_con_two_months',
@@ -980,7 +980,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'ribbon-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 8 },
-    rewardXp: 900,
+    rewardXp: 10,
   },
   {
     id: 'ach_con_quarter_year',
@@ -991,7 +991,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'trophy-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 12 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_con_sixteen_weeks',
@@ -1002,7 +1002,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'medal-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 16 },
-    rewardXp: 1600,
+    rewardXp: 15,
   },
   {
     id: 'ach_con_half_year',
@@ -1013,7 +1013,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'earth-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 26 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_con_full_year',
@@ -1024,7 +1024,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'star-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 52 },
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_con_honored_rest',
@@ -1035,7 +1035,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'bed-outline',
     criterion: { type: 'rest_day_taken', targetValue: 1 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_rest_three_days',
@@ -1046,7 +1046,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'pause-circle-outline',
     criterion: { type: 'return_after_rest_days', targetValue: 3 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_return_from_leave',
@@ -1057,7 +1057,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'refresh-circle-outline',
     criterion: { type: 'return_after_rest_days', targetValue: 5 },
-    rewardXp: 250,
+    rewardXp: 10,
   },
   {
     id: 'ach_con_rebound_after_break',
@@ -1068,7 +1068,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'heart-outline',
     criterion: { type: 'return_after_rest_days', targetValue: 7 },
-    rewardXp: 350,
+    rewardXp: 10,
   },
   {
     id: 'ach_con_sustainable_pace',
@@ -1079,7 +1079,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'walk-outline',
     criterion: { type: 'count_workouts', targetValue: 3 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_four_day_split',
@@ -1090,7 +1090,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'grid-outline',
     criterion: { type: 'count_workouts', targetValue: 4 },
-    rewardXp: 350,
+    rewardXp: 10,
   },
   {
     id: 'ach_con_disciplined_five',
@@ -1101,7 +1101,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flash-outline',
     criterion: { type: 'count_workouts', targetValue: 5 },
-    rewardXp: 500,
+    rewardXp: 15,
   },
   {
     id: 'ach_con_early_bird',
@@ -1112,7 +1112,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'sunny-outline',
     criterion: { type: 'count_workouts', targetValue: 2 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_night_vigil',
@@ -1123,7 +1123,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'moon-outline',
     criterion: { type: 'count_workouts', targetValue: 2 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_weekend_warrior',
@@ -1134,7 +1134,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'shield-outline',
     criterion: { type: 'count_workouts', targetValue: 2 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_longevity_mindset',
@@ -1145,7 +1145,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'body-outline',
     criterion: { type: 'distinct_categories', targetValue: 2 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_con_rest_week_cleared',
@@ -1156,7 +1156,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'battery-charging-outline',
     criterion: { type: 'return_after_rest_days', targetValue: 4 },
-    rewardXp: 300,
+    rewardXp: 10,
   },
   {
     id: 'ach_con_steadfast_habit',
@@ -1167,7 +1167,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'infinite-outline',
     criterion: { type: 'weekly_streak_weeks', targetValue: 10 },
-    rewardXp: 1000,
+    rewardXp: 15,
   },
 
   // =========================================================================
@@ -1182,7 +1182,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'cut-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 1 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_cbt_ten_strikes',
@@ -1193,7 +1193,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'radio-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 10 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_cbt_twenty_five_strikes',
@@ -1204,7 +1204,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'flame-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 25 },
-    rewardXp: 350,
+    rewardXp: 5,
   },
   {
     id: 'ach_cbt_fifty_strikes',
@@ -1215,7 +1215,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flash-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 50 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_cbt_hundred_strikes',
@@ -1226,7 +1226,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'nuclear-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 100 },
-    rewardXp: 750,
+    rewardXp: 10,
   },
   {
     id: 'ach_cbt_two_fifty_strikes',
@@ -1237,7 +1237,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'bonfire-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 250 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_cbt_five_hundred_strikes',
@@ -1248,7 +1248,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 500 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_thousand_strikes',
@@ -1259,7 +1259,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'star-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 1000 },
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_first_crit',
@@ -1270,7 +1270,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'sparkles-outline',
     criterion: { type: 'combat_crits_count', targetValue: 1 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_cbt_five_crits',
@@ -1281,7 +1281,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'locate-outline',
     criterion: { type: 'combat_crits_count', targetValue: 5 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_cbt_ten_crits',
@@ -1292,7 +1292,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'locate-outline',
     criterion: { type: 'combat_crits_count', targetValue: 10 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_cbt_twenty_five_crits',
@@ -1303,7 +1303,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'eye-outline',
     criterion: { type: 'combat_crits_count', targetValue: 25 },
-    rewardXp: 700,
+    rewardXp: 10,
   },
   {
     id: 'ach_cbt_fifty_crits',
@@ -1314,7 +1314,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'medal-outline',
     criterion: { type: 'combat_crits_count', targetValue: 50 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_cbt_hundred_crits',
@@ -1325,7 +1325,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'diamond-outline',
     criterion: { type: 'combat_crits_count', targetValue: 100 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_damage_one_k',
@@ -1336,7 +1336,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'flame-outline',
     criterion: { type: 'total_combat_damage', targetValue: 1000 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_cbt_damage_five_k',
@@ -1347,7 +1347,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'radio-outline',
     criterion: { type: 'total_combat_damage', targetValue: 5000 },
-    rewardXp: 300,
+    rewardXp: 5,
   },
   {
     id: 'ach_cbt_damage_ten_k',
@@ -1358,7 +1358,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'nuclear-outline',
     criterion: { type: 'total_combat_damage', targetValue: 10000 },
-    rewardXp: 600,
+    rewardXp: 10,
   },
   {
     id: 'ach_cbt_damage_twenty_five_k',
@@ -1369,7 +1369,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flash-outline',
     criterion: { type: 'total_combat_damage', targetValue: 25000 },
-    rewardXp: 1000,
+    rewardXp: 10,
   },
   {
     id: 'ach_cbt_damage_fifty_k',
@@ -1380,7 +1380,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'shield-outline',
     criterion: { type: 'total_combat_damage', targetValue: 50000 },
-    rewardXp: 1800,
+    rewardXp: 15,
   },
   {
     id: 'ach_cbt_damage_hundred_k',
@@ -1391,7 +1391,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: { type: 'total_combat_damage', targetValue: 100000 },
-    rewardXp: 3500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_damage_two_fifty_k',
@@ -1402,7 +1402,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'planet-outline',
     criterion: { type: 'total_combat_damage', targetValue: 250000 },
-    rewardXp: 6000,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_tactical_resilience',
@@ -1413,7 +1413,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'shield-checkmark-outline',
     criterion: { type: 'combat_attacks_count', targetValue: 5 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
 
   // =========================================================================
@@ -1428,7 +1428,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'skull-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 1 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_bos_three_foes',
@@ -1439,7 +1439,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'checkmark-circle-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 3 },
-    rewardXp: 350,
+    rewardXp: 5,
   },
   {
     id: 'ach_bos_five_foes',
@@ -1450,7 +1450,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'trophy-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 5 },
-    rewardXp: 500,
+    rewardXp: 5,
   },
   {
     id: 'ach_bos_ten_foes',
@@ -1461,7 +1461,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'ribbon-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 10 },
-    rewardXp: 800,
+    rewardXp: 10,
   },
   {
     id: 'ach_bos_fifteen_foes',
@@ -1472,7 +1472,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'medal-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 15 },
-    rewardXp: 1100,
+    rewardXp: 10,
   },
   {
     id: 'ach_bos_twenty_five_foes',
@@ -1483,7 +1483,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'shield-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 25 },
-    rewardXp: 1600,
+    rewardXp: 15,
   },
   {
     id: 'ach_bos_fifty_foes',
@@ -1494,7 +1494,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'bonfire-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 50 },
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_bos_hundred_foes',
@@ -1505,7 +1505,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'star-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 100 },
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_bos_slay_ork_boyz',
@@ -1515,8 +1515,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'bronze',
     icon: 'skull-outline',
-    criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_ork_boyz' },
-    rewardXp: 200,
+    criterion: { type: 'solo_boss_defeated', targetValue: 5, enemyId: 'enemy_ork_boyz' },
+    rewardXp: 5,
   },
   {
     id: 'ach_bos_slay_termagants',
@@ -1526,8 +1526,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'bronze',
     icon: 'bug-outline',
-    criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_tyranid_termagants' },
-    rewardXp: 200,
+    criterion: { type: 'solo_boss_defeated', targetValue: 5, enemyId: 'enemy_tyranid_termagants' },
+    rewardXp: 5,
   },
   {
     id: 'ach_bos_slay_necron_warriors',
@@ -1537,8 +1537,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'silver',
     icon: 'hardware-chip-outline',
-    criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_necron_warriors' },
-    rewardXp: 350,
+    criterion: { type: 'solo_boss_defeated', targetValue: 5, enemyId: 'enemy_necron_warriors' },
+    rewardXp: 10,
   },
   {
     id: 'ach_bos_slay_chaos_legionaries',
@@ -1548,8 +1548,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'silver',
     icon: 'flame-outline',
-    criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_chaos_legionaries' },
-    rewardXp: 400,
+    criterion: { type: 'solo_boss_defeated', targetValue: 5, enemyId: 'enemy_chaos_legionaries' },
+    rewardXp: 10,
   },
   {
     id: 'ach_bos_slay_tau_battlesuit',
@@ -1559,8 +1559,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'silver',
     icon: 'radio-outline',
-    criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_tau_crisis_suit' },
-    rewardXp: 450,
+    criterion: { type: 'solo_boss_defeated', targetValue: 5, enemyId: 'enemy_tau_crisis_suit' },
+    rewardXp: 10,
   },
   {
     id: 'ach_bos_slay_ork_warboss',
@@ -1571,7 +1571,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'bonfire-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_ork_warboss' },
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_bos_slay_carnifex',
@@ -1582,7 +1582,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'paw-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_tyranid_carnifex' },
-    rewardXp: 900,
+    rewardXp: 15,
   },
   {
     id: 'ach_bos_slay_chaos_helbrute',
@@ -1593,7 +1593,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'construct-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_chaos_helbrute' },
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_bos_slay_bloodthirster',
@@ -1604,7 +1604,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'flame-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 1, enemyId: 'enemy_bloodthirster' },
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_bos_diverse_nemesis',
@@ -1615,7 +1615,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'albums-outline',
     criterion: { type: 'distinct_enemies_defeated', targetValue: 3 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_bos_five_distinct_foes',
@@ -1626,7 +1626,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'grid-outline',
     criterion: { type: 'distinct_enemies_defeated', targetValue: 5 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_bos_eight_distinct_foes',
@@ -1637,7 +1637,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'medal-outline',
     criterion: { type: 'distinct_enemies_defeated', targetValue: 8 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_bos_overkill_master',
@@ -1648,7 +1648,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'sparkles-outline',
     criterion: { type: 'total_combat_damage', targetValue: 2000 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_bos_flawless_victory',
@@ -1659,7 +1659,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'shield-checkmark-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 2 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
 
   // =========================================================================
@@ -1674,7 +1674,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'people-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 1 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_sqd_first_strike',
@@ -1685,7 +1685,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'flash-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 1 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_sqd_five_strikes',
@@ -1696,7 +1696,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'layers-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 5 },
-    rewardXp: 300,
+    rewardXp: 5,
   },
   {
     id: 'ach_sqd_ten_strikes',
@@ -1707,7 +1707,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'radio-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 10 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_sqd_twenty_five_strikes',
@@ -1718,7 +1718,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flame-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 25 },
-    rewardXp: 750,
+    rewardXp: 10,
   },
   {
     id: 'ach_sqd_fifty_strikes',
@@ -1729,7 +1729,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'shield-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 50 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_sqd_hundred_strikes',
@@ -1740,7 +1740,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 100 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_first_boss_slain',
@@ -1751,7 +1751,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'skull-outline',
     criterion: { type: 'coop_boss_defeated', targetValue: 1 },
-    rewardXp: 600,
+    rewardXp: 10,
   },
   {
     id: 'ach_sqd_three_bosses_slain',
@@ -1762,7 +1762,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'medal-outline',
     criterion: { type: 'coop_boss_defeated', targetValue: 3 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_sqd_five_bosses_slain',
@@ -1773,7 +1773,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'ribbon-outline',
     criterion: { type: 'coop_boss_defeated', targetValue: 5 },
-    rewardXp: 2000,
+    rewardXp: 15,
   },
   {
     id: 'ach_sqd_ten_bosses_slain',
@@ -1784,7 +1784,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'bonfire-outline',
     criterion: { type: 'coop_boss_defeated', targetValue: 10 },
-    rewardXp: 4000,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_shared_dmg_five_k',
@@ -1795,7 +1795,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'speedometer-outline',
     criterion: { type: 'squad_shared_damage', targetValue: 5000 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_sqd_shared_dmg_ten_k',
@@ -1806,7 +1806,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'hammer-outline',
     criterion: { type: 'squad_shared_damage', targetValue: 10000 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_sqd_shared_dmg_twenty_five_k',
@@ -1817,7 +1817,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flash-outline',
     criterion: { type: 'squad_shared_damage', targetValue: 25000 },
-    rewardXp: 900,
+    rewardXp: 10,
   },
   {
     id: 'ach_sqd_shared_dmg_fifty_k',
@@ -1828,7 +1828,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'nuclear-outline',
     criterion: { type: 'squad_shared_damage', targetValue: 50000 },
-    rewardXp: 1800,
+    rewardXp: 15,
   },
   {
     id: 'ach_sqd_shared_dmg_hundred_k',
@@ -1839,7 +1839,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'diamond-outline',
     criterion: { type: 'squad_shared_damage', targetValue: 100000 },
-    rewardXp: 3500,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_shared_dmg_two_fifty_k',
@@ -1850,7 +1850,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'star-outline',
     criterion: { type: 'squad_shared_damage', targetValue: 250000 },
-    rewardXp: 6000,
+    rewardXp: 25,
   },
   {
     id: 'ach_sqd_invite_generated',
@@ -1861,7 +1861,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'key-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 1 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_sqd_flawless_coordination',
@@ -1872,7 +1872,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'sync-outline',
     criterion: { type: 'coop_boss_defeated', targetValue: 1 },
-    rewardXp: 350,
+    rewardXp: 10,
   },
   {
     id: 'ach_sqd_vanguard_duo',
@@ -1883,7 +1883,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'people-circle-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 3 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_sqd_iron_resolve',
@@ -1894,7 +1894,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'infinite-outline',
     criterion: { type: 'coop_attacks_count', targetValue: 8 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_sqd_warboss_slain_together',
@@ -1905,7 +1905,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flame-outline',
     criterion: { type: 'coop_boss_defeated', targetValue: 1, enemyId: 'raid_ork_warboss' },
-    rewardXp: 1000,
+    rewardXp: 15,
   },
 
   // =========================================================================
@@ -1920,7 +1920,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'arrow-up-circle-outline',
     criterion: { type: 'character_level', targetValue: 2 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_level_three',
@@ -1931,7 +1931,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'trending-up-outline',
     criterion: { type: 'character_level', targetValue: 3 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_level_five',
@@ -1942,7 +1942,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'shield-outline',
     criterion: { type: 'character_level', targetValue: 5 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_level_ten',
@@ -1953,7 +1953,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'medal-outline',
     criterion: { type: 'character_level', targetValue: 10 },
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_level_fifteen',
@@ -1964,7 +1964,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'ribbon-outline',
     criterion: { type: 'character_level', targetValue: 15 },
-    rewardXp: 750,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_level_twenty',
@@ -1975,7 +1975,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'trophy-outline',
     criterion: { type: 'character_level', targetValue: 20 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_prg_level_twenty_five',
@@ -1986,7 +1986,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'diamond-outline',
     criterion: { type: 'character_level', targetValue: 25 },
-    rewardXp: 1800,
+    rewardXp: 15,
   },
   {
     id: 'ach_prg_level_thirty',
@@ -1997,7 +1997,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'bonfire-outline',
     criterion: { type: 'character_level', targetValue: 30 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_prg_level_forty',
@@ -2008,7 +2008,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'star-outline',
     criterion: { type: 'character_level', targetValue: 40 },
-    rewardXp: 4000,
+    rewardXp: 20,
   },
   {
     id: 'ach_prg_level_fifty',
@@ -2019,7 +2019,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: { type: 'character_level', targetValue: 50 },
-    rewardXp: 6000,
+    rewardXp: 25,
   },
   {
     id: 'ach_prg_tier_two',
@@ -2030,7 +2030,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'chevron-up-outline',
     criterion: { type: 'rank_tier', targetValue: 2 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_tier_three',
@@ -2041,7 +2041,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'chevron-forward-circle-outline',
     criterion: { type: 'rank_tier', targetValue: 3 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_tier_four',
@@ -2052,7 +2052,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'medal-outline',
     criterion: { type: 'rank_tier', targetValue: 4 },
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_prg_tier_five',
@@ -2063,18 +2063,18 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: { type: 'rank_tier', targetValue: 5 },
-    rewardXp: 1500,
+    rewardXp: 20,
   },
   {
     id: 'ach_prg_faction_astartes',
     name: 'Angel of Death Confirmed',
-    description: 'Pledge allegiance to the Adeptus Astartes (Space Marines).',
+    description: 'Complete 10 full crusade workouts under the Adeptus Astartes (Space Marines) banner.',
     category: 'progression',
     scope: 'character',
-    tier: 'bronze',
+    tier: 'silver',
     icon: 'shield-outline',
-    criterion: { type: 'distinct_factions_tried', targetValue: 1, factionId: 'adeptus-astartes' },
-    rewardXp: 100,
+    criterion: { type: 'count_workouts', targetValue: 10, factionId: 'adeptus-astartes' },
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_guard',
@@ -2084,8 +2084,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'bronze',
     icon: 'locate-outline',
-    criterion: { type: 'distinct_factions_tried', targetValue: 1, factionId: 'astra-militarum' },
-    rewardXp: 100,
+    criterion: { type: 'count_workouts', targetValue: 10, factionId: 'astra-militarum' },
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_faction_mechanicus',
@@ -2095,8 +2095,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'bronze',
     icon: 'hardware-chip-outline',
-    criterion: { type: 'distinct_factions_tried', targetValue: 1, factionId: 'adeptus-mechanicus' },
-    rewardXp: 100,
+    criterion: { type: 'count_workouts', targetValue: 10, factionId: 'adeptus-mechanicus' },
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_faction_sororitas',
@@ -2106,8 +2106,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'bronze',
     icon: 'flame-outline',
-    criterion: { type: 'distinct_factions_tried', targetValue: 1, factionId: 'adepta-sororitas' },
-    rewardXp: 100,
+    criterion: { type: 'count_workouts', targetValue: 10, factionId: 'adepta-sororitas' },
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_faction_tau',
@@ -2117,8 +2117,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'bronze',
     icon: 'radio-outline',
-    criterion: { type: 'distinct_factions_tried', targetValue: 1, factionId: 'tau-empire' },
-    rewardXp: 100,
+    criterion: { type: 'count_workouts', targetValue: 10, factionId: 'tau-empire' },
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_faction_orks',
@@ -2128,8 +2128,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'bronze',
     icon: 'happy-outline',
-    criterion: { type: 'distinct_factions_tried', targetValue: 1, factionId: 'orks' },
-    rewardXp: 100,
+    criterion: { type: 'count_workouts', targetValue: 10, factionId: 'orks' },
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_faction_necrons',
@@ -2139,8 +2139,8 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     scope: 'character',
     tier: 'bronze',
     icon: 'ellipse-outline',
-    criterion: { type: 'distinct_factions_tried', targetValue: 1, factionId: 'necrons' },
-    rewardXp: 100,
+    criterion: { type: 'count_workouts', targetValue: 10, factionId: 'necrons' },
+    rewardXp: 5,
   },
   {
     id: 'ach_prg_cosmic_wanderer',
@@ -2151,7 +2151,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'planet-outline',
     criterion: { type: 'distinct_factions_tried', targetValue: 3 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
 
   // =========================================================================
@@ -2166,7 +2166,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'construct-outline',
     criterion: { type: 'custom_equipment_count', targetValue: 1 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_eq_three_custom',
@@ -2177,7 +2177,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'layers-outline',
     criterion: { type: 'custom_equipment_count', targetValue: 3 },
-    rewardXp: 250,
+    rewardXp: 5,
   },
   {
     id: 'ach_eq_five_custom',
@@ -2188,7 +2188,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'hammer-outline',
     criterion: { type: 'custom_equipment_count', targetValue: 5 },
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_eq_ten_custom',
@@ -2199,7 +2199,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'hardware-chip-outline',
     criterion: { type: 'custom_equipment_count', targetValue: 10 },
-    rewardXp: 750,
+    rewardXp: 15,
   },
   {
     id: 'ach_eq_favorite_pinned',
@@ -2210,7 +2210,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'star-outline',
     criterion: { type: 'distinct_exercises', targetValue: 1 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_eq_three_favorites',
@@ -2221,7 +2221,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'bookmark-outline',
     criterion: { type: 'distinct_exercises', targetValue: 3 },
-    rewardXp: 150,
+    rewardXp: 5,
   },
   {
     id: 'ach_eq_five_favorites',
@@ -2232,7 +2232,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'ribbon-outline',
     criterion: { type: 'distinct_exercises', targetValue: 5 },
-    rewardXp: 250,
+    rewardXp: 10,
   },
   {
     id: 'ach_eq_barbell_mastery',
@@ -2243,7 +2243,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'barbell-outline',
     criterion: { type: 'distinct_exercises', targetValue: 4 },
-    rewardXp: 300,
+    rewardXp: 10,
   },
   {
     id: 'ach_eq_dumbbell_arsenal',
@@ -2254,7 +2254,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'fitness-outline',
     criterion: { type: 'distinct_exercises', targetValue: 4 },
-    rewardXp: 300,
+    rewardXp: 10,
   },
   {
     id: 'ach_eq_cable_rigging',
@@ -2265,7 +2265,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'git-network-outline',
     criterion: { type: 'distinct_exercises', targetValue: 3 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_eq_machine_operator',
@@ -2276,7 +2276,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'cog-outline',
     criterion: { type: 'distinct_exercises', targetValue: 3 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_eq_band_specialist',
@@ -2287,7 +2287,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'infinite-outline',
     criterion: { type: 'distinct_exercises', targetValue: 3 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_eq_kettlebell_cadence',
@@ -2298,18 +2298,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'sync-outline',
     criterion: { type: 'distinct_exercises', targetValue: 2 },
-    rewardXp: 200,
-  },
-  {
-    id: 'ach_eq_subfaction_heraldry',
-    name: 'Heraldry of the Subfaction',
-    description: 'Select an iconic subfaction (e.g. Farsight Enclaves, Space Wolves) and train under its colors.',
-    category: 'equipment',
-    scope: 'character',
-    tier: 'silver',
-    icon: 'color-palette-outline',
-    criterion: { type: 'distinct_factions_tried', targetValue: 1 },
-    rewardXp: 300,
+    rewardXp: 5,
   },
   {
     id: 'ach_eq_iron_armory_complete',
@@ -2320,7 +2309,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'medal-outline',
     criterion: { type: 'distinct_equipment', targetValue: 5 },
-    rewardXp: 600,
+    rewardXp: 15,
   },
   {
     id: 'ach_eq_relic_connoisseur',
@@ -2331,7 +2320,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'diamond-outline',
     criterion: { type: 'distinct_equipment', targetValue: 6 },
-    rewardXp: 1200,
+    rewardXp: 20,
   },
 
   // =========================================================================
@@ -2346,7 +2335,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'map-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 1 },
-    rewardXp: 100,
+    rewardXp: 5,
   },
   {
     id: 'ach_cmp_three_missions',
@@ -2357,7 +2346,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'compass-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 3 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_cmp_five_missions',
@@ -2368,7 +2357,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'checkmark-circle-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 5 },
-    rewardXp: 350,
+    rewardXp: 5,
   },
   {
     id: 'ach_cmp_ten_missions',
@@ -2379,7 +2368,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'shield-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 10 },
-    rewardXp: 600,
+    rewardXp: 10,
   },
   {
     id: 'ach_cmp_twenty_missions',
@@ -2390,7 +2379,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'trophy-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 20 },
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_cmp_fifty_missions',
@@ -2401,7 +2390,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'planet-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 50 },
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cmp_hundred_missions',
@@ -2412,7 +2401,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'star-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 100 },
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_cmp_ork_skirmish',
@@ -2423,7 +2412,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'skull-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 1, enemyId: 'enemy_ork_boyz' },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_cmp_tyranid_infestation',
@@ -2434,7 +2423,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'bug-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 1, enemyId: 'enemy_tyranid_termagants' },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_cmp_chaos_rebellion',
@@ -2445,7 +2434,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flame-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 1, enemyId: 'enemy_chaos_legionaries' },
-    rewardXp: 350,
+    rewardXp: 10,
   },
   {
     id: 'ach_cmp_glory_bonus_claimed',
@@ -2456,7 +2445,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'bronze',
     icon: 'sparkles-outline',
     criterion: { type: 'solo_boss_defeated', targetValue: 1 },
-    rewardXp: 200,
+    rewardXp: 5,
   },
   {
     id: 'ach_cmp_crusade_master',
@@ -2467,7 +2456,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'medal-outline',
     criterion: { type: 'campaign_missions_completed', targetValue: 6 },
-    rewardXp: 1000,
+    rewardXp: 15,
   },
 
   // =========================================================================
@@ -2482,7 +2471,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'shield-outline',
     criterion: {type: "count_workouts",targetValue: 350},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_wo_year_crusader',
@@ -2493,7 +2482,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'planet-outline',
     criterion: {type: "count_workouts",targetValue: 365},
-    rewardXp: 1500,
+    rewardXp: 20,
   },
   {
     id: 'ach_wo_four_hundred',
@@ -2504,7 +2493,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'ribbon-outline',
     criterion: {type: "count_workouts",targetValue: 400},
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_wo_five_hundred',
@@ -2515,7 +2504,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'trophy-outline',
     criterion: {type: "count_workouts",targetValue: 500},
-    rewardXp: 3000,
+    rewardXp: 25,
   },
   {
     id: 'ach_wo_seven_fifty',
@@ -2526,7 +2515,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "count_workouts",targetValue: 750},
-    rewardXp: 4000,
+    rewardXp: 25,
   },
   {
     id: 'ach_wo_one_thousand',
@@ -2537,7 +2526,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "count_workouts",targetValue: 1000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_vol_seven_fifty_sets',
@@ -2548,7 +2537,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'layers-outline',
     criterion: {type: "count_sets",targetValue: 750},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_fifteen_hundred_sets',
@@ -2559,7 +2548,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'hardware-chip-outline',
     criterion: {type: "count_sets",targetValue: 1500},
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_two_thousand_sets',
@@ -2570,7 +2559,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'shield-outline',
     criterion: {type: "count_sets",targetValue: 2000},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_three_thousand_sets',
@@ -2581,7 +2570,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hammer-outline',
     criterion: {type: "count_sets",targetValue: 3000},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_five_thousand_sets',
@@ -2592,7 +2581,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'flame-outline',
     criterion: {type: "count_sets",targetValue: 5000},
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_seven_five_hundred_sets',
@@ -2603,7 +2592,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'fitness-outline',
     criterion: {type: "count_sets",targetValue: 7500},
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_ten_thousand_sets',
@@ -2614,7 +2603,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "count_sets",targetValue: 10000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_vol_fifteen_thousand_reps',
@@ -2625,7 +2614,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flash-outline',
     criterion: {type: "count_reps",targetValue: 15000},
-    rewardXp: 700,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_twenty_five_thousand_reps',
@@ -2636,7 +2625,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'pulse-outline',
     criterion: {type: "count_reps",targetValue: 25000},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_thirty_five_thousand_reps',
@@ -2647,7 +2636,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trending-up-outline',
     criterion: {type: "count_reps",targetValue: 35000},
-    rewardXp: 1500,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_fifty_thousand_reps',
@@ -2658,7 +2647,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'sparkles-outline',
     criterion: {type: "count_reps",targetValue: 50000},
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_seventy_five_thousand_reps',
@@ -2669,7 +2658,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'water-outline',
     criterion: {type: "count_reps",targetValue: 75000},
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_hundred_thousand_reps',
@@ -2680,7 +2669,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'medal-outline',
     criterion: {type: "count_reps",targetValue: 100000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_vol_three_fifty_k',
@@ -2691,7 +2680,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'barbell-outline',
     criterion: {type: "total_volume_kg",targetValue: 350000},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_half_million_kg',
@@ -2702,7 +2691,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'barbell-outline',
     criterion: {type: "total_volume_kg",targetValue: 500000},
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_seven_fifty_k',
@@ -2713,7 +2702,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "total_volume_kg",targetValue: 750000},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_one_million_kg',
@@ -2724,7 +2713,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: {type: "total_volume_kg",targetValue: 1000000},
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_one_point_five_m',
@@ -2735,7 +2724,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'flash-outline',
     criterion: {type: "total_volume_kg",targetValue: 1500000},
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_two_point_five_m',
@@ -2746,7 +2735,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'flame-outline',
     criterion: {type: "total_volume_kg",targetValue: 2500000},
-    rewardXp: 4000,
+    rewardXp: 25,
   },
   {
     id: 'ach_vol_five_million_kg',
@@ -2757,7 +2746,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'planet-outline',
     criterion: {type: "total_volume_kg",targetValue: 5000000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_vol_ten_million_kg',
@@ -2768,7 +2757,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "total_volume_kg",targetValue: 10000000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_vol_dense_two_thousand',
@@ -2779,7 +2768,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'speedometer-outline',
     criterion: {type: "single_set_volume_kg",targetValue: 2000},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_vol_dense_three_thousand',
@@ -2790,7 +2779,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flame-outline',
     criterion: {type: "single_set_volume_kg",targetValue: 3000},
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_vol_dense_four_thousand',
@@ -2801,7 +2790,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'nuclear-outline',
     criterion: {type: "single_set_volume_kg",targetValue: 4000},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_vol_dense_five_thousand',
@@ -2812,7 +2801,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'hardware-chip-outline',
     criterion: {type: "single_set_volume_kg",targetValue: 5000},
-    rewardXp: 3000,
+    rewardXp: 25,
   },
   {
     id: 'ach_var_twenty_five_movements',
@@ -2823,7 +2812,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'git-network-outline',
     criterion: {type: "distinct_exercises",targetValue: 25},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_var_thirty_five_movements',
@@ -2834,7 +2823,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'construct-outline',
     criterion: {type: "distinct_exercises",targetValue: 35},
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_var_forty_movements',
@@ -2845,7 +2834,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'library-outline',
     criterion: {type: "distinct_exercises",targetValue: 40},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_var_forty_five_movements',
@@ -2856,7 +2845,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "distinct_exercises",targetValue: 45},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_var_fifty_five_movements',
@@ -2867,7 +2856,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hardware-chip-outline',
     criterion: {type: "distinct_exercises",targetValue: 55},
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_var_sixty_movements',
@@ -2878,7 +2867,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'trophy-outline',
     criterion: {type: "distinct_exercises",targetValue: 60},
-    rewardXp: 3500,
+    rewardXp: 25,
   },
   {
     id: 'ach_var_eight_equipment',
@@ -2889,7 +2878,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'fitness-outline',
     criterion: {type: "distinct_equipment",targetValue: 8},
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_var_nine_equipment',
@@ -2900,7 +2889,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hammer-outline',
     criterion: {type: "distinct_equipment",targetValue: 9},
-    rewardXp: 1500,
+    rewardXp: 20,
   },
   {
     id: 'ach_var_ten_equipment',
@@ -2911,7 +2900,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "distinct_equipment",targetValue: 10},
-    rewardXp: 3000,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_forty_records',
@@ -2922,7 +2911,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'trending-up-outline',
     criterion: {type: "pr_broken_count",targetValue: 40},
-    rewardXp: 450,
+    rewardXp: 10,
   },
   {
     id: 'ach_pr_seventy_five',
@@ -2933,7 +2922,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flame-outline',
     criterion: {type: "pr_broken_count",targetValue: 75},
-    rewardXp: 900,
+    rewardXp: 15,
   },
   {
     id: 'ach_pr_one_twenty_five',
@@ -2944,7 +2933,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'flash-outline',
     criterion: {type: "pr_broken_count",targetValue: 125},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_pr_one_fifty',
@@ -2955,7 +2944,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "pr_broken_count",targetValue: 150},
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_pr_two_hundred',
@@ -2966,7 +2955,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'trophy-outline',
     criterion: {type: "pr_broken_count",targetValue: 200},
-    rewardXp: 3500,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_three_hundred',
@@ -2977,7 +2966,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "pr_broken_count",targetValue: 300},
-    rewardXp: 4500,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_five_hundred',
@@ -2988,7 +2977,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "pr_broken_count",targetValue: 500},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_weight_one_thirty_kg',
@@ -2999,7 +2988,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'barbell-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 130},
-    rewardXp: 650,
+    rewardXp: 15,
   },
   {
     id: 'ach_pr_weight_one_fifty_kg',
@@ -3010,7 +2999,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'barbell-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 150},
-    rewardXp: 850,
+    rewardXp: 15,
   },
   {
     id: 'ach_pr_weight_one_seventy_kg',
@@ -3021,7 +3010,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 170},
-    rewardXp: 1500,
+    rewardXp: 20,
   },
   {
     id: 'ach_pr_weight_one_ninety_kg',
@@ -3032,7 +3021,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hammer-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 190},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_pr_weight_two_ten_kg',
@@ -3043,7 +3032,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'flash-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 210},
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_pr_weight_two_thirty_kg',
@@ -3054,7 +3043,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'hardware-chip-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 230},
-    rewardXp: 3000,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_weight_two_forty_kg',
@@ -3065,7 +3054,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'nuclear-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 240},
-    rewardXp: 3500,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_weight_two_sixty_kg',
@@ -3076,7 +3065,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'trophy-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 260},
-    rewardXp: 4000,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_weight_two_seventy_kg',
@@ -3087,7 +3076,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'medal-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 270},
-    rewardXp: 4500,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_weight_two_eighty_kg',
@@ -3098,7 +3087,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'ribbon-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 280},
-    rewardXp: 4800,
+    rewardXp: 25,
   },
   {
     id: 'ach_pr_weight_three_hundred_kg',
@@ -3109,7 +3098,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "single_lift_weight_kg",targetValue: 300},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_rec_eighteen_weeks',
@@ -3120,7 +3109,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'calendar-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 18},
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_rec_twenty_weeks',
@@ -3131,7 +3120,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'hourglass-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 20},
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_rec_thirty_weeks',
@@ -3142,7 +3131,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'time-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 30},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_rec_thirty_five_weeks',
@@ -3153,7 +3142,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'compass-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 35},
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_rec_forty_weeks',
@@ -3164,7 +3153,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 40},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_rec_forty_five_weeks',
@@ -3175,7 +3164,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'ribbon-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 45},
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_rec_sixty_weeks',
@@ -3186,7 +3175,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 60},
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_rec_seventy_five_weeks',
@@ -3197,7 +3186,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'medal-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 75},
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_rec_ninety_weeks',
@@ -3208,7 +3197,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'flash-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 90},
-    rewardXp: 3500,
+    rewardXp: 20,
   },
   {
     id: 'ach_rec_hundred_weeks',
@@ -3219,7 +3208,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'trophy-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 100},
-    rewardXp: 4500,
+    rewardXp: 25,
   },
   {
     id: 'ach_rec_hundred_four_weeks',
@@ -3230,7 +3219,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 104},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_rec_hundred_fifty_weeks',
@@ -3241,7 +3230,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "weekly_streak_weeks",targetValue: 150},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_seven_fifty',
@@ -3252,7 +3241,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flash-outline',
     criterion: {type: "combat_attacks_count",targetValue: 750},
-    rewardXp: 500,
+    rewardXp: 10,
   },
   {
     id: 'ach_cbt_fifteen_hundred',
@@ -3263,7 +3252,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flame-outline',
     criterion: {type: "combat_attacks_count",targetValue: 1500},
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_cbt_two_thousand',
@@ -3274,7 +3263,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'hardware-chip-outline',
     criterion: {type: "combat_attacks_count",targetValue: 2000},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_cbt_three_thousand',
@@ -3285,7 +3274,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "combat_attacks_count",targetValue: 3000},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_five_thousand',
@@ -3296,7 +3285,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hammer-outline',
     criterion: {type: "combat_attacks_count",targetValue: 5000},
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_seven_five_hundred',
@@ -3307,7 +3296,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'nuclear-outline',
     criterion: {type: "combat_attacks_count",targetValue: 7500},
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_ten_thousand',
@@ -3318,7 +3307,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "combat_attacks_count",targetValue: 10000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_twenty_five_thousand',
@@ -3329,7 +3318,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "combat_attacks_count",targetValue: 25000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_seventy_five_crits',
@@ -3340,7 +3329,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flash-outline',
     criterion: {type: "combat_crits_count",targetValue: 75},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_cbt_one_fifty_crits',
@@ -3351,7 +3340,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'pin-outline',
     criterion: {type: "combat_crits_count",targetValue: 150},
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_cbt_two_fifty_crits',
@@ -3362,7 +3351,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'radio-outline',
     criterion: {type: "combat_crits_count",targetValue: 250},
-    rewardXp: 1500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_three_fifty_crits',
@@ -3373,7 +3362,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'skull-outline',
     criterion: {type: "combat_crits_count",targetValue: 350},
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_five_hundred_crits',
@@ -3384,7 +3373,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hammer-outline',
     criterion: {type: "combat_crits_count",targetValue: 500},
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_seven_fifty_crits',
@@ -3395,7 +3384,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'medal-outline',
     criterion: {type: "combat_crits_count",targetValue: 750},
-    rewardXp: 3500,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_thousand_crits',
@@ -3406,7 +3395,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "combat_crits_count",targetValue: 1000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_three_fifty_k_dmg',
@@ -3417,7 +3406,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flame-outline',
     criterion: {type: "total_combat_damage",targetValue: 350000},
-    rewardXp: 900,
+    rewardXp: 15,
   },
   {
     id: 'ach_cbt_half_million_dmg',
@@ -3428,7 +3417,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'nuclear-outline',
     criterion: {type: "total_combat_damage",targetValue: 500000},
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_cbt_seven_fifty_k_dmg',
@@ -3439,7 +3428,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'flash-outline',
     criterion: {type: "total_combat_damage",targetValue: 750000},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_one_million_dmg',
@@ -3450,7 +3439,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: {type: "total_combat_damage",targetValue: 1000000},
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_two_point_five_m_dmg',
@@ -3461,7 +3450,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hardware-chip-outline',
     criterion: {type: "total_combat_damage",targetValue: 2500000},
-    rewardXp: 3500,
+    rewardXp: 20,
   },
   {
     id: 'ach_cbt_five_million_dmg',
@@ -3472,7 +3461,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'planet-outline',
     criterion: {type: "total_combat_damage",targetValue: 5000000},
-    rewardXp: 4500,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_seven_point_five_m_dmg',
@@ -3483,7 +3472,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'flame-outline',
     criterion: {type: "total_combat_damage",targetValue: 7500000},
-    rewardXp: 4800,
+    rewardXp: 25,
   },
   {
     id: 'ach_cbt_ten_million_dmg',
@@ -3494,7 +3483,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "total_combat_damage",targetValue: 10000000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_bos_fifteen',
@@ -3505,7 +3494,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'skull-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 15},
-    rewardXp: 450,
+    rewardXp: 10,
   },
   {
     id: 'ach_bos_thirty_five',
@@ -3516,7 +3505,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'shield-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 35},
-    rewardXp: 900,
+    rewardXp: 15,
   },
   {
     id: 'ach_bos_forty',
@@ -3527,7 +3516,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'hammer-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 40},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_bos_seventy_five',
@@ -3538,7 +3527,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 75},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_bos_one_twenty_five',
@@ -3549,7 +3538,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'medal-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 125},
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_bos_one_fifty',
@@ -3560,7 +3549,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'flame-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 150},
-    rewardXp: 2500,
+    rewardXp: 20,
   },
   {
     id: 'ach_bos_two_hundred',
@@ -3571,7 +3560,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'ribbon-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 200},
-    rewardXp: 3500,
+    rewardXp: 25,
   },
   {
     id: 'ach_bos_three_hundred',
@@ -3582,7 +3571,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 300},
-    rewardXp: 4500,
+    rewardXp: 25,
   },
   {
     id: 'ach_bos_five_hundred',
@@ -3593,7 +3582,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "solo_boss_defeated",targetValue: 500},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_bos_ten_enemies',
@@ -3604,7 +3593,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'git-merge-outline',
     criterion: {type: "distinct_enemies_defeated",targetValue: 10},
-    rewardXp: 900,
+    rewardXp: 15,
   },
   {
     id: 'ach_bos_twelve_enemies',
@@ -3615,7 +3604,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "distinct_enemies_defeated",targetValue: 12},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_bos_fifteen_enemies',
@@ -3626,7 +3615,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'trophy-outline',
     criterion: {type: "distinct_enemies_defeated",targetValue: 15},
-    rewardXp: 3000,
+    rewardXp: 25,
   },
   {
     id: 'ach_sqd_two_fifty_attacks',
@@ -3637,7 +3626,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'people-outline',
     criterion: {type: "coop_attacks_count",targetValue: 250},
-    rewardXp: 850,
+    rewardXp: 15,
   },
   {
     id: 'ach_sqd_five_hundred_attacks',
@@ -3648,7 +3637,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "coop_attacks_count",targetValue: 500},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_thousand_attacks',
@@ -3659,7 +3648,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "coop_attacks_count",targetValue: 1000},
-    rewardXp: 4000,
+    rewardXp: 25,
   },
   {
     id: 'ach_sqd_fifteen_raids',
@@ -3670,7 +3659,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'trophy-outline',
     criterion: {type: "coop_boss_defeated",targetValue: 15},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_sqd_twenty_five_raids',
@@ -3681,7 +3670,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'medal-outline',
     criterion: {type: "coop_boss_defeated",targetValue: 25},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_forty_raids',
@@ -3692,7 +3681,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'ribbon-outline',
     criterion: {type: "coop_boss_defeated",targetValue: 40},
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_fifty_raids',
@@ -3703,7 +3692,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "coop_boss_defeated",targetValue: 50},
-    rewardXp: 2800,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_seventy_five_raids',
@@ -3714,7 +3703,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'trophy-outline',
     criterion: {type: "coop_boss_defeated",targetValue: 75},
-    rewardXp: 3800,
+    rewardXp: 25,
   },
   {
     id: 'ach_sqd_hundred_raids',
@@ -3725,7 +3714,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "coop_boss_defeated",targetValue: 100},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_sqd_half_million_dmg',
@@ -3736,7 +3725,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'flame-outline',
     criterion: {type: "squad_shared_damage",targetValue: 500000},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_sqd_seven_fifty_k_dmg',
@@ -3747,7 +3736,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'nuclear-outline',
     criterion: {type: "squad_shared_damage",targetValue: 750000},
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_sqd_one_million_dmg',
@@ -3758,7 +3747,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: {type: "squad_shared_damage",targetValue: 1000000},
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_two_point_five_m_dmg',
@@ -3769,7 +3758,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hardware-chip-outline',
     criterion: {type: "squad_shared_damage",targetValue: 2500000},
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_sqd_five_million_dmg',
@@ -3780,7 +3769,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'planet-outline',
     criterion: {type: "squad_shared_damage",targetValue: 5000000},
-    rewardXp: 4500,
+    rewardXp: 25,
   },
   {
     id: 'ach_sqd_ten_million_dmg',
@@ -3791,7 +3780,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "squad_shared_damage",targetValue: 10000000},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_prg_level_thirty_five',
@@ -3802,7 +3791,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'star-outline',
     criterion: {type: "character_level",targetValue: 35},
-    rewardXp: 900,
+    rewardXp: 15,
   },
   {
     id: 'ach_prg_level_forty_five',
@@ -3813,7 +3802,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'ribbon-outline',
     criterion: {type: "character_level",targetValue: 45},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_prg_level_fifty_five',
@@ -3824,7 +3813,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'medal-outline',
     criterion: {type: "character_level",targetValue: 55},
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_prg_level_sixty',
@@ -3835,7 +3824,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: {type: "character_level",targetValue: 60},
-    rewardXp: 2800,
+    rewardXp: 20,
   },
   {
     id: 'ach_prg_level_seventy_five',
@@ -3846,7 +3835,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'flame-outline',
     criterion: {type: "character_level",targetValue: 75},
-    rewardXp: 4000,
+    rewardXp: 25,
   },
   {
     id: 'ach_prg_level_ninety',
@@ -3857,7 +3846,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "character_level",targetValue: 90},
-    rewardXp: 4800,
+    rewardXp: 25,
   },
   {
     id: 'ach_prg_level_hundred',
@@ -3868,7 +3857,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "character_level",targetValue: 100},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_prg_faction_custodes',
@@ -3879,7 +3868,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'shield-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "adeptus-custodes"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_grey_knights',
@@ -3890,7 +3879,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'sparkles-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "grey-knights"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_imperial_knights',
@@ -3901,7 +3890,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'hammer-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "imperial-knights"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_heretic_astartes',
@@ -3912,7 +3901,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'skull-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "heretic-astartes"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_death_guard',
@@ -3923,7 +3912,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'shield-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "death-guard"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_thousand_sons',
@@ -3934,7 +3923,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flash-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "thousand-sons"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_world_eaters',
@@ -3945,7 +3934,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flame-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "world-eaters"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_chaos_daemons',
@@ -3956,7 +3945,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'nuclear-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "chaos-daemons"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_chaos_knights',
@@ -3967,7 +3956,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'hardware-chip-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "chaos-knights"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_aeldari',
@@ -3978,7 +3967,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'pulse-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "aeldari"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_drukhari',
@@ -3989,7 +3978,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'skull-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "drukhari"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_tyranids',
@@ -4000,7 +3989,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'planet-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "tyranids"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_genestealer_cults',
@@ -4011,7 +4000,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'people-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "genestealer-cults"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_faction_leagues_of_votann',
@@ -4022,7 +4011,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'hammer-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 1,factionId: "leagues-of-votann"},
-    rewardXp: 400,
+    rewardXp: 10,
   },
   {
     id: 'ach_prg_multi_factions_five',
@@ -4033,7 +4022,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'ribbon-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 5},
-    rewardXp: 1000,
+    rewardXp: 15,
   },
   {
     id: 'ach_prg_multi_factions_ten',
@@ -4044,7 +4033,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'planet-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 10},
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_prg_multi_factions_fifteen',
@@ -4055,7 +4044,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'shield-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 15},
-    rewardXp: 3000,
+    rewardXp: 20,
   },
   {
     id: 'ach_prg_multi_factions_twenty',
@@ -4066,7 +4055,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "distinct_factions_tried",targetValue: 20},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
   {
     id: 'ach_eq_fifteen_custom',
@@ -4077,7 +4066,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'construct-outline',
     criterion: {type: "custom_equipment_count",targetValue: 15},
-    rewardXp: 800,
+    rewardXp: 15,
   },
   {
     id: 'ach_eq_twenty_custom',
@@ -4088,7 +4077,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hammer-outline',
     criterion: {type: "custom_equipment_count",targetValue: 20},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_eq_twenty_five_custom',
@@ -4099,7 +4088,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'hardware-chip-outline',
     criterion: {type: "custom_equipment_count",targetValue: 25},
-    rewardXp: 2200,
+    rewardXp: 20,
   },
   {
     id: 'ach_eq_thirty_custom',
@@ -4110,7 +4099,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'trophy-outline',
     criterion: {type: "custom_equipment_count",targetValue: 30},
-    rewardXp: 3500,
+    rewardXp: 25,
   },
   {
     id: 'ach_eq_seven_equipment',
@@ -4121,7 +4110,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'fitness-outline',
     criterion: {type: "distinct_equipment",targetValue: 7},
-    rewardXp: 1800,
+    rewardXp: 20,
   },
   {
     id: 'ach_eq_eight_equipment',
@@ -4132,7 +4121,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "distinct_equipment",targetValue: 8},
-    rewardXp: 3000,
+    rewardXp: 25,
   },
   {
     id: 'ach_cmp_fifteen_missions',
@@ -4143,7 +4132,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'silver',
     icon: 'flag-outline',
     criterion: {type: "campaign_missions_completed",targetValue: 15},
-    rewardXp: 450,
+    rewardXp: 10,
   },
   {
     id: 'ach_cmp_thirty_missions',
@@ -4154,7 +4143,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'shield-outline',
     criterion: {type: "campaign_missions_completed",targetValue: 30},
-    rewardXp: 900,
+    rewardXp: 15,
   },
   {
     id: 'ach_cmp_forty_missions',
@@ -4165,7 +4154,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'gold',
     icon: 'planet-outline',
     criterion: {type: "campaign_missions_completed",targetValue: 40},
-    rewardXp: 1200,
+    rewardXp: 15,
   },
   {
     id: 'ach_cmp_seventy_five_missions',
@@ -4176,7 +4165,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'trophy-outline',
     criterion: {type: "campaign_missions_completed",targetValue: 75},
-    rewardXp: 2000,
+    rewardXp: 20,
   },
   {
     id: 'ach_cmp_one_twenty_five',
@@ -4187,7 +4176,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'platinum',
     icon: 'medal-outline',
     criterion: {type: "campaign_missions_completed",targetValue: 125},
-    rewardXp: 2800,
+    rewardXp: 20,
   },
   {
     id: 'ach_cmp_one_fifty',
@@ -4198,7 +4187,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'ribbon-outline',
     criterion: {type: "campaign_missions_completed",targetValue: 150},
-    rewardXp: 3800,
+    rewardXp: 25,
   },
   {
     id: 'ach_cmp_two_hundred',
@@ -4209,7 +4198,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'sparkles-outline',
     criterion: {type: "campaign_missions_completed",targetValue: 200},
-    rewardXp: 4500,
+    rewardXp: 25,
   },
   {
     id: 'ach_cmp_two_fifty',
@@ -4220,7 +4209,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     tier: 'relic',
     icon: 'infinite-outline',
     criterion: {type: "campaign_missions_completed",targetValue: 250},
-    rewardXp: 5000,
+    rewardXp: 25,
   },
 ];
 

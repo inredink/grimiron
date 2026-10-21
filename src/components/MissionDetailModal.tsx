@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,12 @@ import { Badge } from './Badge';
 import { ProgressBar } from './ProgressBar';
 import { TerminalButton } from './TerminalButton';
 import { getSafeIoniconsName } from '../utils/iconHelper';
+import { getObjectiveGuidance } from '../content/missions/objectiveHelper';
 import {
   ActiveMissionRecord,
   FactionMissionDefinition,
   MissionStatus,
+  MissionObjectiveDefinition,
 } from '../types/mission';
 
 interface MissionDetailModalProps {
@@ -41,6 +43,8 @@ export const MissionDetailModal: React.FC<MissionDetailModalProps> = ({
   onAcceptMission,
   onClaimReward,
 }) => {
+  const [expandedObjectiveId, setExpandedObjectiveId] = useState<string | null>(null);
+
   if (!mission) return null;
 
   const isCompleted = status === 'completed';
@@ -149,9 +153,14 @@ export const MissionDetailModal: React.FC<MissionDetailModalProps> = ({
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <Ionicons name="checkbox-outline" size={16} color={THEME.colors.primary} />
-              <Text style={styles.sectionTitle}>
-                OPERATION OBJECTIVES ({mission.objectives.length})
-              </Text>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.sectionTitle}>
+                  OPERATION OBJECTIVES ({mission.objectives.length})
+                </Text>
+                <Text style={styles.sectionSubtitle}>
+                  Tap any objective to see full explanation and how to complete it
+                </Text>
+              </View>
             </View>
 
             {mission.objectives.map((obj, idx) => {
@@ -160,9 +169,16 @@ export const MissionDetailModal: React.FC<MissionDetailModalProps> = ({
               const target = obj.targetValue;
               const percent = Math.min(100, Math.round((cur / target) * 100));
               const isObjDone = Boolean(prog?.isCompleted || cur >= target);
+              const isExpanded = expandedObjectiveId === obj.id;
+              const guidance = getObjectiveGuidance(obj);
 
               return (
-                <View key={obj.id} style={styles.objectiveItem}>
+                <TouchableOpacity
+                  key={obj.id}
+                  style={[styles.objectiveItem, isExpanded && styles.objectiveItemExpanded]}
+                  onPress={() => setExpandedObjectiveId(isExpanded ? null : obj.id)}
+                  activeOpacity={0.8}
+                >
                   <View style={styles.objTopRow}>
                     <Ionicons
                       name={isObjDone ? 'checkmark-circle' : 'ellipse-outline'}
@@ -175,6 +191,12 @@ export const MissionDetailModal: React.FC<MissionDetailModalProps> = ({
                     <Text style={styles.objValues}>
                       {cur.toLocaleString()} / {target.toLocaleString()}
                     </Text>
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={THEME.colors.primary}
+                      style={{ marginLeft: 6 }}
+                    />
                   </View>
 
                   <ProgressBar
@@ -183,7 +205,36 @@ export const MissionDetailModal: React.FC<MissionDetailModalProps> = ({
                     height={6}
                     style={{ marginTop: 6 }}
                   />
-                </View>
+
+                  {/* Expanded Tactical Briefing & Explanation */}
+                  {isExpanded && (
+                    <View style={styles.objGuidanceBox}>
+                      <View style={styles.guidanceHeader}>
+                        <View style={styles.guidanceBadge}>
+                          <Text style={styles.guidanceBadgeText}>{guidance.badge}</Text>
+                        </View>
+                        <Text style={styles.guidanceTitle}>{guidance.title}</Text>
+                      </View>
+
+                      <Text style={styles.guidanceExplanation}>{guidance.explanation}</Text>
+
+                      <View style={styles.howToCompleteBox}>
+                        <Ionicons name="information-circle-outline" size={16} color={THEME.colors.primary} />
+                        <Text style={styles.howToCompleteText}>
+                          <Text style={{ fontWeight: '800', color: THEME.colors.textBright }}>HOW TO COMPLETE: </Text>
+                          {guidance.howToComplete}
+                        </Text>
+                      </View>
+
+                      <View style={styles.guidanceMetricsRow}>
+                        <Text style={styles.guidanceMetricLabel}>Progress Metric:</Text>
+                        <Text style={styles.guidanceMetricValue}>
+                          {cur.toLocaleString()} of {target.toLocaleString()} ({Math.max(0, target - cur).toLocaleString()} remaining)
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -384,7 +435,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: THEME.colors.textBright,
     letterSpacing: 1,
-    marginLeft: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 9,
+    color: THEME.colors.primary,
+    marginTop: 2,
+    fontWeight: '600',
   },
   briefingText: {
     fontSize: 13,
@@ -404,6 +460,81 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 10,
     marginBottom: 8,
+  },
+  objectiveItemExpanded: {
+    borderColor: THEME.colors.primary,
+    backgroundColor: '#0A121E',
+  },
+  objGuidanceBox: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 240, 255, 0.2)',
+  },
+  guidanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  guidanceBadge: {
+    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  guidanceBadgeText: {
+    color: THEME.colors.primary,
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  guidanceTitle: {
+    color: THEME.colors.textBright,
+    fontSize: 12,
+    fontWeight: '800',
+    flex: 1,
+  },
+  guidanceExplanation: {
+    color: THEME.colors.textMain,
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  howToCompleteBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderLeftWidth: 2,
+    borderLeftColor: THEME.colors.primary,
+    padding: 8,
+    borderRadius: 4,
+    marginBottom: 6,
+    gap: 6,
+  },
+  howToCompleteText: {
+    flex: 1,
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  guidanceMetricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  guidanceMetricLabel: {
+    fontSize: 9,
+    color: THEME.colors.textMuted,
+    fontWeight: '700',
+  },
+  guidanceMetricValue: {
+    fontSize: 10,
+    color: THEME.colors.primary,
+    fontWeight: '800',
   },
   objTopRow: {
     flexDirection: 'row',

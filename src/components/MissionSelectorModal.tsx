@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { getEnemyById } from '../content/combat/enemies';
 import { CombatMission } from '../types/combat';
 import { Ionicons } from '@expo/vector-icons';
 import { TerminalButton } from './TerminalButton';
+import { getSafeIoniconsName } from '../utils/iconHelper';
 
 interface MissionSelectorModalProps {
   visible: boolean;
@@ -27,6 +28,7 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
   onSelectMission,
   onClose,
 }) => {
+  const [expandedMissionId, setExpandedMissionId] = useState<string | null>(null);
   return (
     <Modal
       visible={visible}
@@ -57,19 +59,19 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
               const enemy = getEnemyById(mission.enemyId);
               const isSelected = mission.id === selectedMissionId;
 
+              const isExpanded = expandedMissionId === mission.id;
+
               return (
                 <TouchableOpacity
                   key={mission.id}
                   style={[
                     styles.missionCard,
                     isSelected && styles.missionCardSelected,
+                    isExpanded && { borderColor: THEME.colors.primary, backgroundColor: '#0B1322' },
                     { borderColor: isSelected ? THEME.colors.primary : THEME.colors.surfaceBorder },
                   ]}
-                  onPress={() => {
-                    onSelectMission(mission);
-                    onClose();
-                  }}
-                  activeOpacity={0.75}
+                  onPress={() => setExpandedMissionId(isExpanded ? null : mission.id)}
+                  activeOpacity={0.85}
                 >
                   <View style={styles.cardTopRow}>
                     <View
@@ -82,7 +84,7 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
                       ]}
                     >
                       <Ionicons
-                        name={enemy.visual.iconName as any}
+                        name={getSafeIoniconsName(enemy.visual.iconName, 'skull')}
                         size={20}
                         color={enemy.visual.primaryColor}
                       />
@@ -111,19 +113,39 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
                       <Text style={styles.enemyName}>Target: {enemy.name}</Text>
                     </View>
 
-                    {isSelected && (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={22}
-                        color={THEME.colors.primary}
-                        style={{ marginLeft: 6 }}
-                      />
-                    )}
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : isSelected ? 'checkmark-circle' : 'chevron-down'}
+                      size={22}
+                      color={isSelected ? THEME.colors.primary : THEME.colors.textMuted}
+                      style={{ marginLeft: 6 }}
+                    />
                   </View>
 
-                  <Text style={styles.briefingText} numberOfLines={2}>
+                  <Text style={styles.briefingText} numberOfLines={isExpanded ? undefined : 2}>
                     {mission.briefing}
                   </Text>
+
+                  {/* Expanded Tactical Intel */}
+                  {isExpanded && (
+                    <View style={styles.expandedIntelBox}>
+                      <Text style={styles.intelHeader}>TARGET DOSSIER & COMBAT PROFILE</Text>
+                      <Text style={styles.loreText}>{enemy.loreDescription}</Text>
+                      <Text style={styles.tauntText}>"{enemy.tauntQuote}"</Text>
+
+                      <View style={styles.actionRow}>
+                        <TerminalButton
+                          title={isSelected ? "CURRENTLY ARMED" : "SELECT & ARM MISSION"}
+                          onPress={() => {
+                            onSelectMission(mission);
+                            onClose();
+                          }}
+                          variant={isSelected ? "secondary" : "primary"}
+                          size="sm"
+                          style={{ flex: 1, marginTop: 8 }}
+                        />
+                      </View>
+                    </View>
+                  )}
 
                   {/* Mission Specs Footer */}
                   <View style={styles.cardFooter}>
@@ -267,6 +289,38 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
     marginBottom: 8,
+  },
+  expandedIntelBox: {
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.25)',
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  intelHeader: {
+    color: THEME.colors.primary,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  loreText: {
+    color: THEME.colors.textMain,
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+  tauntText: {
+    color: THEME.colors.warning,
+    fontSize: 10,
+    fontStyle: 'italic',
+    lineHeight: 14,
+    marginBottom: 6,
+  },
+  actionRow: {
+    marginTop: 2,
   },
   cardFooter: {
     flexDirection: 'row',
