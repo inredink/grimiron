@@ -15,7 +15,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy barbell compound lifts with high load to shatter the berserker charge.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Load (80%+ 1RM, 4-6 reps)',
-    baseHealth: 680,
+    baseHealth: 3500,
     baseXpBonus: 160,
     modifiers: [
       {
@@ -47,7 +47,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy squats and deadlifts to generate bone-crushing kinetic counter-force.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Lower Body (5x5)',
-    baseHealth: 620,
+    baseHealth: 3500,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -79,7 +79,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Chest and triceps pressing to drive back the lunging bio-blades.',
     recommendedSets: 12,
     recommendedIntensity: 'Heavy Bench Press & Incline Press (6-8 reps)',
-    baseHealth: 540,
+    baseHealth: 3000,
     baseXpBonus: 130,
     modifiers: [
       {
@@ -110,7 +110,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Uncompromising lifting form, heavy weights, and maximal deliberate tension.',
     recommendedSets: 15,
     recommendedIntensity: 'Pinnacle Power (RPE 8.5-9.5)',
-    baseHealth: 750,
+    baseHealth: 3750,
     baseXpBonus: 180,
     modifiers: [
       {
@@ -142,7 +142,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy leg drives and explosive thrusts to simulate tearing armored plates.',
     recommendedSets: 14,
     recommendedIntensity: 'Max Leg Drive / Barbell Thrusts',
-    baseHealth: 700,
+    baseHealth: 3500,
     baseXpBonus: 165,
     modifiers: [
       {
@@ -174,7 +174,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Explosive vertical and overhead presses to banish warp fire.',
     recommendedSets: 12,
     recommendedIntensity: 'Overhead Barbell / Dumbbell Pressing',
-    baseHealth: 520,
+    baseHealth: 3000,
     baseXpBonus: 125,
     modifiers: [
       {
@@ -205,7 +205,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Unbroken sets of heavy pulls and rows to tear metallic chassis apart.',
     recommendedSets: 13,
     recommendedIntensity: 'Heavy Barbell Rows & Weighted Pull-ups',
-    baseHealth: 640,
+    baseHealth: 3250,
     baseXpBonus: 150,
     modifiers: [
       {
@@ -237,7 +237,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High speed intervals combined with heavy dumbbell movements.',
     recommendedSets: 12,
     recommendedIntensity: 'Explosive Hybrid Compound Sets',
-    baseHealth: 560,
+    baseHealth: 3000,
     baseXpBonus: 135,
     modifiers: [
       {
@@ -268,7 +268,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy arm and shoulder combinations with strict pause reps.',
     recommendedSets: 12,
     recommendedIntensity: 'Strict Pause Reps (2-second isometric hold)',
-    baseHealth: 590,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -299,7 +299,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Fast explosive concentric movements with solid lockout.',
     recommendedSets: 11,
     recommendedIntensity: 'Power Clean / Speed Deadlifts',
-    baseHealth: 510,
+    baseHealth: 2750,
     baseXpBonus: 120,
     modifiers: [
       {
@@ -330,7 +330,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy grind sets testing maximum anaerobic endurance.',
     recommendedSets: 14,
     recommendedIntensity: 'Slow Controlled Heavy Grinds',
-    baseHealth: 710,
+    baseHealth: 3500,
     baseXpBonus: 170,
     modifiers: [
       {
@@ -362,7 +362,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Dynamic chest and back antagonist supersets.',
     recommendedSets: 12,
     recommendedIntensity: 'Push/Pull Supersets',
-    baseHealth: 580,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -393,7 +393,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy squats, deadlifts, and loaded carries.',
     recommendedSets: 13,
     recommendedIntensity: 'Heavy Lower Body / Loaded Carries',
-    baseHealth: 660,
+    baseHealth: 3250,
     baseXpBonus: 155,
     modifiers: [
       {
@@ -425,7 +425,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Complex compound exercises requiring complete mental and muscular synchronization.',
     recommendedSets: 14,
     recommendedIntensity: 'Compound Mastery (Zero technical fault)',
-    baseHealth: 720,
+    baseHealth: 3500,
     baseXpBonus: 175,
     modifiers: [
       {
@@ -457,7 +457,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy chest and shoulder presses to dent the iron shell.',
     recommendedSets: 13,
     recommendedIntensity: 'Heavy Upper Body Pressing',
-    baseHealth: 690,
+    baseHealth: 3250,
     baseXpBonus: 160,
     modifiers: [
       {
@@ -489,7 +489,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High speed, high volume pulling exercises (pull-ups / rows).',
     recommendedSets: 12,
     recommendedIntensity: 'High Volume Pulls (10-15 reps)',
-    baseHealth: 550,
+    baseHealth: 3000,
     baseXpBonus: 130,
     modifiers: [
       {
@@ -520,7 +520,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy deadlifts and grip work to counteract brute kinetic leverage.',
     recommendedSets: 12,
     recommendedIntensity: 'Heavy Deadlifts & Grip Work',
-    baseHealth: 610,
+    baseHealth: 3000,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -552,7 +552,7 @@ export const assaultEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy leg presses, hack squats, and Romanian deadlifts.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Lower Body Compound Sets',
-    baseHealth: 740,
+    baseHealth: 3500,
     baseXpBonus: 180,
     modifiers: [
       {

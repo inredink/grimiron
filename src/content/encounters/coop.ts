@@ -15,7 +15,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy cooperative tonnage: Squats, Deadlifts, and Leg Presses.',
     recommendedSets: 18,
     recommendedIntensity: 'Cooperative Heavy Tonnage Session',
-    baseHealth: 1200,
+    baseHealth: 13500,
     baseXpBonus: 350,
     modifiers: [
       {
@@ -47,7 +47,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Whole-body compound power lifts executed with maximal focus.',
     recommendedSets: 18,
     recommendedIntensity: 'Whole-Body Heavy Power Lifts',
-    baseHealth: 1250,
+    baseHealth: 13500,
     baseXpBonus: 360,
     modifiers: [
       {
@@ -79,7 +79,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy barbell compound triple sets and pause reps.',
     recommendedSets: 20,
     recommendedIntensity: 'Elite Powerlifting Triple Sets (Max Effort)',
-    baseHealth: 1400,
+    baseHealth: 15000,
     baseXpBonus: 400,
     modifiers: [
       {
@@ -111,7 +111,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Bench press, overhead press, and barbell rows executed in synchronized working sets.',
     recommendedSets: 16,
     recommendedIntensity: 'Heavy Upper Body Synchronized Sets',
-    baseHealth: 1100,
+    baseHealth: 12000,
     baseXpBonus: 320,
     modifiers: [
       {
@@ -143,7 +143,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy squats and Romanian deadlifts to withstand the shockwaves.',
     recommendedSets: 18,
     recommendedIntensity: 'Heavy Lower Body Compound Sets',
-    baseHealth: 1180,
+    baseHealth: 13500,
     baseXpBonus: 340,
     modifiers: [
       {
@@ -175,7 +175,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy barbell chest presses and weighted dips.',
     recommendedSets: 16,
     recommendedIntensity: 'Heavy Chest & Triceps Pressing',
-    baseHealth: 1150,
+    baseHealth: 12000,
     baseXpBonus: 330,
     modifiers: [
       {
@@ -207,7 +207,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High volume endurance marathon across upper and lower body movements.',
     recommendedSets: 18,
     recommendedIntensity: 'High Volume Full-Body Endurance Session',
-    baseHealth: 1300,
+    baseHealth: 13500,
     baseXpBonus: 375,
     modifiers: [
       {
@@ -239,7 +239,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy Romanian deadlifts, pull-ups, and power cleans.',
     recommendedSets: 16,
     recommendedIntensity: 'Heavy Posterior Chain & Cleans',
-    baseHealth: 1120,
+    baseHealth: 12000,
     baseXpBonus: 325,
     modifiers: [
       {
@@ -271,7 +271,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Strict eccentric tempo on all compound presses and squats.',
     recommendedSets: 16,
     recommendedIntensity: 'Strict Eccentric Control (3-1-1 tempo)',
-    baseHealth: 1160,
+    baseHealth: 12000,
     baseXpBonus: 335,
     modifiers: [
       {
@@ -303,7 +303,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High volume leg and core circuit: Squats, Lunges, and Hanging Leg Raises.',
     recommendedSets: 17,
     recommendedIntensity: 'High Volume Lower Body Circuit',
-    baseHealth: 1220,
+    baseHealth: 12750,
     baseXpBonus: 355,
     modifiers: [
       {
@@ -335,7 +335,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy squats, bench presses, and deadlifts (Powerlifting Big 3 squad challenge).',
     recommendedSets: 18,
     recommendedIntensity: 'Powerlifting Big 3 Squad Challenge',
-    baseHealth: 1350,
+    baseHealth: 13500,
     baseXpBonus: 390,
     modifiers: [
       {
@@ -367,7 +367,7 @@ export const coopEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Maximal effort unbroken sets of classic barbell movements.',
     recommendedSets: 18,
     recommendedIntensity: 'Maximal Effort Unbroken Sets',
-    baseHealth: 1280,
+    baseHealth: 13500,
     baseXpBonus: 370,
     modifiers: [
       {

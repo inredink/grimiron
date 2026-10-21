@@ -32,6 +32,7 @@ import { ExerciseDefinition } from '../types/exercise';
 import { calculateSetDamage, DAMAGE_CONFIG } from '../services/combat/damageCalculator';
 import { getAttackStyleForExercise, createAttackFromSet } from '../services/combat/attackEngine';
 import { computeCombatState, buildAfterActionReport } from '../services/combat/combatEngine';
+import { CombatMission } from '../types/combat';
 import { ENEMY_CATALOG, getEnemyById } from '../content/combat/enemies';
 import { MISSION_CATALOG, getMissionById } from '../content/combat/missions';
 import {
@@ -683,10 +684,10 @@ const overpoweredExercises: WorkoutExercise[] = [
     name: 'Deadlift',
     sortOrder: 0,
     sets: [
-      { id: 's_kill_1', exerciseId: 'we_boss_slayer', setNumber: 1, reps: 10, weight: 300, unit: 'lbs', isCompleted: true, setClassification: 'working' },
-      { id: 's_kill_2', exerciseId: 'we_boss_slayer', setNumber: 2, reps: 10, weight: 300, unit: 'lbs', isCompleted: true, setClassification: 'working' },
-      { id: 's_kill_3', exerciseId: 'we_boss_slayer', setNumber: 3, reps: 10, weight: 300, unit: 'lbs', isCompleted: true, setClassification: 'working' },
-      { id: 's_kill_4', exerciseId: 'we_boss_slayer', setNumber: 4, reps: 10, weight: 300, unit: 'lbs', isCompleted: true, setClassification: 'working' },
+      { id: 's_kill_1', exerciseId: 'we_boss_slayer', setNumber: 1, reps: 20, weight: 600, unit: 'lbs', isCompleted: true, setClassification: 'working' },
+      { id: 's_kill_2', exerciseId: 'we_boss_slayer', setNumber: 2, reps: 20, weight: 600, unit: 'lbs', isCompleted: true, setClassification: 'working' },
+      { id: 's_kill_3', exerciseId: 'we_boss_slayer', setNumber: 3, reps: 20, weight: 600, unit: 'lbs', isCompleted: true, setClassification: 'working' },
+      { id: 's_kill_4', exerciseId: 'we_boss_slayer', setNumber: 4, reps: 20, weight: 600, unit: 'lbs', isCompleted: true, setClassification: 'working' },
     ],
   },
 ];
@@ -4652,13 +4653,13 @@ console.log('\n[TEST SUITE 25: All 7 Raid Tier Definitions & Boss Scaling Integr
 assert(RAID_TIERS.length === 7, `Exactly 7 raid progression tiers configured (found ${RAID_TIERS.length})`);
 
 const expectedTiers = [
-  { id: 'tier_1_initiation', tier: 1, minLevel: 1, minRankTier: 1, minGearPower: 0, soloHp: 1800, squadHp: 5000, gloryXp: 300 },
-  { id: 'tier_2_field_ops', tier: 2, minLevel: 5, minRankTier: 2, minGearPower: 140, soloHp: 2800, squadHp: 8000, gloryXp: 450 },
-  { id: 'tier_3_veteran', tier: 3, minLevel: 10, minRankTier: 3, minGearPower: 270, soloHp: 4200, squadHp: 13000, gloryXp: 600 },
-  { id: 'tier_4_elite', tier: 4, minLevel: 15, minRankTier: 4, minGearPower: 410, soloHp: 6000, squadHp: 19000, gloryXp: 800 },
-  { id: 'tier_5_champion', tier: 5, minLevel: 20, minRankTier: 5, minGearPower: 550, soloHp: 8500, squadHp: 27000, gloryXp: 1000 },
-  { id: 'tier_6_legendary', tier: 6, minLevel: 25, minRankTier: 6, minGearPower: 690, soloHp: 12000, squadHp: 38000, gloryXp: 1300 },
-  { id: 'tier_7_endgame', tier: 7, minLevel: 30, minRankTier: 7, minGearPower: 840, soloHp: 16000, squadHp: 52000, gloryXp: 1600 },
+  { id: 'tier_1_initiation', tier: 1, minLevel: 1, minRankTier: 1, minGearPower: 0, soloHp: 4500, squadHp: 14000, gloryXp: 300 },
+  { id: 'tier_2_field_ops', tier: 2, minLevel: 5, minRankTier: 2, minGearPower: 140, soloHp: 6500, squadHp: 20000, gloryXp: 450 },
+  { id: 'tier_3_veteran', tier: 3, minLevel: 10, minRankTier: 3, minGearPower: 270, soloHp: 9000, squadHp: 28000, gloryXp: 600 },
+  { id: 'tier_4_elite', tier: 4, minLevel: 15, minRankTier: 4, minGearPower: 410, soloHp: 12500, squadHp: 38000, gloryXp: 800 },
+  { id: 'tier_5_champion', tier: 5, minLevel: 20, minRankTier: 5, minGearPower: 550, soloHp: 16500, squadHp: 50000, gloryXp: 1000 },
+  { id: 'tier_6_legendary', tier: 6, minLevel: 25, minRankTier: 6, minGearPower: 690, soloHp: 22000, squadHp: 70000, gloryXp: 1300 },
+  { id: 'tier_7_endgame', tier: 7, minLevel: 30, minRankTier: 7, minGearPower: 840, soloHp: 28000, squadHp: 95000, gloryXp: 1600 },
 ];
 
 for (let i = 0; i < expectedTiers.length; i++) {
@@ -5039,6 +5040,179 @@ console.log('  ✓ calculateProgression handles NaN XP without Yoga crash');
 console.log('  ✓ calculateProgression handles negative XP cleanly');
 console.log('  ✓ buildAfterActionReport guarantees finite progressPercent');
 console.log('  ✓ enemy visual properties tolerate missing/undefined values');
+
+// ============================================================================
+// TEST SUITE 34: Rebalanced Enemy Health, Co-op Raid Boss Scale & Continuous Crusade Multi-Kill Flow
+// ============================================================================
+console.log('\n[TEST SUITE 34: Rebalanced Enemy Health, Co-op Raid Boss Scale & Continuous Crusade Multi-Kill Flow]');
+
+// 34.1 Rebalanced Core Enemies
+const cultist = getEnemyById('enemy_chaos_cultist');
+assert(cultist.baseHealth >= 1500, `Patrol Cultist HP rebalanced to >= 1500 (actual: ${cultist.baseHealth})`);
+
+const orkBoyz = getEnemyById('enemy_ork_boyz');
+assert(orkBoyz.baseHealth >= 2200, `Patrol Ork Boyz HP rebalanced to >= 2200 (actual: ${orkBoyz.baseHealth})`);
+
+const helbrute = getEnemyById('enemy_helbrute');
+assert(helbrute.baseHealth >= 5000, `Incursion Helbrute HP rebalanced for 20-set volume workouts (actual: ${helbrute.baseHealth})`);
+
+const daemonPrince = getEnemyById('enemy_daemon_prince');
+assert(daemonPrince.baseHealth >= 12000, `Crusade Daemon Prince HP scaled for epic multi-lift endurance (actual: ${daemonPrince.baseHealth})`);
+
+console.log('  ✓ Core enemy health pools scaled proportionally to set volume and damage output');
+
+// 34.2 Co-op Squad Boss Scale (resolving the 1,250 HP flaw)
+const hierophant = getEncounterById('enc_coop_02');
+assert(Boolean(hierophant), 'Found Hierophant Bio-Titan co-op encounter');
+assert(hierophant!.baseHealth >= 12000, `Hierophant Bio-Titan co-op health properly scaled for squads (actual: ${hierophant!.baseHealth})`);
+
+const t1Raid = getRaidTierById('tier_1_initiation');
+assert(t1Raid.squadHp >= 12000, `Tier 1 Initiation Squad HP scaled for 3-person squads (actual: ${t1Raid.squadHp})`);
+
+const t2Raid = getRaidTierById('tier_2_field_ops');
+assert(t2Raid.squadHp >= 18000, `Tier 2 Field Ops Squad HP scaled (actual: ${t2Raid.squadHp})`);
+
+console.log('  ✓ Co-op squad raid bosses calibrated to prevent premature 10-minute wipeouts');
+
+// 34.3 Universal Enemy Resolution via getEnemyById
+const resolvedEncounterEnemy = getEnemyById('enc_coop_02');
+assert(resolvedEncounterEnemy.id === 'enc_coop_02', 'getEnemyById resolves Warfront encounter ID');
+assert(resolvedEncounterEnemy.baseHealth === hierophant!.baseHealth, 'Resolved encounter enemy has matching scaled health');
+assert(resolvedEncounterEnemy.name === hierophant!.enemyName, 'Resolved encounter enemy preserves thematic name');
+
+console.log('  ✓ Universal enemy resolver seamlessly handles Warfront encounter IDs without fallback to 480 HP');
+
+// 34.4 Continuous Crusade Multi-Enemy Combat Flow
+// Simulate GVT: 10 sets of 10 reps against Enemy 1 (Ork Boyz), then 10 sets of 5 reps against Enemy 2 (Helbrute)
+const gvtWorkoutExercises: WorkoutExercise[] = [
+  {
+    id: 'ex_gvt_1',
+    sessionId: 'session_gvt',
+    exerciseRefId: 'ex_bench_press',
+    name: 'Barbell Bench Press',
+    sortOrder: 0,
+    sets: Array.from({ length: 10 }, (_, idx) => ({
+      id: `set_wave1_${idx + 1}`,
+      exerciseId: 'ex_gvt_1',
+      setNumber: idx + 1,
+      reps: 10,
+      weight: 100, // 100 kg
+      unit: 'kg' as const,
+      isCompleted: true,
+      setClassification: 'working' as const,
+    })),
+  },
+  {
+    id: 'ex_gvt_2',
+    sessionId: 'session_gvt',
+    exerciseRefId: 'ex_barbell_row',
+    name: 'Barbell Bent-Over Row',
+    sortOrder: 1,
+    sets: Array.from({ length: 10 }, (_, idx) => ({
+      id: `set_wave2_${idx + 1}`,
+      exerciseId: 'ex_gvt_2',
+      setNumber: idx + 1,
+      reps: 5,
+      weight: 90, // 90 kg
+      unit: 'kg' as const,
+      isCompleted: true,
+      setClassification: 'working' as const,
+    })),
+  },
+];
+
+// Phase 1: 10 sets of 10 against Ork Boyz (2,400 HP)
+const wave1Mission: CombatMission = {
+  id: 'mission_wave_1',
+  title: 'Wave 1: Greenskin Mob',
+  briefing: 'Clear the LZ perimeter.',
+  difficulty: 'patrol',
+  enemyId: orkBoyz.id,
+  recommendedSets: 10,
+  gloryBonusXp: 35,
+};
+
+const wave1OnlyExercises: WorkoutExercise[] = [gvtWorkoutExercises[0]];
+const wave1CombatState = computeCombatState(orkBoyz, wave1Mission, wave1OnlyExercises);
+
+assert(wave1CombatState.isDefeated, 'Wave 1 Ork Boyz slain after 10 heavy working sets');
+assert(wave1CombatState.totalDamage >= 2400, `Wave 1 dealt substantial damage (${wave1CombatState.totalDamage})`);
+
+// Archive Wave 1 Kill
+const wave1SlainRecord = {
+  enemyId: orkBoyz.id,
+  enemyName: orkBoyz.name,
+  enemyTitle: orkBoyz.title,
+  faction: orkBoyz.faction,
+  difficulty: orkBoyz.difficulty,
+  visual: orkBoyz.visual,
+  baseHealth: orkBoyz.baseHealth,
+  totalDamageDealt: orkBoyz.baseHealth,
+  overkillDamage: wave1CombatState.overkillDamage,
+  slainAtTimestamp: new Date().toISOString(),
+  gloryBonusXp: wave1Mission.gloryBonusXp,
+  setsCount: 10,
+};
+
+const wave1SetIds = new Set(gvtWorkoutExercises[0].sets.map((s) => s.id));
+
+// Phase 2: Player summons Reinforcements (Helbrute, 5,500 HP) and executes the remaining 10 sets of 5 reps
+const wave2Mission: CombatMission = {
+  id: 'mission_wave_2',
+  title: 'Wave 2: Daemon Engine Counter-Attack',
+  briefing: 'Neutralize the armored walker.',
+  difficulty: 'incursion',
+  enemyId: helbrute.id,
+  recommendedSets: 20,
+  gloryBonusXp: 50,
+};
+
+const wave2CombatState = computeCombatState(
+  helbrute,
+  wave2Mission,
+  gvtWorkoutExercises, // all 20 sets
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  wave1SetIds, // wave 1 sets are archived
+  [wave1SlainRecord] // sessionSlainEnemies
+);
+
+assert(!wave2CombatState.isDefeated, 'Wave 2 Helbrute is engaged and active (survived partial sets)');
+assert(wave2CombatState.currentHealth > 0, 'Wave 2 Helbrute has remaining HP');
+assert(wave2CombatState.slainEnemies?.length === 1, 'Previous enemy victory preserved in slainEnemies roster');
+assert(wave2CombatState.totalDamage > wave1CombatState.totalDamage, 'Total workout damage includes all 20 completed sets');
+
+// Generate After Action Report for the full continuous crusade workout
+const fullSession: WorkoutSession = {
+  id: 'session_gvt',
+  title: 'German Volume Training Crusade',
+  startedAt: '2026-10-21T18:00:00.000Z',
+  finishedAt: '2026-10-21T19:00:00.000Z',
+  totalXpEarned: 0,
+  isCompleted: true,
+  exercises: gvtWorkoutExercises,
+};
+
+const testProgression = calculateProgression(1200, fakeFaction);
+
+const aarContinuous = buildAfterActionReport(
+  wave2Mission,
+  helbrute,
+  wave2CombatState,
+  fullSession,
+  35,
+  testProgression,
+  testProgression
+);
+
+assert(aarContinuous.slainEnemies?.length === 1, 'AAR contains Wave 1 in slainEnemies list');
+assert(aarContinuous.gloryBonusXp === 35, `Wave 1 Glory Bonus XP awarded in AAR (${aarContinuous.gloryBonusXp})`);
+assert(aarContinuous.completedSetsCount === 20, 'AAR counts all 20 completed working sets');
+assert(aarContinuous.isVictory === true, 'Continuous crusade marked victorious because at least one hostile was slain');
+
+console.log('  ✓ Continuous Crusade multi-kill flow seamlessly transitions between hostiles without losing kill rewards');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

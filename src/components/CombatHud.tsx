@@ -16,6 +16,7 @@ interface CombatHudProps {
   lastAttack?: AttackEvent;
   onOpenCombatLog?: () => void;
   onSwitchMission?: () => void;
+  onSummonNextEnemy?: () => void;
 }
 
 export const CombatHud: React.FC<CombatHudProps> = ({
@@ -23,9 +24,12 @@ export const CombatHud: React.FC<CombatHudProps> = ({
   lastAttack,
   onOpenCombatLog,
   onSwitchMission,
+  onSummonNextEnemy,
 }) => {
-  const { enemy, currentHealth, maxHealth, isDefeated, overkillDamage, attacks } =
+  const { enemy, currentHealth, maxHealth, isDefeated, overkillDamage, attacks, slainEnemies } =
     encounter;
+
+  const slainCount = slainEnemies?.length || 0;
 
   const healthPercent = maxHealth > 0 ? Math.round((currentHealth / maxHealth) * 100) : 0;
 
@@ -53,6 +57,16 @@ export const CombatHud: React.FC<CombatHudProps> = ({
 
   return (
     <View style={styles.hudCard}>
+      {/* Session Multi-Kill Banner if continuous crusade has slain enemies */}
+      {slainCount > 0 && (
+        <View style={styles.sessionSlainBadge}>
+          <Ionicons name="skull" size={12} color={THEME.colors.success} />
+          <Text style={styles.sessionSlainText}>
+            PURGED THIS DEPLOYMENT: {slainCount} {slainCount === 1 ? 'HOSTILE' : 'HOSTILES'} (+{(encounter.slainEnemies || []).reduce((s, e) => s + e.gloryBonusXp, 0)} GLORY XP)
+          </Text>
+        </View>
+      )}
+
       {/* Enemy Bio & Mission Header */}
       <View style={styles.headerRow}>
         <View style={styles.enemyAvatarContainer}>
@@ -139,11 +153,46 @@ export const CombatHud: React.FC<CombatHudProps> = ({
 
       {/* Defeat Banner or Live Combat Attack Feedback */}
       {isDefeated ? (
-        <View style={styles.victoryBanner}>
-          <Ionicons name="skull" size={16} color={THEME.colors.success} />
-          <Text style={styles.victoryText}>
-            TARGET SLAIN! {overkillDamage > 0 ? `+${overkillDamage} OVERKILL DMG` : 'CLEAN PURGE'}
-          </Text>
+        <View style={styles.defeatedContainer}>
+          <View style={styles.victoryBanner}>
+            <Ionicons name="skull" size={16} color={THEME.colors.success} />
+            <Text style={styles.victoryText}>
+              TARGET SLAIN! {overkillDamage > 0 ? `+${overkillDamage} OVERKILL DMG` : 'CLEAN PURGE'}
+            </Text>
+          </View>
+
+          {/* Continuous Crusade: Summon Reinforcements */}
+          <View style={styles.continueCrusadeCard}>
+            <View style={styles.continueCrusadeHeader}>
+              <Ionicons name="flash" size={14} color="#FFB800" />
+              <Text style={styles.continueCrusadeTitle}>CONTINUE CRUSADE // REINFORCEMENTS</Text>
+            </View>
+            <Text style={styles.continueCrusadeSubtitle}>
+              Target eradicated! Summon the next enemy wave or choose a target so your remaining sets keep attacking.
+            </Text>
+            <View style={styles.continueActionRow}>
+              {onSummonNextEnemy && (
+                <TouchableOpacity
+                  style={styles.summonButton}
+                  onPress={onSummonNextEnemy}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="add-circle" size={16} color="#0B131E" />
+                  <Text style={styles.summonButtonText}>NEXT HOSTILE WAVE</Text>
+                </TouchableOpacity>
+              )}
+              {onSwitchMission && (
+                <TouchableOpacity
+                  style={styles.pickTargetButton}
+                  onPress={onSwitchMission}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="locate-outline" size={14} color={THEME.colors.primary} />
+                  <Text style={styles.pickTargetButtonText}>PICK TARGET</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
       ) : lastAttack ? (
         <Animated.View
@@ -389,6 +438,93 @@ const styles = StyleSheet.create({
   logAction: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  sessionSlainBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#062B1A',
+    borderWidth: 1,
+    borderColor: THEME.colors.success,
+    borderRadius: THEME.borderRadius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  sessionSlainText: {
+    color: THEME.colors.success,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    marginLeft: 5,
+  },
+  defeatedContainer: {
+    marginVertical: 4,
+  },
+  continueCrusadeCard: {
+    backgroundColor: '#0E1726',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: THEME.borderRadius.sm,
+    padding: 10,
+    marginTop: 6,
+  },
+  continueCrusadeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  continueCrusadeTitle: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginLeft: 4,
+  },
+  continueCrusadeSubtitle: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    lineHeight: 14,
+    marginBottom: 8,
+  },
+  continueActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  summonButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00E676',
+    borderRadius: THEME.borderRadius.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  summonButtonText: {
+    color: '#0B131E',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  pickTargetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#162235',
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+    borderRadius: THEME.borderRadius.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  pickTargetButtonText: {
+    color: THEME.colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginLeft: 4,
   },
   logActionText: {
     color: THEME.colors.primary,

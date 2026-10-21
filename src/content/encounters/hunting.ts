@@ -15,7 +15,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy barbell compound lifts with high load and max volume.',
     recommendedSets: 16,
     recommendedIntensity: 'Heavy Barbell Compound Lifts (5x5 Heavy)',
-    baseHealth: 880,
+    baseHealth: 4000,
     baseXpBonus: 240,
     modifiers: [
       {
@@ -47,7 +47,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Leg-focused heavy tonnage: Squats, Leg Press, and Walking Lunges.',
     recommendedSets: 15,
     recommendedIntensity: 'Heavy Lower Body Tonnage',
-    baseHealth: 850,
+    baseHealth: 3750,
     baseXpBonus: 230,
     modifiers: [
       {
@@ -79,7 +79,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy pull-downs, cable rows, and farmer carries.',
     recommendedSets: 14,
     recommendedIntensity: 'Upper Body Pulling & Grip Endurance',
-    baseHealth: 720,
+    baseHealth: 3500,
     baseXpBonus: 175,
     modifiers: [
       {
@@ -111,7 +111,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Max-effort compound pushing and pulling pairs.',
     recommendedSets: 16,
     recommendedIntensity: 'Max-Effort Antagonist Pairs',
-    baseHealth: 860,
+    baseHealth: 4000,
     baseXpBonus: 235,
     modifiers: [
       {
@@ -143,7 +143,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High-rep tempo work demanding acute mind-muscle connection.',
     recommendedSets: 12,
     recommendedIntensity: 'Tempo Hypertrophy Sets (3-1-2 tempo)',
-    baseHealth: 590,
+    baseHealth: 3000,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -174,7 +174,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Comprehensive full-body test: Squat, Bench Press, and Deadlift heavy sets.',
     recommendedSets: 18,
     recommendedIntensity: 'Powerlifting Big 3 Heavy Session',
-    baseHealth: 950,
+    baseHealth: 4500,
     baseXpBonus: 260,
     modifiers: [
       {
@@ -206,7 +206,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy front squats, overhead push presses, and heavy rows.',
     recommendedSets: 15,
     recommendedIntensity: 'Heavy Push Presses & Front Squats',
-    baseHealth: 820,
+    baseHealth: 3750,
     baseXpBonus: 215,
     modifiers: [
       {
@@ -238,7 +238,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Fast cadence leg training and lunges.',
     recommendedSets: 12,
     recommendedIntensity: 'Fast Cadence Lower Body Sets',
-    baseHealth: 600,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -269,7 +269,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy deadlifts and bent-over barbell rows.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Posterior Chain Work',
-    baseHealth: 740,
+    baseHealth: 3500,
     baseXpBonus: 180,
     modifiers: [
       {
@@ -301,7 +301,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Maximal volume and load across all primary movements.',
     recommendedSets: 18,
     recommendedIntensity: 'Grand Championship Workout (Max Effort)',
-    baseHealth: 980,
+    baseHealth: 4500,
     baseXpBonus: 280,
     modifiers: [
       {
@@ -333,7 +333,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Endless high-rep grueling volume testing total muscular and mental capacity.',
     recommendedSets: 18,
     recommendedIntensity: 'High Volume Grinder Session (15-20 reps per set)',
-    baseHealth: 1000,
+    baseHealth: 4500,
     baseXpBonus: 300,
     modifiers: [
       {
@@ -365,7 +365,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy squats, Romanian deadlifts, and weighted pull-ups.',
     recommendedSets: 17,
     recommendedIntensity: 'Heavy Squats & Pull-Ups Combination',
-    baseHealth: 920,
+    baseHealth: 4250,
     baseXpBonus: 250,
     modifiers: [
       {
@@ -397,7 +397,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy barbell shrugs, deadlifts, and farmer walks.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Trap & Forearm Endurance',
-    baseHealth: 750,
+    baseHealth: 3500,
     baseXpBonus: 185,
     modifiers: [
       {
@@ -429,7 +429,7 @@ export const huntingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High intensity compound lifts under maximum mental focus.',
     recommendedSets: 16,
     recommendedIntensity: 'High Intensity Compound Lifts',
-    baseHealth: 870,
+    baseHealth: 4000,
     baseXpBonus: 235,
     modifiers: [
       {

@@ -1036,10 +1036,10 @@ export function generateProceduralBoss(
     }
   }
 
-  // Health scaling: Baseline with difficulty multiplier
+  // Health scaling: Baseline with difficulty multiplier (calibrated for demanding boss encounters)
   const tierMultiplier =
     difficultyTier === 'legendary' ? 1.4 : difficultyTier === 'challenging' ? 1.2 : 1.0;
-  const baseHealth = Math.round((2400 + Math.floor(prng() * 600)) * tierMultiplier);
+  const baseHealth = Math.round((6500 + Math.floor(prng() * 1500)) * tierMultiplier);
 
   const primaryColor = subfaction?.primaryColor || catalog.primaryColor;
   const accentColor = subfaction?.accentColor || catalog.accentColor;

@@ -15,7 +15,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High volume isometric holds, planks, and heavy wall-sits or pause squats.',
     recommendedSets: 14,
     recommendedIntensity: 'High Volume & Isometric Stamina',
-    baseHealth: 600,
+    baseHealth: 3500,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -47,7 +47,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Endurance volume sets testing cardiovascular and muscular persistence.',
     recommendedSets: 15,
     recommendedIntensity: 'Endurance Rep Ranges (15-20 reps)',
-    baseHealth: 580,
+    baseHealth: 3750,
     baseXpBonus: 135,
     modifiers: [
       {
@@ -78,7 +78,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Slow, agonizing high-tension lifts. Embrace the lactic burn.',
     recommendedSets: 14,
     recommendedIntensity: 'High Time-Under-Tension (40-50s per set)',
-    baseHealth: 690,
+    baseHealth: 3500,
     baseXpBonus: 165,
     modifiers: [
       {
@@ -110,7 +110,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Non-stop supersets or circuits to emulate mowing down endless bio-waves.',
     recommendedSets: 16,
     recommendedIntensity: 'Rapid Circuit Sets (Minimal Rest)',
-    baseHealth: 650,
+    baseHealth: 4000,
     baseXpBonus: 150,
     modifiers: [
       {
@@ -141,7 +141,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy core exercises and overhead presses to brace the sealing struts.',
     recommendedSets: 12,
     recommendedIntensity: 'Core & Overhead Overhead Stability',
-    baseHealth: 610,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -172,7 +172,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy deadlifts and farmers carries to anchor against brute impact.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Pulls & Grip Anchoring',
-    baseHealth: 720,
+    baseHealth: 3500,
     baseXpBonus: 170,
     modifiers: [
       {
@@ -204,7 +204,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Strict front squats, lunges, and heavy calf raises to maintain rigid posture.',
     recommendedSets: 13,
     recommendedIntensity: 'Leg Postural Endurance (Front Squats/Lunges)',
-    baseHealth: 630,
+    baseHealth: 3250,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -235,7 +235,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High reps of bent-over rows and rear delt flies to brace the fortifications.',
     recommendedSets: 14,
     recommendedIntensity: 'Upper Back Volume (12-15 reps)',
-    baseHealth: 590,
+    baseHealth: 3500,
     baseXpBonus: 135,
     modifiers: [
       {
@@ -266,7 +266,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy barbell presses to physically repel the hydraulic rams.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Bench / Overhead Lifts',
-    baseHealth: 710,
+    baseHealth: 3500,
     baseXpBonus: 170,
     modifiers: [
       {
@@ -298,7 +298,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Precision repetitions with crisp lockout and zero momentum cheat.',
     recommendedSets: 12,
     recommendedIntensity: 'Form Perfection (2-0-2 cadence)',
-    baseHealth: 610,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -329,7 +329,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Maximum tonnage volume across lower and upper compound movements.',
     recommendedSets: 15,
     recommendedIntensity: 'High Tonnage Volume Session',
-    baseHealth: 730,
+    baseHealth: 3750,
     baseXpBonus: 175,
     modifiers: [
       {
@@ -361,7 +361,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Peak intensity heavy lifting across all movement planes.',
     recommendedSets: 16,
     recommendedIntensity: 'Elite Strength Mastery (RPE 9-10)',
-    baseHealth: 850,
+    baseHealth: 4000,
     baseXpBonus: 220,
     modifiers: [
       {
@@ -393,7 +393,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Steady, unwavering cadence on heavy compound presses and squats.',
     recommendedSets: 14,
     recommendedIntensity: 'Unwavering Cadence & Posture',
-    baseHealth: 700,
+    baseHealth: 3500,
     baseXpBonus: 165,
     modifiers: [
       {
@@ -425,7 +425,7 @@ export const defenseEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Dynamic agility movements, explosive box jumps, and high-velocity kettlebell swings.',
     recommendedSets: 13,
     recommendedIntensity: 'Explosive Dynamic Power',
-    baseHealth: 570,
+    baseHealth: 3250,
     baseXpBonus: 135,
     modifiers: [
       {

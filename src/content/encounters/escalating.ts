@@ -15,7 +15,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Ascending pyramid sets (increasing weight, decreasing reps across sets).',
     recommendedSets: 15,
     recommendedIntensity: 'Ascending Pyramid (Progressive Overload)',
-    baseHealth: 740,
+    baseHealth: 3750,
     baseXpBonus: 185,
     modifiers: [
       {
@@ -47,7 +47,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Reverse pyramid sets (start at maximal weight, taper reps, increase volume).',
     recommendedSets: 14,
     recommendedIntensity: 'Reverse Pyramid Heavy Sets',
-    baseHealth: 720,
+    baseHealth: 3500,
     baseXpBonus: 175,
     modifiers: [
       {
@@ -79,7 +79,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Progressive drop sets or rest-pause sets pushing muscle to absolute capacity.',
     recommendedSets: 16,
     recommendedIntensity: 'Drop Sets & Rest-Pause Intensity',
-    baseHealth: 850,
+    baseHealth: 4000,
     baseXpBonus: 230,
     modifiers: [
       {
@@ -111,7 +111,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High volume compound lifts performed with escalating tempo.',
     recommendedSets: 16,
     recommendedIntensity: 'Escalating Tempo & Weight',
-    baseHealth: 820,
+    baseHealth: 4000,
     baseXpBonus: 220,
     modifiers: [
       {
@@ -143,7 +143,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Compound supersets targeting push/pull pairings.',
     recommendedSets: 13,
     recommendedIntensity: 'Push / Pull Escalating Supersets',
-    baseHealth: 630,
+    baseHealth: 3250,
     baseXpBonus: 150,
     modifiers: [
       {
@@ -174,7 +174,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Sustained muscular endurance with consistent time-under-tension.',
     recommendedSets: 14,
     recommendedIntensity: 'Sustained Time-Under-Tension',
-    baseHealth: 730,
+    baseHealth: 3500,
     baseXpBonus: 175,
     modifiers: [
       {
@@ -206,7 +206,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High repetition squats and lunges to stem the swelling worker tide.',
     recommendedSets: 15,
     recommendedIntensity: 'High Volume Lower Body Circuit',
-    baseHealth: 710,
+    baseHealth: 3750,
     baseXpBonus: 170,
     modifiers: [
       {
@@ -238,7 +238,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy barbell curls, dips, and close-grip bench to match transhuman fury.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Upper Body Antagonist Sets',
-    baseHealth: 750,
+    baseHealth: 3500,
     baseXpBonus: 180,
     modifiers: [
       {
@@ -270,7 +270,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Explosive bodyweight and kettlebell conditioning with decreasing rest times.',
     recommendedSets: 15,
     recommendedIntensity: 'Decreasing Rest Interval Conditioning',
-    baseHealth: 700,
+    baseHealth: 3750,
     baseXpBonus: 165,
     modifiers: [
       {
@@ -302,7 +302,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Max-effort deadlifts followed immediately by explosive overhead lifts.',
     recommendedSets: 16,
     recommendedIntensity: 'Deadlift & Overhead Explosive Pairs',
-    baseHealth: 840,
+    baseHealth: 4000,
     baseXpBonus: 225,
     modifiers: [
       {
@@ -334,7 +334,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy front squats and Romanian deadlifts with progressive loading.',
     recommendedSets: 14,
     recommendedIntensity: 'Progressive Front Squats & RDLs',
-    baseHealth: 730,
+    baseHealth: 3500,
     baseXpBonus: 175,
     modifiers: [
       {
@@ -366,7 +366,7 @@ export const escalatingEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Comprehensive whole-body marathon workout: heavy compound lifts across all planes.',
     recommendedSets: 18,
     recommendedIntensity: 'Whole-Body Heavy Marathon Workout',
-    baseHealth: 980,
+    baseHealth: 4500,
     baseXpBonus: 280,
     modifiers: [
       {

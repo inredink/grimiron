@@ -1,4 +1,6 @@
 import { EnemyDefinition } from '../../types/combat';
+import { getEncounterById, convertToEnemyDefinition } from '../encounters/catalog';
+import { getRaidTierById } from '../raidTiers';
 
 export const ENEMY_CATALOG: EnemyDefinition[] = [
   {
@@ -8,7 +10,7 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
     faction: 'Chaos',
     loreDescription:
       'Fanatical worshippers of the Ruinous Powers armed with scavenged autoguns and makeshift shivs. Easily scattered by decisive force.',
-    baseHealth: 480, // ~4-6 working sets to defeat
+    baseHealth: 1600, // ~5-7 working sets to defeat
     difficulty: 'patrol',
     visual: {
       iconName: 'flame-outline',
@@ -26,7 +28,7 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
     faction: 'Orks',
     loreDescription:
       'A rowdy mob of Choppa-wielding Ork Boyz itching for a scrap. They respect only brute physical power and overwhelming resilience.',
-    baseHealth: 750, // ~5-8 working sets
+    baseHealth: 2400, // ~8-10 working sets
     difficulty: 'patrol',
     visual: {
       iconName: 'skull-outline',
@@ -44,7 +46,7 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
     faction: 'Tyranids',
     loreDescription:
       'Towering bio-constructs clad in chameleonic chitin. Synaptically bound to the Hive Mind, their boneswords sever armor like parchment.',
-    baseHealth: 1400, // ~8-12 working sets
+    baseHealth: 3500, // ~12-14 working sets
     difficulty: 'skirmish',
     visual: {
       iconName: 'bug-outline',
@@ -62,7 +64,7 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
     faction: 'Necrons',
     loreDescription:
       'Ancient robotic warriors marching in eerie synchronization. Armed with Gauss Blasters that flay armor and flesh atom by atom.',
-    baseHealth: 1800, // ~10-14 working sets
+    baseHealth: 4200, // ~14-16 working sets
     difficulty: 'skirmish',
     visual: {
       iconName: 'hardware-chip-outline',
@@ -80,7 +82,7 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
     faction: 'Chaos',
     loreDescription:
       'A biomechanical abomination fusing a crazed Chaos Space Marine with an armored walking sarcophagus. Armed with a thunderous Reaper Autocannon.',
-    baseHealth: 2800, // ~14-18 working sets
+    baseHealth: 5500, // ~18-20 working sets (calibrated for high-volume German Volume Training sessions)
     difficulty: 'incursion',
     visual: {
       iconName: 'shield-half-outline',
@@ -98,7 +100,7 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
     faction: 'Tyranids',
     loreDescription:
       'A monstrous bio-titan built solely for orbital shock assault. Clad in foot-thick reinforced carapace capable of shrugging off tank shells.',
-    baseHealth: 4200, // ~18-24 working sets
+    baseHealth: 7200, // ~24-28 working sets
     difficulty: 'boss',
     visual: {
       iconName: 'flash-outline',
@@ -116,7 +118,7 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
     faction: 'Orks',
     loreDescription:
       'A colossal mega-armored brute wielding a hydraulic Power Klaw and twin-linked Custom Shoota. He grows stronger the harder you fight.',
-    baseHealth: 5800, // ~22-30 working sets
+    baseHealth: 9500, // ~32-38 working sets
     difficulty: 'boss',
     visual: {
       iconName: 'bonfire-outline',
@@ -134,7 +136,7 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
     faction: 'Chaos',
     loreDescription:
       'An immortal warlord gifted with infernal godhood. Its Warp-forged blade cleaves reality itself, challenging you to an epic multi-exercise crusade.',
-    baseHealth: 8500, // ~30+ sets / Crusade Session
+    baseHealth: 14000, // ~45-55 sets / Crusade Session
     difficulty: 'crusade',
     visual: {
       iconName: 'skull',
@@ -149,5 +151,37 @@ export const ENEMY_CATALOG: EnemyDefinition[] = [
 
 export function getEnemyById(id: string): EnemyDefinition {
   const enemy = ENEMY_CATALOG.find((e) => e.id === id);
-  return enemy || ENEMY_CATALOG[0];
+  if (enemy) return enemy;
+
+  // Check Warfront encounter templates
+  const encounter = getEncounterById(id);
+  if (encounter) {
+    return convertToEnemyDefinition(encounter);
+  }
+
+  // Check raid tiers
+  if (id.startsWith('tier_')) {
+    const tier = getRaidTierById(id as any);
+    if (tier) {
+      return {
+        id: tier.id,
+        name: `${tier.name} Commander`,
+        title: tier.codeName,
+        faction: 'Raid Hostile',
+        loreDescription: tier.loreBriefing,
+        baseHealth: tier.soloHp,
+        difficulty: 'boss',
+        visual: {
+          iconName: tier.icon,
+          primaryColor: tier.color,
+          accentColor: '#FFFFFF',
+          badgeText: `TIER ${tier.tierNumber}`,
+        },
+        tauntQuote: 'You dare challenge a raid commander?',
+        defeatQuote: 'The vanguard has fallen...',
+      };
+    }
+  }
+
+  return ENEMY_CATALOG[0];
 }

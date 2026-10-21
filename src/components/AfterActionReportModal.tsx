@@ -128,6 +128,44 @@ export const AfterActionReportModal: React.FC<AfterActionReportModalProps> = ({
               </Text>
             </View>
 
+            {/* Continuous Crusade: Multi-Enemy Slain Roster */}
+            {report.slainEnemies && report.slainEnemies.length > 0 && (
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionHeader}>PURGED HOSTILES ROSTER ({report.slainEnemies.length})</Text>
+                  <View style={styles.slainCountPill}>
+                    <Ionicons name="skull" size={12} color={THEME.colors.success} />
+                    <Text style={styles.slainCountPillText}>+{report.slainEnemies.reduce((s, e) => s + e.gloryBonusXp, 0)} XP</Text>
+                  </View>
+                </View>
+                {report.slainEnemies.map((slain, idx) => (
+                  <View key={`${slain.enemyId}_${idx}`} style={styles.slainRowItem}>
+                    <View
+                      style={[
+                        styles.slainAvatar,
+                        { borderColor: slain.visual?.primaryColor || THEME.colors.primary },
+                      ]}
+                    >
+                      <Ionicons
+                        name={getSafeIoniconsName(slain.visual?.iconName, 'skull')}
+                        size={18}
+                        color={slain.visual?.primaryColor || THEME.colors.primary}
+                      />
+                    </View>
+                    <View style={styles.slainDetails}>
+                      <Text style={styles.slainName}>{slain.enemyName}</Text>
+                      <Text style={styles.slainMeta}>
+                        {slain.enemyTitle} • {slain.faction.toUpperCase()} • {slain.baseHealth} HP
+                      </Text>
+                    </View>
+                    <View style={styles.slainRewardBadge}>
+                      <Text style={styles.slainRewardText}>+{slain.gloryBonusXp} XP</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {/* Combat & Munitions Metrics */}
             <View style={styles.sectionCard}>
               <Text style={styles.sectionHeader}>MUNITIONS & COMBAT TELEMETRY</Text>
@@ -432,5 +470,69 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginLeft: 6,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  slainCountPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 230, 118, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  slainCountPillText: {
+    color: THEME.colors.success,
+    fontSize: 9,
+    fontWeight: '800',
+    marginLeft: 4,
+  },
+  slainRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#121A26',
+    borderRadius: THEME.borderRadius.sm,
+    padding: 8,
+    marginVertical: 3,
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+  },
+  slainAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    backgroundColor: '#0D141F',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  slainDetails: {
+    flex: 1,
+  },
+  slainName: {
+    color: THEME.colors.textBright,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  slainMeta: {
+    color: THEME.colors.textMuted,
+    fontSize: 9,
+    marginTop: 1,
+  },
+  slainRewardBadge: {
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  slainRewardText: {
+    color: THEME.colors.success,
+    fontSize: 10,
+    fontWeight: '900',
   },
 });

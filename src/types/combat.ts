@@ -82,6 +82,21 @@ export interface AttackEvent {
   subfactionId?: string;
 }
 
+export interface SlainEnemyRecord {
+  enemyId: string;
+  enemyName: string;
+  enemyTitle: string;
+  faction: string;
+  difficulty: EnemyDifficulty;
+  visual: EnemyVisual;
+  baseHealth: number;
+  totalDamageDealt: number;
+  overkillDamage: number;
+  slainAtTimestamp: string;
+  gloryBonusXp: number;
+  setsCount: number;
+}
+
 export interface CombatEncounterState {
   missionId: string;
   enemy: EnemyDefinition;
@@ -92,6 +107,7 @@ export interface CombatEncounterState {
   overkillDamage: number;
   attacks: AttackEvent[];
   lastAttack?: AttackEvent;
+  slainEnemies?: SlainEnemyRecord[];
 }
 
 export interface CombatAfterActionReport {
@@ -117,4 +133,6 @@ export interface CombatAfterActionReport {
   requestedXp?: number;
   creditedXp?: number;
   spilloverXp?: number;
+  slainEnemies?: SlainEnemyRecord[];
+  totalSlainCount?: number;
 }

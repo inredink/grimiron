@@ -37,7 +37,7 @@ import { XpAwardResult } from '../../src/services/progression/xpService';
 import { calculateWorkoutXp } from '../../src/services/progression/xpCalculator';
 import { WorkoutExercise, ExerciseSet, XpBreakdown, WorkoutSession } from '../../src/types/workout';
 import { ExerciseDefinition } from '../../src/types/exercise';
-import { CombatAfterActionReport, CombatEncounterState } from '../../src/types/combat';
+import { CombatAfterActionReport, CombatEncounterState, SlainEnemyRecord, CombatMission } from '../../src/types/combat';
 import { getEnemyById } from '../../src/content/combat/enemies';
 import { computeCombatState } from '../../src/services/combat/combatEngine';
 import { createAttackFromSet } from '../../src/services/combat/attackEngine';
@@ -101,6 +101,10 @@ export default function WorkoutScreen() {
   const [lastCompletedSetId, setLastCompletedSetId] = useState<string | undefined>(undefined);
   const [afterActionReport, setAfterActionReport] = useState<CombatAfterActionReport | null>(null);
 
+  // Continuous Crusade: Multi-enemy session tracking
+  const [sessionSlainEnemies, setSessionSlainEnemies] = useState<SlainEnemyRecord[]>([]);
+  const [slainSetIds, setSlainSetIds] = useState<Set<string>>(new Set<string>());
+
   // Rest Timer State
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restTimerKey, setRestTimerKey] = useState(Date.now());
@@ -143,6 +147,7 @@ export default function WorkoutScreen() {
         totalDamage: 0,
         overkillDamage: 0,
         attacks: [],
+        slainEnemies: sessionSlainEnemies,
       };
     }
     return computeCombatState(
@@ -152,9 +157,128 @@ export default function WorkoutScreen() {
       lastCompletedSetId,
       currentFaction?.id,
       currentSubfaction?.id,
-      equipmentBonuses
+      equipmentBonuses,
+      slainSetIds,
+      sessionSlainEnemies
     );
-  }, [activeWorkout, currentEnemy, currentMission, lastCompletedSetId, currentFaction?.id, currentSubfaction?.id, equipmentBonuses]);
+  }, [
+    activeWorkout,
+    currentEnemy,
+    currentMission,
+    lastCompletedSetId,
+    currentFaction?.id,
+    currentSubfaction?.id,
+    equipmentBonuses,
+    slainSetIds,
+    sessionSlainEnemies,
+  ]);
+
+  // Continuous Crusade: Summon next enemy wave or reinforcements
+  const handleSummonNextEnemy = () => {
+    if (!activeWorkout) return;
+
+    // 1. Snapshot all completed set IDs up to now into slainSetIds
+    const currentCompletedSetIds = new Set<string>(slainSetIds);
+    let setsOnThisEnemy = 0;
+    for (const ex of activeWorkout.exercises) {
+      for (const s of ex.sets) {
+        if (s.isCompleted) {
+          if (!currentCompletedSetIds.has(s.id)) {
+            setsOnThisEnemy++;
+          }
+          currentCompletedSetIds.add(s.id);
+        }
+      }
+    }
+    setSlainSetIds(currentCompletedSetIds);
+
+    // 2. Record the current slain enemy into sessionSlainEnemies
+    const slainRecord: SlainEnemyRecord = {
+      enemyId: currentEnemy.id,
+      enemyName: currentEnemy.name,
+      enemyTitle: currentEnemy.title,
+      faction: currentEnemy.faction,
+      difficulty: currentEnemy.difficulty,
+      visual: currentEnemy.visual,
+      baseHealth: currentEnemy.baseHealth,
+      totalDamageDealt: currentEnemy.baseHealth,
+      overkillDamage: combatState.overkillDamage,
+      slainAtTimestamp: new Date().toISOString(),
+      gloryBonusXp: currentMission.gloryBonusXp || 25,
+      setsCount: setsOnThisEnemy,
+    };
+    setSessionSlainEnemies((prev) => [...prev, slainRecord]);
+
+    // 3. Determine the next enemy in the escalation ladder
+    const ladder = [
+      'enemy_chaos_cultist',
+      'enemy_ork_boyz',
+      'enemy_tyranid_warrior',
+      'enemy_necron_immortals',
+      'enemy_helbrute',
+      'enemy_carnifex',
+      'enemy_ork_warboss',
+      'enemy_daemon_prince',
+    ];
+    const currentIdx = ladder.indexOf(currentEnemy.id);
+    const nextEnemyId =
+      currentIdx >= 0 && currentIdx + 1 < ladder.length
+        ? ladder[currentIdx + 1]
+        : ladder[(currentIdx + 1) % ladder.length] || 'enemy_helbrute';
+
+    const nextEnemy = getEnemyById(nextEnemyId);
+    const nextMission: CombatMission = {
+      id: `crusade_${Date.now()}`,
+      title: `Crusade Wave: Purge ${nextEnemy.name}`,
+      briefing: nextEnemy.loreDescription,
+      difficulty: nextEnemy.difficulty,
+      enemyId: nextEnemy.id,
+      recommendedSets: Math.max(10, Math.round(nextEnemy.baseHealth / 250)),
+      gloryBonusXp: nextEnemy.difficulty === 'boss' ? 50 : 35,
+    };
+
+    setCurrentMission(nextMission);
+    triggerHaptic.heavy();
+    Alert.alert(
+      'Reinforcements Sighted!',
+      `Previous hostile neutralized! A new hostile wave approaches: ${nextEnemy.name} (${nextEnemy.baseHealth} HP). Continue your crusade!`
+    );
+  };
+
+  const handleSelectNewMission = (newMission: CombatMission) => {
+    if (combatState.isDefeated && activeWorkout) {
+      const currentCompletedSetIds = new Set<string>(slainSetIds);
+      let setsOnThisEnemy = 0;
+      for (const ex of activeWorkout.exercises) {
+        for (const s of ex.sets) {
+          if (s.isCompleted) {
+            if (!currentCompletedSetIds.has(s.id)) {
+              setsOnThisEnemy++;
+            }
+            currentCompletedSetIds.add(s.id);
+          }
+        }
+      }
+      setSlainSetIds(currentCompletedSetIds);
+
+      const slainRecord: SlainEnemyRecord = {
+        enemyId: currentEnemy.id,
+        enemyName: currentEnemy.name,
+        enemyTitle: currentEnemy.title,
+        faction: currentEnemy.faction,
+        difficulty: currentEnemy.difficulty,
+        visual: currentEnemy.visual,
+        baseHealth: currentEnemy.baseHealth,
+        totalDamageDealt: currentEnemy.baseHealth,
+        overkillDamage: combatState.overkillDamage,
+        slainAtTimestamp: new Date().toISOString(),
+        gloryBonusXp: currentMission.gloryBonusXp || 25,
+        setsCount: setsOnThisEnemy,
+      };
+      setSessionSlainEnemies((prev) => [...prev, slainRecord]);
+    }
+    setCurrentMission(newMission);
+  };
 
   // Live estimated XP
   const currentBreakdown = activeWorkout
@@ -765,7 +889,7 @@ export default function WorkoutScreen() {
         <MissionSelectorModal
           visible={isMissionModalVisible}
           selectedMissionId={currentMission.id}
-          onSelectMission={setCurrentMission}
+          onSelectMission={handleSelectNewMission}
           onClose={() => setIsMissionModalVisible(false)}
         />
 
@@ -928,6 +1052,7 @@ export default function WorkoutScreen() {
           lastAttack={combatState.lastAttack}
           onOpenCombatLog={() => setIsCombatLogVisible(true)}
           onSwitchMission={() => setIsMissionModalVisible(true)}
+          onSummonNextEnemy={handleSummonNextEnemy}
         />
 
         {/* Active Faction Directive Banner */}
@@ -1100,7 +1225,7 @@ export default function WorkoutScreen() {
       <MissionSelectorModal
         visible={isMissionModalVisible}
         selectedMissionId={currentMission.id}
-        onSelectMission={setCurrentMission}
+        onSelectMission={handleSelectNewMission}
         onClose={() => setIsMissionModalVisible(false)}
       />
 

@@ -1158,10 +1158,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!activeWorkout) return null;
 
     const breakdown = calculateWorkoutXp(activeWorkout.exercises, true);
-    const gloryBonus =
+    const previousGlory = (encounterState?.slainEnemies || []).reduce(
+      (sum, s) => sum + s.gloryBonusXp,
+      0
+    );
+    const activeTargetGlory =
       encounterState && encounterState.isDefeated && mission
         ? mission.gloryBonusXp
         : 0;
+    const gloryBonus = previousGlory + activeTargetGlory;
     const totalXp = breakdown.totalXp + gloryBonus;
 
     const completedSession: WorkoutSession = {
@@ -1239,6 +1244,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           description: `${atk.attackName} landed for ${atk.damage} damage!`,
           damageDealt: atk.damage,
         });
+      }
+
+      if (encounterState.slainEnemies) {
+        for (const s of encounterState.slainEnemies) {
+          timeline.push({
+            timestamp: s.slainAtTimestamp,
+            eventType: 'enemy_slain',
+            actorName: character.characterName,
+            description: `${s.enemyName} has been purged in continuous combat (+${s.gloryBonusXp} Glory XP).`,
+          });
+        }
       }
 
       if (encounterState.isDefeated) {

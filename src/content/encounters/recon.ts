@@ -15,7 +15,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Execute rapid sets with minimal rest to outpace the biker blitz.',
     recommendedSets: 12,
     recommendedIntensity: 'High Cadence (60-75s rest)',
-    baseHealth: 320,
+    baseHealth: 3000,
     baseXpBonus: 75,
     modifiers: [
       {
@@ -46,7 +46,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Maintain steady reps across accessory movements to sever sensor relays.',
     recommendedSets: 10,
     recommendedIntensity: 'Moderate Cadence (75-90s rest)',
-    baseHealth: 280,
+    baseHealth: 2500,
     baseXpBonus: 65,
     modifiers: [
       {
@@ -77,7 +77,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Clear 10 sets of compound pulling exercises to sweep claustrophobic shafts.',
     recommendedSets: 10,
     recommendedIntensity: 'Moderate Weight (8-12 reps)',
-    baseHealth: 300,
+    baseHealth: 2500,
     baseXpBonus: 70,
     modifiers: [
       {
@@ -108,7 +108,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High repetition volume to crush endless metallic constructs.',
     recommendedSets: 12,
     recommendedIntensity: 'High Volume (12-15 reps)',
-    baseHealth: 340,
+    baseHealth: 3000,
     baseXpBonus: 80,
     modifiers: [
       {
@@ -139,7 +139,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Execute explosive lifting sets to disrupt the skimmer flight paths.',
     recommendedSets: 12,
     recommendedIntensity: 'Power Output (Heavy triples or fives)',
-    baseHealth: 360,
+    baseHealth: 3000,
     baseXpBonus: 85,
     modifiers: [
       {
@@ -170,7 +170,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Continuous movement rhythm to clear bounding bio-beasts.',
     recommendedSets: 12,
     recommendedIntensity: 'Low Rest Cadence (45-60s)',
-    baseHealth: 310,
+    baseHealth: 3000,
     baseXpBonus: 75,
     modifiers: [
       {
@@ -201,7 +201,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Controlled tempo repetitions (3-second eccentrics) to mimic precision counter-sniping.',
     recommendedSets: 10,
     recommendedIntensity: 'Strict Eccentric Control (3-1-1 tempo)',
-    baseHealth: 330,
+    baseHealth: 2500,
     baseXpBonus: 80,
     modifiers: [
       {
@@ -232,7 +232,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy lower-body sets to match Kin vehicular stability.',
     recommendedSets: 10,
     recommendedIntensity: 'Heavy Squats / Leg Press (6-8 reps)',
-    baseHealth: 350,
+    baseHealth: 2500,
     baseXpBonus: 80,
     modifiers: [
       {
@@ -263,7 +263,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Explosive pressing sets to power through suppressive firing lanes.',
     recommendedSets: 12,
     recommendedIntensity: 'Explosive Push Movements',
-    baseHealth: 380,
+    baseHealth: 3000,
     baseXpBonus: 90,
     modifiers: [
       {
@@ -294,7 +294,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Flawless set execution matching Codex Astartes doctrine.',
     recommendedSets: 10,
     recommendedIntensity: 'High Form Discipline (Zero Breakdown)',
-    baseHealth: 360,
+    baseHealth: 2500,
     baseXpBonus: 85,
     modifiers: [
       {
@@ -325,7 +325,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Endure steady heart-rate cardio/accessory sets amidst radiant attrition.',
     recommendedSets: 11,
     recommendedIntensity: 'Continuous Muscular Tension',
-    baseHealth: 320,
+    baseHealth: 2750,
     baseXpBonus: 75,
     modifiers: [
       {
@@ -356,7 +356,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Complete 12 sets of compound movements without wavering.',
     recommendedSets: 12,
     recommendedIntensity: 'Military Strict Sets (5x5 or 4x8)',
-    baseHealth: 340,
+    baseHealth: 3000,
     baseXpBonus: 80,
     modifiers: [
       {
@@ -387,7 +387,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Explosive vertical jumps or Olympic-style pulling movements.',
     recommendedSets: 10,
     recommendedIntensity: 'Explosive Triple Sets',
-    baseHealth: 330,
+    baseHealth: 2500,
     baseXpBonus: 80,
     modifiers: [
       {
@@ -418,7 +418,7 @@ export const reconEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Grind through high-rep endurance sets to burn through necrotic decay.',
     recommendedSets: 12,
     recommendedIntensity: 'High Volume (15-20 reps)',
-    baseHealth: 320,
+    baseHealth: 3000,
     baseXpBonus: 75,
     modifiers: [
       {

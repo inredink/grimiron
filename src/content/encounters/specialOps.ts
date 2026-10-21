@@ -15,7 +15,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Controlled negative tempo on explosive compound lifts.',
     recommendedSets: 12,
     recommendedIntensity: 'Tempo Explosiveness (3-1-X tempo)',
-    baseHealth: 600,
+    baseHealth: 3000,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -46,7 +46,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Intense sprint intervals between strict weighted pushups or dips.',
     recommendedSets: 12,
     recommendedIntensity: 'High-Density Calisthenics & Weighted Core',
-    baseHealth: 580,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -77,7 +77,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Unilateral exercises (single-leg squats, single-arm presses) to build balanced stability.',
     recommendedSets: 12,
     recommendedIntensity: 'Unilateral Balance & Core Stability',
-    baseHealth: 610,
+    baseHealth: 3000,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -108,7 +108,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy barbell squats and deadlifts performed in absolute stoic focus.',
     recommendedSets: 14,
     recommendedIntensity: 'Heavy Squats & Deadlifts (85%+ 1RM)',
-    baseHealth: 680,
+    baseHealth: 3500,
     baseXpBonus: 165,
     modifiers: [
       {
@@ -140,7 +140,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High speed power cleans, kettlebell swings, and plyometric pushups.',
     recommendedSets: 14,
     recommendedIntensity: 'High Velocity Power Explosions',
-    baseHealth: 760,
+    baseHealth: 3500,
     baseXpBonus: 190,
     modifiers: [
       {
@@ -172,7 +172,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Strict chest presses with pause reps to brace against phasing blade strikes.',
     recommendedSets: 12,
     recommendedIntensity: 'Pause Rep Chest Press (2s bottom pause)',
-    baseHealth: 620,
+    baseHealth: 3000,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -203,7 +203,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Dynamic hybrid kettlebell movements and pull-up progressions.',
     recommendedSets: 12,
     recommendedIntensity: 'Dynamic Hybrid Sets',
-    baseHealth: 590,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -234,7 +234,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Explosive barbell rows and lat pull-downs to snatch targets from concealment.',
     recommendedSets: 12,
     recommendedIntensity: 'Explosive Back Rows & Pull-Downs',
-    baseHealth: 570,
+    baseHealth: 3000,
     baseXpBonus: 135,
     modifiers: [
       {
@@ -265,7 +265,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Complete heavy compound movements across a wide variety of rep ranges (periodized session).',
     recommendedSets: 14,
     recommendedIntensity: 'Periodized Compound Variations (4, 8, 12 reps)',
-    baseHealth: 700,
+    baseHealth: 3500,
     baseXpBonus: 170,
     modifiers: [
       {
@@ -297,7 +297,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Overhead kettlebell presses, push presses, and box step-ups.',
     recommendedSets: 12,
     recommendedIntensity: 'Overhead Push Presses & Step-ups',
-    baseHealth: 600,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
@@ -328,7 +328,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Strict tempo work with eyes locked forward on bar path.',
     recommendedSets: 12,
     recommendedIntensity: 'Strict Bar Path Discipline',
-    baseHealth: 620,
+    baseHealth: 3000,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -359,7 +359,7 @@ export const specialOpsEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Rapid-fire dumbbell presses and explosive medicine ball chest passes.',
     recommendedSets: 12,
     recommendedIntensity: 'Rapid-Fire Pressing & Core Power',
-    baseHealth: 590,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {

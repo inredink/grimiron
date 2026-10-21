@@ -15,7 +15,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Rapid high-intensity sets targeting maximal muscle breakdown in short intervals.',
     recommendedSets: 12,
     recommendedIntensity: 'High-Density Interval Sets (45s rest)',
-    baseHealth: 540,
+    baseHealth: 3000,
     baseXpBonus: 130,
     modifiers: [
       {
@@ -46,7 +46,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy bent-over barbell rows and dumbbell snatches to rip hydraulic struts down.',
     recommendedSets: 12,
     recommendedIntensity: 'Heavy Pulls & Snatches',
-    baseHealth: 570,
+    baseHealth: 3000,
     baseXpBonus: 135,
     modifiers: [
       {
@@ -77,7 +77,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High weight compound deadlifts and rack pulls to rip iron pipes from bedrock.',
     recommendedSets: 14,
     recommendedIntensity: 'Max Effort Deadlifts / Rack Pulls',
-    baseHealth: 660,
+    baseHealth: 3500,
     baseXpBonus: 160,
     modifiers: [
       {
@@ -109,7 +109,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Strict speed reps with controlled cadence to overwhelm electronic safeguards.',
     recommendedSets: 10,
     recommendedIntensity: 'Speed Rep Cadence (Explosive concentric)',
-    baseHealth: 480,
+    baseHealth: 2500,
     baseXpBonus: 110,
     modifiers: [
       {
@@ -140,7 +140,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy squats and lunges to navigate claustrophobic slime-coated tunnels.',
     recommendedSets: 12,
     recommendedIntensity: 'Squat & Lunge Endurance (8-12 reps)',
-    baseHealth: 550,
+    baseHealth: 3000,
     baseXpBonus: 130,
     modifiers: [
       {
@@ -171,7 +171,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy dumbbell rows and clean-and-press to hoist sabotage charges into place.',
     recommendedSets: 13,
     recommendedIntensity: 'Clean & Press / Heavy Dumbbell Lifts',
-    baseHealth: 630,
+    baseHealth: 3250,
     baseXpBonus: 150,
     modifiers: [
       {
@@ -203,7 +203,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Agile bodyweight supersets combined with fast dumbbell presses.',
     recommendedSets: 11,
     recommendedIntensity: 'Speed & Agility Supersets',
-    baseHealth: 510,
+    baseHealth: 2750,
     baseXpBonus: 120,
     modifiers: [
       {
@@ -234,7 +234,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'High volume push-downs, dips, and overhead tricep extensions.',
     recommendedSets: 13,
     recommendedIntensity: 'High Volume Triceps & Chest Press',
-    baseHealth: 640,
+    baseHealth: 3250,
     baseXpBonus: 155,
     modifiers: [
       {
@@ -265,7 +265,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy pull-ups, barbell rows, and hammer curls to snap iron manacles.',
     recommendedSets: 12,
     recommendedIntensity: 'Heavy Pull-ups & Back Rows',
-    baseHealth: 560,
+    baseHealth: 3000,
     baseXpBonus: 135,
     modifiers: [
       {
@@ -296,7 +296,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Explosive rotational medicine ball throws or landmine twists.',
     recommendedSets: 12,
     recommendedIntensity: 'Explosive Rotational Power (Core & Shoulders)',
-    baseHealth: 620,
+    baseHealth: 3000,
     baseXpBonus: 145,
     modifiers: [
       {
@@ -327,7 +327,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy leg drives and farmer carries to haul emergency heat sink rods.',
     recommendedSets: 12,
     recommendedIntensity: 'Heavy Carries & Leg Drive',
-    baseHealth: 580,
+    baseHealth: 3000,
     baseXpBonus: 135,
     modifiers: [
       {
@@ -358,7 +358,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Strict bodyweight pull-ups, chin-ups, and hanging leg raises.',
     recommendedSets: 10,
     recommendedIntensity: 'Strict Bodyweight Pulling & Core',
-    baseHealth: 460,
+    baseHealth: 2500,
     baseXpBonus: 105,
     modifiers: [
       {
@@ -389,7 +389,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Barbell cleans, overhead push presses, and heavy rack lockouts.',
     recommendedSets: 14,
     recommendedIntensity: 'Explosive Overhead Push Presses',
-    baseHealth: 670,
+    baseHealth: 3500,
     baseXpBonus: 165,
     modifiers: [
       {
@@ -421,7 +421,7 @@ export const sabotageEncounters: EncounterTemplate[] = [
     tacticalObjective: 'Heavy Romanian deadlifts, shrugs, and farmer holds.',
     recommendedSets: 12,
     recommendedIntensity: 'Heavy Hip Hinge & Upper Traps (8-10 reps)',
-    baseHealth: 590,
+    baseHealth: 3000,
     baseXpBonus: 140,
     modifiers: [
       {
