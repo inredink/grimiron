@@ -70,6 +70,8 @@ export default function CharacterTabScreen() {
     setBodyweightGoalAction,
     logSleepAction,
     refreshBiometricsAction,
+    autoStasisNotice,
+    dismissAutoStasisNotice,
   } = useApp();
 
   // Modals state
@@ -780,6 +782,23 @@ export default function CharacterTabScreen() {
               )}
             </View>
 
+            {/* Auto-detected Stasis Notification Banner */}
+            {autoStasisNotice && (
+              <View style={styles.autoStasisNoticeBox}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Ionicons name="moon" size={15} color="#A78BFA" style={{ marginRight: 6 }} />
+                  <Text style={styles.autoStasisNoticeText}>{autoStasisNotice}</Text>
+                </View>
+                <TouchableOpacity onPress={dismissAutoStasisNotice} style={{ padding: 4 }}>
+                  <Ionicons name="close" size={16} color={THEME.colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <Text style={styles.stasisAutoDesc}>
+              GrimIron monitors phone stillness: inactivity lasting 7+ hours automatically credits stasis rest &amp; the Well-Rested combat buff without manual input.
+            </Text>
+
             <View style={styles.bioBtnRow}>
               <TouchableOpacity
                 onPress={() => {
@@ -790,7 +809,7 @@ export default function CharacterTabScreen() {
                 activeOpacity={0.8}
               >
                 <Ionicons name="moon-outline" size={13} color={THEME.colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.bioBtnText}>LOG STASIS CYCLE (+10 XP)</Text>
+                <Text style={styles.bioBtnText}>MANUAL STASIS LOG (+10 XP)</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2294,5 +2313,30 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.8,
+  },
+  autoStasisNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    borderWidth: 1,
+    borderColor: '#A78BFA',
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 8,
+  },
+  autoStasisNoticeText: {
+    color: '#E9D5FF',
+    fontSize: 11,
+    fontWeight: '700',
+    flex: 1,
+    lineHeight: 15,
+  },
+  stasisAutoDesc: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    lineHeight: 14,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
 });

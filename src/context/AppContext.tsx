@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { AppState } from 'react-native';
 import { CharacterProfile, CharacterProgression, UserStats } from '../types/character';
 import { WorkoutSession, WorkoutExercise, ExerciseSet, XpBreakdown } from '../types/workout';
 import { Faction, Subfaction } from '../content/types';
@@ -277,6 +278,10 @@ import {
   startForegroundPedometerTracking,
   stopForegroundPedometerTracking,
 } from '../services/hardware/pedometerService';
+import {
+  recordStasisBackgroundTime,
+  evaluateInactivityAndAutoLogStasis,
+} from '../services/recovery/stasisAutoDetectService';
 
 export interface FinishWorkoutResult {
   xpEarned: number;
@@ -413,6 +418,8 @@ interface AppContextValue {
   setBodyweightGoalAction: (goal: Partial<BodyweightGoal>) => void;
   logSleepAction: (hours: number) => { isWellRested: boolean; auxXpAwarded: number };
   refreshBiometricsAction: () => void;
+  autoStasisNotice: string | null;
+  dismissAutoStasisNotice: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -528,6 +535,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [weightHistory, setWeightHistory] = useState<BodyweightRecord[]>([]);
   const [isWellRested, setIsWellRested] = useState<boolean>(false);
   const [hasReconIntel, setHasReconIntel] = useState<boolean>(false);
+  const [autoStasisNotice, setAutoStasisNotice] = useState<string | null>(null);
 
   const loadData = useCallback(() => {
     try {
@@ -669,6 +677,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setHasReconIntel(hasDailyReconIntelToday());
       } catch (bioErr) {
         console.warn('Biometrics loading skipped:', bioErr);
+      }
+
+      // Evaluate auto-detected Stasis rest from phone/app inactivity (7+ hours)
+      try {
+        const autoStasisRes = evaluateInactivityAndAutoLogStasis();
+        if (autoStasisRes.detected && autoStasisRes.newlyAwardedXp > 0) {
+          setIsWellRested(true);
+          setAutoStasisNotice(
+            autoStasisRes.message ||
+              'Apothecarion Stasis: 7+ hours stillness detected. Well-Rested Protocol activated (+5% DMG)!'
+          );
+        }
+      } catch (autoErr) {
+        console.warn('Auto stasis evaluation skipped:', autoErr);
       }
 
       // Automatically sync cloud profile if authenticated with Supabase
@@ -2135,6 +2157,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { isWellRested: res.isWellRested, auxXpAwarded: res.auxXpAwarded };
   }, [refreshBiometricsAction]);
 
+  // AppState Inactivity & Background Listener for Auto-Stasis Detection
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        recordStasisBackgroundTime(Date.now());
+      } else if (nextAppState === 'active') {
+        const autoStasisRes = evaluateInactivityAndAutoLogStasis();
+        if (autoStasisRes.detected) {
+          refreshBiometricsAction();
+          if (autoStasisRes.newlyAwardedXp > 0) {
+            setAutoStasisNotice(
+              autoStasisRes.message ||
+                'Apothecarion Stasis: 7+ hours stillness detected. Well-Rested Protocol activated (+5% DMG)!'
+            );
+          }
+        }
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [refreshBiometricsAction]);
+
+  const dismissAutoStasisNotice = useCallback(() => {
+    setAutoStasisNotice(null);
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -2245,6 +2294,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setBodyweightGoalAction,
         logSleepAction,
         refreshBiometricsAction,
+        autoStasisNotice,
+        dismissAutoStasisNotice,
       }}
     >
       {children}

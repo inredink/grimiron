@@ -54,6 +54,11 @@ import {
   isWellRestedToday,
   hasDailyReconIntelToday,
 } from '../services/database/biometricsRepository';
+import {
+  recordStasisBackgroundTime,
+  evaluateInactivityAndAutoLogStasis,
+  getLastStasisBackgroundTime,
+} from '../services/recovery/stasisAutoDetectService';
 import { getAcquiredTitles } from '../services/progression/titleService';
 import { calculateEstimated1RM, getCodexPrSummary, computePrSummaryFromSets } from '../services/database/prRepository';
 import { COMBAT_DOCTRINES, getCombatDoctrineById } from '../services/combat/doctrineService';
@@ -5612,6 +5617,37 @@ if (wellRestedActive) effectiveMult += 0.05;
 if (reconIntelActive) effectiveMult += 0.05;
 assert(Math.round(effectiveMult * 100) === 20, 'Effective combat multiplier includes +5% well-rested and +5% recon intel (20% total)');
 console.log('  ✓ Apothecary Stasis recovery, XP awards, and combat tactical buffs verified');
+
+// 37.5 Automatic Stasis Detection from Phone / App Inactivity (7+ Hours)
+console.log('Testing Automatic Stasis Detection from 7+ Hours Inactivity...');
+
+// Test short inactivity (e.g. 4.5 hours from 1:00 PM to 5:30 PM)
+const tStartShort = new Date('2026-11-28T13:00:00Z').getTime();
+const tEndShort = new Date('2026-11-28T17:30:00Z').getTime();
+recordStasisBackgroundTime(tStartShort);
+assert(getLastStasisBackgroundTime() === tStartShort, 'Background timestamp recorded');
+
+const shortEval = evaluateInactivityAndAutoLogStasis(tEndShort, tStartShort);
+assert(shortEval.detected === false, 'Inactivity under 7.0h does not trigger auto-rest');
+assert(shortEval.newlyAwardedXp === 0, 'No XP awarded for short gap');
+assert(shortEval.elapsedHours === 4.5, 'Elapsed hours calculated as 4.5h');
+
+// Test overnight inactivity lasting 7+ hours (e.g. 11:00 PM to 6:45 AM = 7.75 hours)
+const tStartOvernight = new Date('2026-11-29T23:00:00Z').getTime();
+const tEndMorning = new Date('2026-11-30T06:45:00Z').getTime();
+recordStasisBackgroundTime(tStartOvernight);
+
+const autoRestEval = evaluateInactivityAndAutoLogStasis(tEndMorning, tStartOvernight);
+assert(autoRestEval.detected === true, 'Inactivity >= 7.0h triggers Stasis Auto-Rest');
+assert(autoRestEval.elapsedHours >= 7.0, 'Elapsed hours registered as >= 7.0h');
+assert(autoRestEval.newlyAwardedXp === 10, 'Automatically awards 10 Discipline XP');
+assert(autoRestEval.isWellRested === true, 'Well-Rested Protocol activated');
+assert(Boolean(autoRestEval.message?.includes('Apothecarion Stasis Auto-Rest')), 'Returns friendly tactical notice');
+
+// Subsequent check on same morning should be idempotent (no duplicate XP)
+const repeatMorningEval = evaluateInactivityAndAutoLogStasis(tEndMorning + 1000, tStartOvernight);
+assert(repeatMorningEval.newlyAwardedXp === 0, 'No duplicate XP awarded for repeat check on same day');
+console.log('  ✓ Phone inactivity lasting 7+ hours automatically triggers Stasis Rest, XP, and Well-Rested Protocol');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

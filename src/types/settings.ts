@@ -52,6 +52,7 @@ export interface AppSettings {
   training_missed_session_action: MissedSessionAction;
   training_program_reminders_enabled: boolean;
   training_deload_reminders_enabled: boolean;
+  training_auto_stasis_inactivity_enabled: boolean; // Auto-detect Stasis rest via 7+ hours phone/app stillness
 
   // Category 3: RPG, Faction & Campaign
   rpg_notify_new_missions: boolean;
@@ -131,6 +132,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   training_missed_session_action: 'suggest_reschedule',
   training_program_reminders_enabled: true,
   training_deload_reminders_enabled: true,
+  training_auto_stasis_inactivity_enabled: true,
 
   // Category 3: RPG, Faction & Campaign
   rpg_notify_new_missions: true,
