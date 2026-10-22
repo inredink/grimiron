@@ -247,6 +247,36 @@ import {
   XpAwardResult,
 } from '../services/progression/xpService';
 import { auditAndReconcileHistoricalXp } from '../services/progression/historicalXpAuditor';
+import {
+  DailyStepRecord,
+  StepMilestone,
+  BodyweightRecord,
+  BodyweightGoal,
+  WeightAnalytics,
+  StasisSleepRecord,
+} from '../types/biometrics';
+import {
+  getDailyStepRecord,
+  saveDailyStepRecord,
+  getLifetimeTotalSteps,
+  getAllStepMilestones,
+  checkAndClaimStepMilestones,
+  getBodyweightHistory,
+  logBodyweight,
+  getBodyweightGoal,
+  setBodyweightGoal,
+  computeWeightAnalytics,
+  logStasisSleep,
+  getRecentSleepRecords,
+  isWellRestedToday,
+  hasDailyReconIntelToday,
+  initializeBiometricsSqliteStorage,
+} from '../services/database/biometricsRepository';
+import {
+  syncPedometerSteps,
+  startForegroundPedometerTracking,
+  stopForegroundPedometerTracking,
+} from '../services/hardware/pedometerService';
 
 export interface FinishWorkoutResult {
   xpEarned: number;
@@ -370,6 +400,19 @@ interface AppContextValue {
   claimPledgeRewardAction: () => { success: boolean; xpEarned: number };
   defeatedNamedEnemies: DefeatedNamedEnemy[];
   refreshDefeatedNamedEnemies: () => void;
+  dailyStepRecord: DailyStepRecord | null;
+  stepMilestones: StepMilestone[];
+  lifetimeTotalSteps: number;
+  weightAnalytics: WeightAnalytics;
+  weightHistory: BodyweightRecord[];
+  isWellRested: boolean;
+  hasReconIntel: boolean;
+  syncStepsAction: () => Promise<void>;
+  logManualStepsAction: (steps: number) => { record: DailyStepRecord; newlyAwardedXp: number };
+  logBodyweightAction: (weight: number, notes?: string) => { record: BodyweightRecord; auxXpAwarded: number };
+  setBodyweightGoalAction: (goal: Partial<BodyweightGoal>) => void;
+  logSleepAction: (hours: number) => { isWellRested: boolean; auxXpAwarded: number };
+  refreshBiometricsAction: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -467,6 +510,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [selectedRaidTierId, setSelectedRaidTierId] = useState<RaidTierId>('tier_1_initiation');
 
+  // Biometric & Pedometer Registers State
+  const [dailyStepRecord, setDailyStepRecord] = useState<DailyStepRecord | null>(null);
+  const [stepMilestones, setStepMilestones] = useState<StepMilestone[]>([]);
+  const [lifetimeTotalSteps, setLifetimeTotalSteps] = useState<number>(0);
+  const [weightAnalytics, setWeightAnalytics] = useState<WeightAnalytics>({
+    currentWeight: null,
+    currentEmaWeight: null,
+    unit: 'lbs',
+    goalType: 'maintenance',
+    targetWeight: null,
+    weeklyRatePercent: 0,
+    actualWeeklyRatePercent: null,
+    rateStatus: 'stable',
+    logsCount: 0,
+  });
+  const [weightHistory, setWeightHistory] = useState<BodyweightRecord[]>([]);
+  const [isWellRested, setIsWellRested] = useState<boolean>(false);
+  const [hasReconIntel, setHasReconIntel] = useState<boolean>(false);
+
   const loadData = useCallback(() => {
     try {
       initializeDatabase();
@@ -476,6 +538,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       initializeRecoverySqliteStorage();
       initializeNotificationSqliteStorage();
       initializeDiagnosticsSqliteProvider();
+      initializeBiometricsSqliteStorage();
 
       // Authoritative Historical XP & Actions Audit:
       // Verifies all completed workouts, sets, and raid victories to guarantee XP is mathematically accurate
@@ -593,6 +656,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (draftErr) {
         console.warn('Draft restore skipped:', draftErr);
+      }
+
+      // Load Biometrics & Pedometer Registers
+      try {
+        setDailyStepRecord(getDailyStepRecord());
+        setStepMilestones(getAllStepMilestones());
+        setLifetimeTotalSteps(getLifetimeTotalSteps());
+        setWeightAnalytics(computeWeightAnalytics());
+        setWeightHistory(getBodyweightHistory(30));
+        setIsWellRested(isWellRestedToday());
+        setHasReconIntel(hasDailyReconIntelToday());
+      } catch (bioErr) {
+        console.warn('Biometrics loading skipped:', bioErr);
       }
 
       // Automatically sync cloud profile if authenticated with Supabase
@@ -2008,6 +2084,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [changeFaction]
   );
 
+  // Biometrics foreground tracking & action callbacks
+  useEffect(() => {
+    startForegroundPedometerTracking(() => {
+      setDailyStepRecord(getDailyStepRecord());
+      setLifetimeTotalSteps(getLifetimeTotalSteps());
+    });
+    return () => {
+      stopForegroundPedometerTracking();
+    };
+  }, []);
+
+  const refreshBiometricsAction = useCallback(() => {
+    setDailyStepRecord(getDailyStepRecord());
+    setStepMilestones(getAllStepMilestones());
+    setLifetimeTotalSteps(getLifetimeTotalSteps());
+    setWeightAnalytics(computeWeightAnalytics());
+    setWeightHistory(getBodyweightHistory(30));
+    setIsWellRested(isWellRestedToday());
+    setHasReconIntel(hasDailyReconIntelToday());
+    setCharacter(getCharacterProfile());
+  }, []);
+
+  const syncStepsAction = useCallback(async () => {
+    await syncPedometerSteps();
+    refreshBiometricsAction();
+  }, [refreshBiometricsAction]);
+
+  const logManualStepsAction = useCallback((steps: number) => {
+    const res = saveDailyStepRecord(steps);
+    refreshBiometricsAction();
+    return { record: res.record, newlyAwardedXp: res.newlyAwardedXp };
+  }, [refreshBiometricsAction]);
+
+  const logBodyweightAction = useCallback((weight: number, notes?: string) => {
+    const unit = (settings.workout_weight_unit === 'kg' ? 'kg' : 'lbs') as 'lbs' | 'kg';
+    const res = logBodyweight(weight, unit, undefined, notes);
+    refreshBiometricsAction();
+    return res;
+  }, [settings.workout_weight_unit, refreshBiometricsAction]);
+
+  const setBodyweightGoalAction = useCallback((goal: Partial<BodyweightGoal>) => {
+    setBodyweightGoal(goal);
+    refreshBiometricsAction();
+  }, [refreshBiometricsAction]);
+
+  const logSleepAction = useCallback((hours: number) => {
+    const res = logStasisSleep(hours);
+    refreshBiometricsAction();
+    return { isWellRested: res.isWellRested, auxXpAwarded: res.auxXpAwarded };
+  }, [refreshBiometricsAction]);
+
   return (
     <AppContext.Provider
       value={{
@@ -2105,6 +2232,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         claimPledgeRewardAction,
         defeatedNamedEnemies,
         refreshDefeatedNamedEnemies,
+        dailyStepRecord,
+        stepMilestones,
+        lifetimeTotalSteps,
+        weightAnalytics,
+        weightHistory,
+        isWellRested,
+        hasReconIntel,
+        syncStepsAction,
+        logManualStepsAction,
+        logBodyweightAction,
+        setBodyweightGoalAction,
+        logSleepAction,
+        refreshBiometricsAction,
       }}
     >
       {children}

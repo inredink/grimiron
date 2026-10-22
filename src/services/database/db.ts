@@ -656,6 +656,115 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
     );`
   );
 
+  repairOrRecreateTable(
+    db,
+    'daily_step_records',
+    [
+      { name: 'date', definition: 'TEXT PRIMARY KEY' },
+      { name: 'steps', definition: 'INTEGER NOT NULL DEFAULT 0' },
+      { name: 'distance_meters', definition: 'REAL NOT NULL DEFAULT 0' },
+      { name: 'daily_target', definition: 'INTEGER NOT NULL DEFAULT 10000' },
+      { name: 'aux_xp_awarded', definition: 'INTEGER NOT NULL DEFAULT 0' },
+      { name: 'is_target_met', definition: 'INTEGER NOT NULL DEFAULT 0' },
+      { name: 'recon_intel_awarded', definition: 'INTEGER NOT NULL DEFAULT 0' },
+      { name: 'updated_at', definition: 'TEXT NOT NULL' },
+    ],
+    `CREATE TABLE IF NOT EXISTS daily_step_records (
+      date TEXT PRIMARY KEY,
+      steps INTEGER NOT NULL DEFAULT 0,
+      distance_meters REAL NOT NULL DEFAULT 0,
+      daily_target INTEGER NOT NULL DEFAULT 10000,
+      aux_xp_awarded INTEGER NOT NULL DEFAULT 0,
+      is_target_met INTEGER NOT NULL DEFAULT 0,
+      recon_intel_awarded INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'step_milestones',
+    [
+      { name: 'milestone_key', definition: 'TEXT PRIMARY KEY' },
+      { name: 'target_steps', definition: 'INTEGER NOT NULL' },
+      { name: 'title', definition: 'TEXT NOT NULL' },
+      { name: 'xp_reward', definition: 'INTEGER NOT NULL' },
+      { name: 'badge_name', definition: 'TEXT NOT NULL' },
+      { name: 'achieved_at', definition: 'TEXT' },
+    ],
+    `CREATE TABLE IF NOT EXISTS step_milestones (
+      milestone_key TEXT PRIMARY KEY,
+      target_steps INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      xp_reward INTEGER NOT NULL,
+      badge_name TEXT NOT NULL,
+      achieved_at TEXT
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'bodyweight_records',
+    [
+      { name: 'id', definition: 'TEXT PRIMARY KEY' },
+      { name: 'date', definition: 'TEXT NOT NULL' },
+      { name: 'weight', definition: 'REAL NOT NULL' },
+      { name: 'unit', definition: "TEXT NOT NULL DEFAULT 'lbs'" },
+      { name: 'ema_weight', definition: 'REAL NOT NULL' },
+      { name: 'notes', definition: 'TEXT' },
+      { name: 'created_at', definition: 'TEXT NOT NULL' },
+    ],
+    `CREATE TABLE IF NOT EXISTS bodyweight_records (
+      id TEXT PRIMARY KEY,
+      date TEXT NOT NULL,
+      weight REAL NOT NULL,
+      unit TEXT NOT NULL DEFAULT 'lbs',
+      ema_weight REAL NOT NULL,
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'bodyweight_goals',
+    [
+      { name: 'character_id', definition: "TEXT PRIMARY KEY DEFAULT 'char_main'" },
+      { name: 'goal_type', definition: "TEXT NOT NULL DEFAULT 'maintenance'" },
+      { name: 'target_weight', definition: 'REAL' },
+      { name: 'weekly_rate_percent', definition: 'REAL NOT NULL DEFAULT 0.0' },
+      { name: 'updated_at', definition: 'TEXT NOT NULL' },
+    ],
+    `CREATE TABLE IF NOT EXISTS bodyweight_goals (
+      character_id TEXT PRIMARY KEY DEFAULT 'char_main',
+      goal_type TEXT NOT NULL DEFAULT 'maintenance',
+      target_weight REAL,
+      weekly_rate_percent REAL NOT NULL DEFAULT 0.0,
+      updated_at TEXT NOT NULL
+    );`
+  );
+
+  repairOrRecreateTable(
+    db,
+    'stasis_sleep_records',
+    [
+      { name: 'id', definition: 'TEXT PRIMARY KEY' },
+      { name: 'date', definition: 'TEXT NOT NULL' },
+      { name: 'hours_slept', definition: 'REAL NOT NULL' },
+      { name: 'is_well_rested', definition: 'INTEGER NOT NULL DEFAULT 0' },
+      { name: 'aux_xp_awarded', definition: 'INTEGER NOT NULL DEFAULT 0' },
+      { name: 'logged_at', definition: 'TEXT NOT NULL' },
+    ],
+    `CREATE TABLE IF NOT EXISTS stasis_sleep_records (
+      id TEXT PRIMARY KEY,
+      date TEXT NOT NULL,
+      hours_slept REAL NOT NULL,
+      is_well_rested INTEGER NOT NULL DEFAULT 0,
+      aux_xp_awarded INTEGER NOT NULL DEFAULT 0,
+      logged_at TEXT NOT NULL
+    );`
+  );
+
   // Safely generate all essential indexes
   safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_char_inv_char ON character_inventory (character_id);');
   safeCreateIndex(db, 'CREATE INDEX IF NOT EXISTS idx_char_inv_item ON character_inventory (item_id);');
@@ -1472,6 +1581,96 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
       db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (16, datetime('now'));");
     } catch (mig16Err) {
       console.warn('Migration 16 non-fatal warning:', mig16Err);
+    }
+  }
+
+  // Migration 17: Biometrics Registers (Pedometer Steps, Milestones, Bodyweight EMA, Stasis Sleep)
+  if (!appliedMigrations.includes(17)) {
+    try {
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS daily_step_records (
+          date TEXT PRIMARY KEY,
+          steps INTEGER NOT NULL DEFAULT 0,
+          distance_meters REAL NOT NULL DEFAULT 0,
+          daily_target INTEGER NOT NULL DEFAULT 10000,
+          aux_xp_awarded INTEGER NOT NULL DEFAULT 0,
+          is_target_met INTEGER NOT NULL DEFAULT 0,
+          recon_intel_awarded INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL
+        );
+      `);
+
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS step_milestones (
+          milestone_key TEXT PRIMARY KEY,
+          target_steps INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          xp_reward INTEGER NOT NULL,
+          badge_name TEXT NOT NULL,
+          achieved_at TEXT
+        );
+      `);
+
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS bodyweight_records (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          weight REAL NOT NULL,
+          unit TEXT NOT NULL DEFAULT 'lbs',
+          ema_weight REAL NOT NULL,
+          notes TEXT,
+          created_at TEXT NOT NULL
+        );
+      `);
+
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS bodyweight_goals (
+          character_id TEXT PRIMARY KEY DEFAULT 'char_main',
+          goal_type TEXT NOT NULL DEFAULT 'maintenance',
+          target_weight REAL,
+          weekly_rate_percent REAL NOT NULL DEFAULT 0.0,
+          updated_at TEXT NOT NULL
+        );
+      `);
+
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS stasis_sleep_records (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          hours_slept REAL NOT NULL,
+          is_well_rested INTEGER NOT NULL DEFAULT 0,
+          aux_xp_awarded INTEGER NOT NULL DEFAULT 0,
+          logged_at TEXT NOT NULL
+        );
+      `);
+
+      // Seed step milestones
+      const milestones = [
+        ['steps_10k', 10000, 'Pathfinder Scout', 50, 'Iron Scout'],
+        ['steps_50k', 50000, 'Trench Walker', 100, 'Vanguard Walker'],
+        ['steps_100k', 100000, 'Marcher of the Iron Line', 250, 'Centurion Strider'],
+        ['steps_500k', 500000, 'Orbital Vanguard', 500, 'Orbital Greaves'],
+        ['steps_1m', 1000000, 'The Tireless', 1000, 'Crusade Pilgrim'],
+        ['steps_5m', 5000000, 'Titan Strider', 2500, 'Warlord Marcher'],
+      ];
+
+      for (const [key, target, title, xp, badge] of milestones) {
+        db.runSync(
+          `INSERT OR IGNORE INTO step_milestones (milestone_key, target_steps, title, xp_reward, badge_name)
+           VALUES (?, ?, ?, ?, ?)`,
+          [key, target, title, xp, badge]
+        );
+      }
+
+      // Seed initial default bodyweight goal
+      db.runSync(
+        `INSERT OR IGNORE INTO bodyweight_goals (character_id, goal_type, target_weight, weekly_rate_percent, updated_at)
+         VALUES ('char_main', 'maintenance', NULL, 0.0, datetime('now'))`
+      );
+
+      db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (17, datetime('now'));");
+    } catch (mig17Err) {
+      console.warn('Migration 17 non-fatal warning:', mig17Err);
     }
   }
 

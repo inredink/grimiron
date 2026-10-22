@@ -80,6 +80,8 @@ export default function WorkoutScreen() {
     claimWeeklyRaidRewardsAction,
     settings,
     equipmentBonuses,
+    isWellRested,
+    hasReconIntel,
   } = useApp();
 
   // Exercise Library Modal State
@@ -140,6 +142,17 @@ export default function WorkoutScreen() {
     );
   }, [activeEnrollment]);
 
+  // Calculate equipment bonuses with Stasis Well-Rested and Recon Intel tactical buffs
+  const effectiveEquipmentBonuses = useMemo(() => {
+    let mult = equipmentBonuses.totalDamageMultiplier;
+    if (isWellRested) mult += 0.05; // +5% damage from Stasis Well-Rested
+    if (hasReconIntel) mult += 0.05; // +5% damage from Daily Forced March Recon Intel
+    return {
+      ...equipmentBonuses,
+      totalDamageMultiplier: mult,
+    };
+  }, [equipmentBonuses, isWellRested, hasReconIntel]);
+
   // Pure functional combat encounter state derived from completed sets
   const combatState: CombatEncounterState = useMemo(() => {
     if (!activeWorkout) {
@@ -162,7 +175,7 @@ export default function WorkoutScreen() {
       lastCompletedSetId,
       currentFaction?.id,
       currentSubfaction?.id,
-      equipmentBonuses,
+      effectiveEquipmentBonuses,
       slainSetIds,
       sessionSlainEnemies,
       character?.combatDoctrine
@@ -174,7 +187,7 @@ export default function WorkoutScreen() {
     lastCompletedSetId,
     currentFaction?.id,
     currentSubfaction?.id,
-    equipmentBonuses,
+    effectiveEquipmentBonuses,
     slainSetIds,
     sessionSlainEnemies,
     character?.combatDoctrine,

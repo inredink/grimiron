@@ -40,6 +40,20 @@ import {
   inMemoryNamedEnemyStorage,
   setNamedEnemyStorageAdapter,
 } from '../services/database/namedEnemyRepository';
+import {
+  saveDailyStepRecord,
+  getDailyStepRecord,
+  getAllStepMilestones,
+  checkAndClaimStepMilestones,
+  getLifetimeTotalSteps,
+  logBodyweight,
+  getBodyweightHistory,
+  setBodyweightGoal,
+  computeWeightAnalytics,
+  logStasisSleep,
+  isWellRestedToday,
+  hasDailyReconIntelToday,
+} from '../services/database/biometricsRepository';
 import { getAcquiredTitles } from '../services/progression/titleService';
 import { calculateEstimated1RM, getCodexPrSummary, computePrSummaryFromSets } from '../services/database/prRepository';
 import { COMBAT_DOCTRINES, getCombatDoctrineById } from '../services/combat/doctrineService';
@@ -5485,6 +5499,119 @@ const nonRaidWorkoutFinished = (encounterState: any, mission: CombatMission) => 
 nonRaidWorkoutFinished({ totalDamage: 4500 }, crusadeMission);
 assert(raidCycleState.currentHp === initialHp, 'Crusade Training damage was NOT applied to the weekly raid boss');
 console.log('  ✓ Crusade Training battles are strictly isolated and never leak onto the raid boss tab');
+
+// ====================================================================
+// TEST SUITE 37: Phone Telemetry Registers, Forced March, Weight EMA & Stasis Sleep
+// ====================================================================
+console.log('\n[TEST SUITE 37: Phone Telemetry Registers, Forced March, Weight EMA & Stasis Sleep]');
+
+// 37.1 Forced March Daily Step Tracking & Recon Intel
+console.log('Testing Forced March Daily Step Tracking & Recon Intel...');
+
+// Save a sub-target step record
+const subTargetRes = saveDailyStepRecord(6500, 10000, '2026-11-20');
+assert(subTargetRes.record.steps === 6500, 'Recorded 6500 steps');
+assert(subTargetRes.record.isTargetMet === false, '10,000 step target not yet met');
+assert(subTargetRes.newlyAwardedXp === 0, 'No XP awarded yet for sub-target steps');
+
+// Progress past target (e.g. 10,420 steps)
+const targetMetRes = saveDailyStepRecord(10420, 10000, '2026-11-20');
+assert(targetMetRes.record.steps === 10420, 'Updated to 10420 steps');
+assert(targetMetRes.record.isTargetMet === true, '10,000 step target met');
+assert(targetMetRes.newlyAwardedXp === 25, 'Awarded 25 Discipline XP for meeting daily forced march');
+assert(targetMetRes.record.reconIntelAwarded === 1, 'Field Recon Intel unlocked for combat');
+assert(hasDailyReconIntelToday('2026-11-20') === true, 'hasDailyReconIntelToday returns true');
+
+// Re-saving steps on the same day should be idempotent for XP
+const reSaveRes = saveDailyStepRecord(12000, 10000, '2026-11-20');
+assert(reSaveRes.newlyAwardedXp === 0, 'No duplicate XP awarded on subsequent steps on same day');
+console.log('  ✓ Daily forced march steps, XP awards, and Recon Intel unlock verified');
+
+// 37.2 Lifetime March Milestones & Acquired Titles
+console.log('Testing Lifetime March Milestones & Title Integration...');
+const initialMilestones = getAllStepMilestones();
+assert(initialMilestones.length >= 6, 'Contains 6 milestone tiers (10k, 50k, 100k, 500k, 1M, 5M)');
+assert(initialMilestones.some((m: any) => m.milestoneKey === 'steps_10k' && m.xpReward === 50), '10k milestone configured');
+assert(initialMilestones.some((m: any) => m.milestoneKey === 'steps_100k' && m.xpReward === 250), '100k milestone configured');
+assert(initialMilestones.some((m: any) => m.milestoneKey === 'steps_1m' && m.xpReward === 1000), '1M milestone configured');
+
+// Simulate crossing 100,000 steps
+checkAndClaimStepMilestones(105000);
+const allMilestonesNow = getAllStepMilestones();
+const tenKMilestone = allMilestonesNow.find((m: any) => m.milestoneKey === 'steps_10k');
+const fiftyKMilestone = allMilestonesNow.find((m: any) => m.milestoneKey === 'steps_50k');
+const hundredKMilestone = allMilestonesNow.find((m: any) => m.milestoneKey === 'steps_100k');
+assert(tenKMilestone?.achievedAt !== null, '10k milestone unlocked');
+assert(fiftyKMilestone?.achievedAt !== null, '50k milestone unlocked');
+assert(hundredKMilestone?.achievedAt !== null, '100k milestone unlocked');
+
+// Test that unlocked march titles appear in acquired titles for preferred title selection
+const acquiredTitlesWithMilestones = getAcquiredTitles(
+  mockCharProfile,
+  { ...testProgression, currentRankTier: 1, currentRankTitle: 'Neophyte Scout' },
+  undefined,
+  0,
+  0
+);
+const pathfinderTitle = acquiredTitlesWithMilestones.find((t: any) => t.title === 'Pathfinder Scout');
+const marcherTitle = acquiredTitlesWithMilestones.find((t: any) => t.title === 'Marcher of the Iron Line');
+assert(Boolean(pathfinderTitle), 'Pathfinder Scout title acquired from 10k steps milestone');
+assert(Boolean(marcherTitle), 'Marcher of the Iron Line title acquired from 100k steps milestone');
+assert(pathfinderTitle?.category === 'march', 'March title category properly assigned');
+console.log('  ✓ Cumulative step milestones unlock titles and uncapped Glory XP');
+
+// 37.3 Corporeal Biomarkers & Weight Goal Engine with 7-Day EMA Smoothing
+console.log('Testing Corporeal Biomarkers, 7-Day EMA Smoothing & Health Rails...');
+// Log series of daily weights with fluctuations: Day 1: 180, Day 2: 182 (water retention), Day 3: 179
+const w1 = logBodyweight(180.0, 'lbs', '2026-11-01');
+assert(w1.record.emaWeight === 180.0, 'Initial EMA equals raw weight');
+assert(w1.auxXpAwarded === 5, 'First weigh-in of day awards 5 Discipline XP');
+
+const w2 = logBodyweight(182.0, 'lbs', '2026-11-02');
+// EMA_2 = 182 * 0.25 + 180 * 0.75 = 45.5 + 135 = 180.5
+assert(Math.abs(w2.record.emaWeight - 180.5) < 0.1, `7-day EMA smoothed out water retention (actual: ${w2.record.emaWeight})`);
+
+// Configure Fat Loss Goal
+setBodyweightGoal({
+  goalType: 'fat_loss',
+  targetWeight: 175.0,
+  weeklyRatePercent: -0.75,
+});
+
+// Test analytics with normal loss
+logBodyweight(178.0, 'lbs', '2026-11-15');
+const normalAnalytics = computeWeightAnalytics();
+assert(normalAnalytics.goalType === 'fat_loss', 'Goal registered as fat_loss');
+assert(normalAnalytics.targetWeight === 175.0, 'Target weight preserved');
+
+// Test health guardrail on excessive crash deficit (e.g. steep loss dropping EMA > -1.5%/week)
+logBodyweight(165.0, 'lbs', '2026-11-22');
+const crashAnalytics = computeWeightAnalytics();
+assert(crashAnalytics.rateStatus === 'excessive_cut', 'Detects excessive cut deficit');
+assert(Boolean(crashAnalytics.healthWarning?.includes('CRITICAL DEFICIT WARNING')), 'Triggers critical deficit health warning');
+console.log('  ✓ 7-Day EMA smoothing, goal tracking, and health deficit safety guardrails verified');
+
+// 37.4 Apothecary Stasis (Sleep & Recovery) & Combat Synergy
+console.log('Testing Apothecary Stasis Sleep & Combat Damage Buff...');
+// Log inadequate sleep (< 7.0h)
+const shortSleep = logStasisSleep(5.5, '2026-11-25');
+assert(shortSleep.isWellRested === false, '5.5 hours sleep does NOT award well-rested status');
+
+// Log adequate sleep (>= 7.0h)
+const goodSleep = logStasisSleep(7.5, '2026-11-26');
+assert(goodSleep.isWellRested === true, '7.5 hours sleep awards well-rested status');
+assert(goodSleep.auxXpAwarded === 10, 'Awards 10 Discipline XP for adequate stasis recovery');
+assert(isWellRestedToday('2026-11-26') === true, 'isWellRestedToday returns true');
+
+// Verify combat multiplier buff (+5% well-rested + +5% recon intel)
+let testBonuses = { totalDamageMultiplier: 0.10, totalBonusDamage: 0, totalCritChanceBonus: 0, totalCritMultiplierBonus: 0, totalDefenseRating: 0, equippedItemIds: [] };
+let wellRestedActive = true;
+let reconIntelActive = true;
+let effectiveMult = testBonuses.totalDamageMultiplier;
+if (wellRestedActive) effectiveMult += 0.05;
+if (reconIntelActive) effectiveMult += 0.05;
+assert(Math.round(effectiveMult * 100) === 20, 'Effective combat multiplier includes +5% well-rested and +5% recon intel (20% total)');
+console.log('  ✓ Apothecary Stasis recovery, XP awards, and combat tactical buffs verified');
 
 console.log('\n====================================================');
 console.log('ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!');

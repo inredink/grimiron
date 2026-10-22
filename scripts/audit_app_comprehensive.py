@@ -111,7 +111,7 @@ screens = [
     ("app/(tabs)/_layout.tsx", "Tab Navigation Layout"),
     ("app/(tabs)/index.tsx", "Dashboard / Home"),
     ("app/(tabs)/workout.tsx", "Active Workout Screen"),
-    ("app/(tabs)/factions.tsx", "Codex Screen"),
+    ("app/(tabs)/character.tsx", "Character Dossier Screen"),
     ("app/(tabs)/raid.tsx", "Raid Boss Screen"),
     ("app/(tabs)/history.tsx", "History Screen"),
 ]

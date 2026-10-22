@@ -29,6 +29,7 @@ import { getCodexPrSummary, CodexPrSummary } from '../../src/services/database/p
 import { COMBAT_DOCTRINES, CombatDoctrine, getCombatDoctrineById } from '../../src/services/combat/doctrineService';
 import { computePledgeProgress, PledgeProgressView } from '../../src/services/progression/pledgeService';
 import { getAllKnownNamedBossesWithStatus, NamedEnemyTarget, DefeatedNamedEnemy } from '../../src/services/database/namedEnemyRepository';
+import { WeightGoalType } from '../../src/types/biometrics';
 
 export default function CharacterTabScreen() {
   const router = useRouter();
@@ -56,6 +57,19 @@ export default function CharacterTabScreen() {
     defeatedNamedEnemies,
     refreshDefeatedNamedEnemies,
     campaignTelemetry,
+    dailyStepRecord,
+    stepMilestones,
+    lifetimeTotalSteps,
+    weightAnalytics,
+    weightHistory,
+    isWellRested,
+    hasReconIntel,
+    syncStepsAction,
+    logManualStepsAction,
+    logBodyweightAction,
+    setBodyweightGoalAction,
+    logSleepAction,
+    refreshBiometricsAction,
   } = useApp();
 
   // Modals state
@@ -67,6 +81,20 @@ export default function CharacterTabScreen() {
   const [isCodexMortisModalVisible, setIsCodexMortisModalVisible] = useState(false);
   const [selectedBossDetail, setSelectedBossDetail] = useState<NamedEnemyTarget | null>(null);
   const [codexMortisTab, setCodexMortisTab] = useState<'slain' | 'targets'>('slain');
+
+  // Biometrics Modals state
+  const [isStepModalVisible, setIsStepModalVisible] = useState(false);
+  const [stepInput, setStepInput] = useState('');
+  const [isMilestonesModalVisible, setIsMilestonesModalVisible] = useState(false);
+  const [isWeighInModalVisible, setIsWeighInModalVisible] = useState(false);
+  const [weighInInput, setWeighInInput] = useState('');
+  const [weighInNotesInput, setWeighInNotesInput] = useState('');
+  const [isGoalModalVisible, setIsGoalModalVisible] = useState(false);
+  const [goalTypeInput, setGoalTypeInput] = useState<WeightGoalType>(weightAnalytics.goalType || 'maintenance');
+  const [goalTargetWeightInput, setGoalTargetWeightInput] = useState(weightAnalytics.targetWeight ? String(weightAnalytics.targetWeight) : '');
+  const [goalRatePercentInput, setGoalRatePercentInput] = useState(String(weightAnalytics.weeklyRatePercent || 0));
+  const [isSleepModalVisible, setIsSleepModalVisible] = useState(false);
+  const [sleepHoursInput, setSleepHoursInput] = useState('8.0');
 
   // PR Summary State
   const [prSummary, setPrSummary] = useState<CodexPrSummary>(() => getCodexPrSummary());
@@ -142,6 +170,89 @@ export default function CharacterTabScreen() {
         'Pledge Honored!',
         `Your steadfast devotion has been recorded in the imperial annals! Awarded +${result.xpEarned} Glory XP.`
       );
+    }
+  };
+
+  // Biometrics & Recon Milestones
+  const nextMilestone = useMemo(() => {
+    return stepMilestones.find((m) => !m.achievedAt) || null;
+  }, [stepMilestones]);
+
+  const handleSaveSteps = () => {
+    const val = parseInt(stepInput.trim(), 10);
+    if (!isNaN(val) && val >= 0) {
+      triggerHaptic.success();
+      const res = logManualStepsAction(val);
+      setIsStepModalVisible(false);
+      setStepInput('');
+      if (res.newlyAwardedXp > 0) {
+        Alert.alert(
+          'Forced March Quota Met!',
+          `Awarded +${res.newlyAwardedXp} Discipline XP and Field Recon Intel (+5% Tactical Combat Damage)!`
+        );
+      }
+    } else {
+      Alert.alert('Invalid Steps', 'Please enter a valid step count.');
+    }
+  };
+
+  const handleSyncPedometer = async () => {
+    triggerHaptic.selection();
+    await syncStepsAction();
+    Alert.alert('Sensors Synchronized', 'Hardware pedometer registers updated.');
+  };
+
+  const handleSaveWeighIn = () => {
+    const val = parseFloat(weighInInput.trim());
+    if (!isNaN(val) && val > 0) {
+      triggerHaptic.success();
+      const res = logBodyweightAction(val, weighInNotesInput.trim() || undefined);
+      setIsWeighInModalVisible(false);
+      setWeighInInput('');
+      setWeighInNotesInput('');
+      if (res.auxXpAwarded > 0) {
+        Alert.alert(
+          'Biomarker Recorded',
+          `Scaled weight recorded with 7-day EMA smoothing. Awarded +${res.auxXpAwarded} Discipline XP!`
+        );
+      } else {
+        Alert.alert('Biomarker Updated', 'Scaled weight and 7-day trend EMA updated.');
+      }
+    } else {
+      Alert.alert('Invalid Weight', 'Please enter a valid numeric bodyweight.');
+    }
+  };
+
+  const handleSaveGoal = () => {
+    const targetW = goalTargetWeightInput.trim() ? parseFloat(goalTargetWeightInput.trim()) : null;
+    const rateP = parseFloat(goalRatePercentInput.trim()) || 0;
+    triggerHaptic.success();
+    setBodyweightGoalAction({
+      goalType: goalTypeInput,
+      targetWeight: targetW && !isNaN(targetW) ? targetW : null,
+      weeklyRatePercent: !isNaN(rateP) ? rateP : 0,
+    });
+    setIsGoalModalVisible(false);
+    Alert.alert('Goal Updated', 'Corporeal composition directives updated.');
+  };
+
+  const handleSaveSleep = () => {
+    const val = parseFloat(sleepHoursInput.trim());
+    if (!isNaN(val) && val >= 0 && val <= 24) {
+      triggerHaptic.success();
+      const res = logSleepAction(val);
+      setIsSleepModalVisible(false);
+      setSleepHoursInput('');
+      if (res.isWellRested) {
+        Alert.alert(
+          'Stasis Well-Rested!',
+          `Adequate stasis cycle logged (${val}h). +${res.auxXpAwarded} Discipline XP awarded and +5% Stasis Combat Buff active for your next crusade!`
+        );
+      } else {
+        Alert.alert('Stasis Recorded', `${val}h stasis cycle logged. Stasis recovery requires >= 7.0h for combat buff.`);
+      }
+    } else {
+      Alert.alert('Invalid Duration', 'Please enter a valid number of hours (0 - 24).');
     }
   };
 
@@ -493,6 +604,198 @@ export default function CharacterTabScreen() {
           )}
         </SciFiCard>
 
+        {/* Apothecarion // Biometric Registers & Forced March */}
+        <SciFiCard
+          title="APOTHECARION // BIOMETRIC & RECON REGISTERS"
+          variant="normal"
+          rightAction={
+            hasReconIntel ? (
+              <View style={styles.reconBuffTag}>
+                <Ionicons name="radio-outline" size={12} color="#00E676" style={{ marginRight: 4 }} />
+                <Text style={styles.reconBuffTagText}>RECON BUFF ACTIVE (+5%)</Text>
+              </View>
+            ) : undefined
+          }
+        >
+          <Text style={styles.biometricDesc}>
+            Internal phone telemetry registers. Tracks daily forced march steps, 7-day trend smoothed weight goals, and stasis restoration cycles.
+          </Text>
+
+          {/* 1. Field Recon // Pedometer Steps */}
+          <View style={styles.bioSubSection}>
+            <View style={styles.bioSectionHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="footsteps-outline" size={16} color={THEME.colors.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.bioSubSectionTitle}>FORCED MARCH // DAILY STEPS</Text>
+              </View>
+              <Text style={styles.bioSubSectionMeta}>
+                {dailyStepRecord ? `${dailyStepRecord.steps.toLocaleString()} / ${dailyStepRecord.dailyTarget.toLocaleString()} STEPS` : '0 / 10,000 STEPS'}
+              </Text>
+            </View>
+
+            <ProgressBar
+              progress={
+                dailyStepRecord
+                  ? Math.min(100, Math.round((dailyStepRecord.steps / (dailyStepRecord.dailyTarget || 10000)) * 100))
+                  : 0
+              }
+              label="Daily Recon Quota"
+              valueText={
+                dailyStepRecord
+                  ? `${Math.min(100, Math.round((dailyStepRecord.steps / (dailyStepRecord.dailyTarget || 10000)) * 100))}%`
+                  : '0%'
+              }
+              color="#00F0FF"
+              height={7}
+            />
+
+            <View style={styles.stepStatsRow}>
+              <Text style={styles.lifetimeStepText}>
+                Lifetime March: <Text style={{ color: THEME.colors.textBright }}>{lifetimeTotalSteps.toLocaleString()} steps</Text>
+              </Text>
+              {nextMilestone && (
+                <Text style={styles.nextMilestoneText}>
+                  Next: {nextMilestone.title} ({nextMilestone.targetSteps.toLocaleString()})
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.bioBtnRow}>
+              <TouchableOpacity
+                onPress={handleSyncPedometer}
+                style={styles.bioBtn}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="refresh" size={13} color={THEME.colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.bioBtnText}>SYNC SENSORS</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setStepInput(dailyStepRecord ? String(dailyStepRecord.steps) : '');
+                  setIsStepModalVisible(true);
+                }}
+                style={styles.bioBtn}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="pencil" size={13} color={THEME.colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.bioBtnText}>LOG STEPS</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setIsMilestonesModalVisible(true)}
+                style={[styles.bioBtn, { borderColor: '#FFD700', backgroundColor: 'rgba(255, 215, 0, 0.08)' }]}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="trophy-outline" size={13} color="#FFD700" style={{ marginRight: 4 }} />
+                <Text style={[styles.bioBtnText, { color: '#FFD700' }]}>MILESTONES</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 2. Corporeal Biomarkers // Weight & Goals */}
+          <View style={[styles.bioSubSection, { marginTop: 14 }]}>
+            <View style={styles.bioSectionHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="scale-outline" size={16} color="#FFB800" style={{ marginRight: 6 }} />
+                <Text style={styles.bioSubSectionTitle}>CORPOREAL BIOMARKERS // WEIGHT & COMPOSITION</Text>
+              </View>
+              <Text style={styles.bioSubSectionMeta}>
+                Goal: {weightAnalytics.goalType === 'hypertrophy_gain' ? 'BULK' : weightAnalytics.goalType === 'fat_loss' ? 'CUT' : 'MAINTAIN'}
+              </Text>
+            </View>
+
+            <View style={styles.weightMetricsGrid}>
+              <View style={styles.weightMetricBox}>
+                <Text style={styles.weightMetricLabel}>SCALE WEIGHT</Text>
+                <Text style={styles.weightMetricVal}>
+                  {weightAnalytics.currentWeight !== null ? `${weightAnalytics.currentWeight} ${weightAnalytics.unit}` : '--'}
+                </Text>
+              </View>
+              <View style={styles.weightMetricBox}>
+                <Text style={styles.weightMetricLabel}>7-DAY TREND EMA</Text>
+                <Text style={[styles.weightMetricVal, { color: '#00F0FF' }]}>
+                  {weightAnalytics.currentEmaWeight !== null ? `${weightAnalytics.currentEmaWeight} ${weightAnalytics.unit}` : '--'}
+                </Text>
+              </View>
+              <View style={styles.weightMetricBox}>
+                <Text style={styles.weightMetricLabel}>WEEKLY VELOCITY</Text>
+                <Text style={[styles.weightMetricVal, { color: weightAnalytics.rateStatus === 'excessive_cut' ? '#EF4444' : weightAnalytics.rateStatus === 'excessive_bulk' ? '#FFB800' : '#00E676' }]}>
+                  {weightAnalytics.actualWeeklyRatePercent !== null ? `${weightAnalytics.actualWeeklyRatePercent > 0 ? '+' : ''}${weightAnalytics.actualWeeklyRatePercent}%/wk` : 'Tracking'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Health Guardrail Warning if needed */}
+            {weightAnalytics.healthWarning && (
+              <View style={styles.healthWarningBanner}>
+                <Ionicons name="warning-outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                <Text style={styles.healthWarningText}>{weightAnalytics.healthWarning}</Text>
+              </View>
+            )}
+
+            <View style={styles.bioBtnRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  setWeighInInput(weightAnalytics.currentWeight ? String(weightAnalytics.currentWeight) : '');
+                  setIsWeighInModalVisible(true);
+                }}
+                style={styles.bioBtn}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add-circle-outline" size={13} color={THEME.colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.bioBtnText}>LOG WEIGH-IN (+5 XP)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setGoalTypeInput(weightAnalytics.goalType);
+                  setGoalTargetWeightInput(weightAnalytics.targetWeight ? String(weightAnalytics.targetWeight) : '');
+                  setGoalRatePercentInput(String(weightAnalytics.weeklyRatePercent || 0));
+                  setIsGoalModalVisible(true);
+                }}
+                style={styles.bioBtn}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="flag-outline" size={13} color={THEME.colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.bioBtnText}>SET GOAL</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 3. Apothecary Stasis // Sleep & Recovery */}
+          <View style={[styles.bioSubSection, { marginTop: 14 }]}>
+            <View style={styles.bioSectionHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="bed-outline" size={16} color="#A78BFA" style={{ marginRight: 6 }} />
+                <Text style={styles.bioSubSectionTitle}>APOTHECARY STASIS // SLEEP RESTORATION</Text>
+              </View>
+              {isWellRested ? (
+                <View style={[styles.reconBuffTag, { borderColor: '#A78BFA' }]}>
+                  <Ionicons name="shield-checkmark" size={12} color="#A78BFA" style={{ marginRight: 4 }} />
+                  <Text style={[styles.reconBuffTagText, { color: '#A78BFA' }]}>WELL-RESTED (+5% DMG)</Text>
+                </View>
+              ) : (
+                <Text style={[styles.bioSubSectionMeta, { color: THEME.colors.textMuted }]}>7.0h+ required</Text>
+              )}
+            </View>
+
+            <View style={styles.bioBtnRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSleepHoursInput('8.0');
+                  setIsSleepModalVisible(true);
+                }}
+                style={[styles.bioBtn, { flex: 1 }]}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="moon-outline" size={13} color={THEME.colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.bioBtnText}>LOG STASIS CYCLE (+10 XP)</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SciFiCard>
+
         {/* Career Combat Telemetry (Service Record) */}
         <SciFiCard title="CAREER SERVICE RECORD">
           <View style={styles.statsGrid}>
@@ -806,6 +1109,372 @@ export default function CharacterTabScreen() {
                 </Text>
               </View>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* 1. Log Steps Modal */}
+      <Modal
+        visible={isStepModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsStepModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: 340 }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalHeaderTag}>FIELD RECON TELEMETRY</Text>
+                <Text style={styles.modalHeaderTitle}>LOG FORCED MARCH STEPS</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsStepModalVisible(false)}>
+                <Ionicons name="close" size={24} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalInstructions}>
+              Enter physical step count registered by device or external fitness wearable. Reaching 10,000 steps awards +25 Discipline XP and unlocks Daily Recon Intel (+5% Combat Damage).
+            </Text>
+
+            <TextInput
+              style={styles.biometricInput}
+              value={stepInput}
+              onChangeText={setStepInput}
+              placeholder="e.g. 10000"
+              placeholderTextColor={THEME.colors.textDisabled}
+              keyboardType="number-pad"
+              autoFocus
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TerminalButton
+                title="CANCEL"
+                onPress={() => setIsStepModalVisible(false)}
+                variant="outline"
+                size="md"
+                style={{ flex: 1 }}
+              />
+              <TerminalButton
+                title="RECORD STEPS"
+                onPress={handleSaveSteps}
+                variant="primary"
+                size="md"
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 2. Step Milestones Modal */}
+      <Modal
+        visible={isMilestonesModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsMilestonesModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalHeaderTag}>CRUSADE MARCH MERITS</Text>
+                <Text style={styles.modalHeaderTitle}>LIFETIME STEP MILESTONES</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsMilestonesModalVisible(false)}>
+                <Ionicons name="close" size={24} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalInstructions}>
+              Cumulative distance traversed across all crusades ({lifetimeTotalSteps.toLocaleString()} total steps logged). Unlocks permanent titles and uncapped Glory XP.
+            </Text>
+
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {stepMilestones.map((m) => {
+                const isClaimed = Boolean(m.achievedAt);
+                const progressPct = Math.min(100, Math.round((lifetimeTotalSteps / m.targetSteps) * 100));
+                return (
+                  <View key={m.milestoneKey} style={[styles.milestoneCard, isClaimed && styles.milestoneCardClaimed]}>
+                    <View style={styles.milestoneHeaderRow}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                        <Ionicons
+                          name={isClaimed ? 'ribbon' : 'footsteps-outline'}
+                          size={18}
+                          color={isClaimed ? '#FFD700' : THEME.colors.textMuted}
+                          style={{ marginRight: 8 }}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.milestoneTitle, isClaimed && { color: '#FFD700' }]}>
+                            {m.title}
+                          </Text>
+                          <Text style={styles.milestoneSub}>
+                            {m.targetSteps.toLocaleString()} Steps • {m.badgeName}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={[styles.milestoneXp, isClaimed && { color: '#00E676' }]}>
+                          +{m.xpReward} XP
+                        </Text>
+                        <Text style={styles.milestoneStatus}>
+                          {isClaimed ? 'HONOR UNLOCKED' : `${progressPct}%`}
+                        </Text>
+                      </View>
+                    </View>
+                    {!isClaimed && (
+                      <ProgressBar
+                        progress={progressPct}
+                        color={THEME.colors.primary}
+                        height={4}
+                      />
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <TerminalButton
+              title="DISMISS"
+              onPress={() => setIsMilestonesModalVisible(false)}
+              variant="secondary"
+              size="md"
+              style={{ marginTop: 14 }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* 3. Weigh-In Modal */}
+      <Modal
+        visible={isWeighInModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsWeighInModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalHeaderTag}>CORPOREAL TELEMETRY</Text>
+                <Text style={styles.modalHeaderTitle}>LOG WEIGH-IN</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsWeighInModalVisible(false)}>
+                <Ionicons name="close" size={24} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalInstructions}>
+              Raw scale readings fluctuate daily due to sodium and hydration. GrimIron calculates a 7-day Exponential Moving Average (EMA) to smooth out water weight noise.
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+              <TextInput
+                style={[styles.biometricInput, { flex: 1 }]}
+                value={weighInInput}
+                onChangeText={setWeighInInput}
+                placeholder={`Scale weight (${weightAnalytics.unit})...`}
+                placeholderTextColor={THEME.colors.textDisabled}
+                keyboardType="decimal-pad"
+                autoFocus
+              />
+              <Text style={{ color: THEME.colors.textBright, fontWeight: '800', fontSize: 16 }}>
+                {weightAnalytics.unit.toUpperCase()}
+              </Text>
+            </View>
+
+            <TextInput
+              style={[styles.biometricInput, { marginTop: 10 }]}
+              value={weighInNotesInput}
+              onChangeText={setWeighInNotesInput}
+              placeholder="Notes (e.g. morning fasting, post-workout)..."
+              placeholderTextColor={THEME.colors.textDisabled}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+              <TerminalButton
+                title="CANCEL"
+                onPress={() => setIsWeighInModalVisible(false)}
+                variant="outline"
+                size="md"
+                style={{ flex: 1 }}
+              />
+              <TerminalButton
+                title="SAVE WEIGH-IN (+5 XP)"
+                onPress={handleSaveWeighIn}
+                variant="primary"
+                size="md"
+                style={{ flex: 1 }}
+              />
+            </View>
+
+            {/* Recent History Table */}
+            {weightHistory.length > 0 && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.historyTableHeader}>RECENT WEIGH-INS & 7-DAY TREND</Text>
+                <ScrollView style={{ maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+                  {weightHistory.slice(0, 7).map((rec) => (
+                    <View key={rec.id} style={styles.historyTableRow}>
+                      <Text style={styles.historyTableDate}>{rec.date}</Text>
+                      <Text style={styles.historyTableWeight}>
+                        {rec.weight} {rec.unit}
+                      </Text>
+                      <Text style={styles.historyTableEma}>
+                        EMA: {rec.emaWeight} {rec.unit}
+                      </Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* 4. Composition Goal Modal */}
+      <Modal
+        visible={isGoalModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsGoalModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalHeaderTag}>CORPOREAL DIRECTIVE</Text>
+                <Text style={styles.modalHeaderTitle}>SET COMPOSITION GOAL</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsGoalModalVisible(false)}>
+                <Ionicons name="close" size={24} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalInstructions}>
+              Select your physiological goal. Safe rates are calculated against muscle retention and metabolic throughput.
+            </Text>
+
+            {/* Goal Type Tabs */}
+            <View style={styles.goalTypeTabRow}>
+              {[
+                { type: 'hypertrophy_gain' as const, label: 'BULK', sub: '+0.25-0.5%/wk' },
+                { type: 'fat_loss' as const, label: 'CUT', sub: '-0.5-1.0%/wk' },
+                { type: 'maintenance' as const, label: 'MAINTAIN', sub: '0.0%/wk' },
+              ].map((g) => (
+                <TouchableOpacity
+                  key={g.type}
+                  onPress={() => {
+                    triggerHaptic.selection();
+                    setGoalTypeInput(g.type);
+                    if (g.type === 'hypertrophy_gain') setGoalRatePercentInput('0.35');
+                    else if (g.type === 'fat_loss') setGoalRatePercentInput('-0.75');
+                    else setGoalRatePercentInput('0.0');
+                  }}
+                  style={[
+                    styles.goalTypeTab,
+                    goalTypeInput === g.type && styles.goalTypeTabActive,
+                  ]}
+                >
+                  <Text style={[styles.goalTypeTabTitle, goalTypeInput === g.type && { color: THEME.colors.primary }]}>
+                    {g.label}
+                  </Text>
+                  <Text style={styles.goalTypeTabSub}>{g.sub}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={{ marginTop: 14 }}>
+              <Text style={styles.fieldLabel}>TARGET WEIGHT ({weightAnalytics.unit.toUpperCase()}) (OPTIONAL)</Text>
+              <TextInput
+                style={styles.biometricInput}
+                value={goalTargetWeightInput}
+                onChangeText={setGoalTargetWeightInput}
+                placeholder="e.g. 180"
+                placeholderTextColor={THEME.colors.textDisabled}
+                keyboardType="decimal-pad"
+              />
+            </View>
+
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.fieldLabel}>WEEKLY TARGET CHANGE RATE (%/WEEK)</Text>
+              <TextInput
+                style={styles.biometricInput}
+                value={goalRatePercentInput}
+                onChangeText={setGoalRatePercentInput}
+                placeholder="e.g. -0.75 or +0.35"
+                placeholderTextColor={THEME.colors.textDisabled}
+                keyboardType="numbers-and-punctuation"
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TerminalButton
+                title="CANCEL"
+                onPress={() => setIsGoalModalVisible(false)}
+                variant="outline"
+                size="md"
+                style={{ flex: 1 }}
+              />
+              <TerminalButton
+                title="SAVE GOAL"
+                onPress={handleSaveGoal}
+                variant="primary"
+                size="md"
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 5. Stasis Sleep Modal */}
+      <Modal
+        visible={isSleepModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsSleepModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: 330 }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalHeaderTag}>STASIS RESTORATION</Text>
+                <Text style={styles.modalHeaderTitle}>LOG STASIS SLEEP</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsSleepModalVisible(false)}>
+                <Ionicons name="close" size={24} color={THEME.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalInstructions}>
+              Cellular rejuvenation and central nervous system recovery. Logging &gt;= 7.0 hours grants +10 Discipline XP and the "Stasis Well-Rested" tactical combat buff (+5% bonus damage on your next crusade).
+            </Text>
+
+            <TextInput
+              style={styles.biometricInput}
+              value={sleepHoursInput}
+              onChangeText={setSleepHoursInput}
+              placeholder="Hours slept (e.g. 7.5)..."
+              placeholderTextColor={THEME.colors.textDisabled}
+              keyboardType="decimal-pad"
+              autoFocus
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TerminalButton
+                title="CANCEL"
+                onPress={() => setIsSleepModalVisible(false)}
+                variant="outline"
+                size="md"
+                style={{ flex: 1 }}
+              />
+              <TerminalButton
+                title="RECORD STASIS (+10 XP)"
+                onPress={handleSaveSleep}
+                variant="primary"
+                size="md"
+                style={{ flex: 1 }}
+              />
+            </View>
           </View>
         </View>
       </Modal>
@@ -1382,5 +2051,248 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginTop: 8,
+  },
+  reconBuffTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00E676',
+    backgroundColor: 'rgba(0, 230, 118, 0.1)',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  reconBuffTagText: {
+    color: '#00E676',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  biometricDesc: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 10,
+  },
+  bioSubSection: {
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+    borderRadius: 6,
+    padding: 12,
+  },
+  bioSectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bioSubSectionTitle: {
+    color: THEME.colors.textBright,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  bioSubSectionMeta: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  stepStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  lifetimeStepText: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+  },
+  nextMilestoneText: {
+    color: '#FFD700',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  bioBtnRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  bioBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 240, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.3)',
+    borderRadius: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  bioBtnText: {
+    color: THEME.colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  weightMetricsGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  weightMetricBox: {
+    flex: 1,
+    backgroundColor: '#070D18',
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+    borderRadius: 4,
+    padding: 8,
+    alignItems: 'center',
+  },
+  weightMetricLabel: {
+    color: THEME.colors.textMuted,
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  weightMetricVal: {
+    color: THEME.colors.textBright,
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  healthWarningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 4,
+    padding: 8,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  healthWarningText: {
+    flex: 1,
+    color: '#EF4444',
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  biometricInput: {
+    backgroundColor: '#0A0E17',
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+    borderRadius: 6,
+    padding: 12,
+    color: THEME.colors.textBright,
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  milestoneCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 8,
+  },
+  milestoneCardClaimed: {
+    borderColor: 'rgba(255, 215, 0, 0.4)',
+    backgroundColor: 'rgba(255, 215, 0, 0.05)',
+  },
+  milestoneHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  milestoneTitle: {
+    color: THEME.colors.textBright,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  milestoneSub: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    marginTop: 2,
+  },
+  milestoneXp: {
+    color: THEME.colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  milestoneStatus: {
+    color: THEME.colors.textDisabled,
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  historyTableHeader: {
+    color: THEME.colors.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  historyTableRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  historyTableDate: {
+    color: THEME.colors.textMuted,
+    fontSize: 11,
+  },
+  historyTableWeight: {
+    color: THEME.colors.textBright,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  historyTableEma: {
+    color: '#00F0FF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  goalTypeTabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  goalTypeTab: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderWidth: 1,
+    borderColor: THEME.colors.surfaceBorder,
+    borderRadius: 6,
+    padding: 8,
+    alignItems: 'center',
+  },
+  goalTypeTabActive: {
+    borderColor: THEME.colors.primary,
+    backgroundColor: 'rgba(0, 240, 255, 0.08)',
+  },
+  goalTypeTabTitle: {
+    color: THEME.colors.textBright,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  goalTypeTabSub: {
+    color: THEME.colors.textMuted,
+    fontSize: 9,
+    marginTop: 2,
+  },
+  fieldLabel: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
 });

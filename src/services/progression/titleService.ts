@@ -1,11 +1,12 @@
 import { CharacterProfile, CharacterProgression } from '../../types/character';
 import { CharacterRaidProgressionRecord } from '../../types/raidProgression';
 import { warhammer40kUniverse } from '../../content/warhammer40k';
+import { getAllStepMilestones } from '../database/biometricsRepository';
 
 export interface TitleOption {
   id: string;
   title: string;
-  category: 'rank' | 'raid' | 'campaign' | 'achievement' | 'honorary';
+  category: 'rank' | 'raid' | 'campaign' | 'achievement' | 'march' | 'honorary';
   unlocked: boolean;
   sourceDescription: string;
   isEquipped: boolean;
@@ -112,6 +113,23 @@ export function getAcquiredTitles(
       });
     }
   }
+
+  // 5. Crusade March Milestone Titles
+  try {
+    const stepMilestones = getAllStepMilestones();
+    for (const sm of stepMilestones) {
+      if (sm.achievedAt) {
+        titles.push({
+          id: `milestone_${sm.milestoneKey}`,
+          title: sm.title,
+          category: 'march',
+          unlocked: true,
+          sourceDescription: `Crusade March (${sm.targetSteps.toLocaleString()} steps)`,
+          isEquipped: equippedTitle === sm.title.trim().toLowerCase(),
+        });
+      }
+    }
+  } catch {}
 
   // Fallback: If no titles yet, guarantee the baseline initiate title is available
   if (titles.length === 0) {
