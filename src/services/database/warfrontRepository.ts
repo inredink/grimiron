@@ -249,10 +249,11 @@ export function getEscapedEnemyNames(): string[] {
     FROM weekly_raids
     WHERE status = 'escaped'
   `);
+  // Only consider battle history entries that were genuine raids, NOT general crusade training
   const historyRows = db.getAllSync<{ enemy_name: string }>(`
     SELECT enemy_name
     FROM battle_history
-    WHERE outcome = 'escaped'
+    WHERE outcome = 'escaped' AND encounter_mode = 'weekly_raid'
   `);
   const slainSet = new Set(getSlainEnemyNames().map((n) => n.toLowerCase()));
   const escapedSet = new Set<string>();

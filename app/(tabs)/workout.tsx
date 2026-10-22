@@ -119,10 +119,13 @@ export default function WorkoutScreen() {
   } | null>(null);
 
   // Current Target Hostile
-  const currentEnemy = useMemo(
-    () => getEnemyById(currentMission.enemyId),
-    [currentMission.enemyId]
-  );
+  const currentEnemy = useMemo(() => {
+    const e = getEnemyById(currentMission.enemyId);
+    if (activeWorkout?.title?.toLowerCase().includes('squad') && e.baseHealth < 14000) {
+      return { ...e, baseHealth: Math.max(14000, Math.round(e.baseHealth * (18000 / 6500))) };
+    }
+    return e;
+  }, [currentMission.enemyId, activeWorkout?.title]);
 
   const currentProgramSession: ScheduledProgramSession | null = useMemo(() => {
     if (!activeEnrollment) return null;
@@ -176,6 +179,13 @@ export default function WorkoutScreen() {
     sessionSlainEnemies,
     character?.combatDoctrine,
   ]);
+
+  // The "Complete Mission // Claim XP" button only appears when the user has entered exercises
+  // and selected the checkbox for at least one completed set.
+  const hasCompletedAnySet = useMemo(() => {
+    if (!activeWorkout || activeWorkout.exercises.length === 0) return false;
+    return activeWorkout.exercises.some((ex) => ex.sets.some((s) => s.isCompleted));
+  }, [activeWorkout]);
 
   // Continuous Crusade: Summon next enemy wave or reinforcements
   const handleSummonNextEnemy = () => {
@@ -1190,15 +1200,17 @@ export default function WorkoutScreen() {
           style={styles.addExerciseButton}
         />
 
-        {/* Finish Workout Primary Button */}
-        <TerminalButton
-          title="COMPLETE MISSION // CLAIM XP"
-          onPress={handleConfirmFinish}
-          variant="success"
-          size="lg"
-          icon={<Ionicons name="trophy" size={20} color="#0A0E17" />}
-          style={styles.finishButton}
-        />
+        {/* Finish Workout Primary Button - Hidden until exercises are entered and at least one set is checked completed */}
+        {hasCompletedAnySet && (
+          <TerminalButton
+            title="COMPLETE MISSION // CLAIM XP"
+            onPress={handleConfirmFinish}
+            variant="success"
+            size="lg"
+            icon={<Ionicons name="trophy" size={20} color="#0A0E17" />}
+            style={styles.finishButton}
+          />
+        )}
       </ScrollView>
 
       {/* Floating Tactical Rest Timer HUD pinned above bottom bar */}

@@ -2,6 +2,8 @@ import { EnemyDefinition } from '../../types/combat';
 import { getEncounterById, convertToEnemyDefinition } from '../encounters/catalog';
 import { getRaidTierById } from '../raidTiers';
 
+declare const require: any;
+
 export const ENEMY_CATALOG: EnemyDefinition[] = [
   {
     id: 'enemy_chaos_cultist',
@@ -181,6 +183,55 @@ export function getEnemyById(id: string): EnemyDefinition {
         defeatQuote: 'The vanguard has fallen...',
       };
     }
+  }
+
+  // Check Weekly Raid Bosses
+  if (id.startsWith('raid_')) {
+    try {
+      const { getAllWeeklyRaids } = require('../../services/database/warfrontRepository');
+      const allRaids = getAllWeeklyRaids();
+      const match = allRaids.find(
+        (r: any) => r.boss?.bossKey === id || r.cycleId === id || `raid_${r.cycleId}` === id
+      );
+      if (match && match.boss) {
+        const b = match.boss;
+        return {
+          id: b.bossKey || id,
+          name: b.name,
+          title: b.title,
+          faction: b.factionName || 'Weekly Raid Boss',
+          loreDescription: b.loreDescription || b.tacticalDescription || 'Supreme warlord commanding sector reinforcements.',
+          baseHealth: match.maxHp || 6500,
+          difficulty: 'boss',
+          visual: {
+            iconName: b.glyph || 'skull',
+            primaryColor: b.primaryColor || '#FF5252',
+            accentColor: b.accentColor || '#FFFFFF',
+            badgeText: `${b.difficultyTier?.toUpperCase() || 'RAID'} BOSS`,
+          },
+          tauntQuote: b.taunts?.[0] || 'You dare challenge a raid commander?',
+          defeatQuote: b.defeatQuote || 'By the stars... How could my strength falter before you...?',
+        };
+      }
+    } catch {}
+
+    return {
+      id,
+      name: 'Sector Raid Commander',
+      title: 'Supreme Warlord',
+      faction: 'Raid Hostile',
+      loreDescription: 'A supreme warlord commanding extensive sector reserves.',
+      baseHealth: 6500,
+      difficulty: 'boss',
+      visual: {
+        iconName: 'skull',
+        primaryColor: '#FF5252',
+        accentColor: '#FFFFFF',
+        badgeText: 'RAID BOSS',
+      },
+      tauntQuote: 'Bow before the might of the warfront!',
+      defeatQuote: 'By the stars... How could my strength falter before you...?',
+    };
   }
 
   return ENEMY_CATALOG[0];

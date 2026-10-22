@@ -503,18 +503,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch {}
 
       // Load user settings
+      let loadedUserSettings: AppSettings | null = null;
       try {
         const userSettings = getAllSettings();
 
-        // If this is an existing user who already has recorded workouts or training XP,
-        // but onboarding_completed is false (e.g. from an older version of the app),
-        // automatically mark onboarding as completed so they are never forced through it.
-        const isExistingUser = userStats.totalWorkouts > 0 || prof.totalXp > 0;
-        if (isExistingUser && !userSettings.onboarding_completed) {
+        // Guarantee user settings persistence across updates:
+        // If the user already has recorded workouts, XP progress, or previously completed onboarding,
+        // never reset onboarding_completed to false on app update.
+        const hasAnyActivity = userStats.totalWorkouts > 0 || prof.totalXp > 0 || userSettings.onboarding_completed;
+        if (hasAnyActivity && !userSettings.onboarding_completed) {
           userSettings.onboarding_completed = true;
           saveSetting('onboarding_completed', true);
         }
 
+        loadedUserSettings = userSettings;
         setSettings(userSettings);
         setHapticsEnabled(userSettings.haptics_enabled);
 
@@ -705,6 +707,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       try {
         activeWfSettings = getWarfrontSettings();
+        if (
+          loadedUserSettings?.warfront_preferred_spawn_day &&
+          loadedUserSettings.warfront_preferred_spawn_day !== activeWfSettings.preferredSpawnDay
+        ) {
+          activeWfSettings.preferredSpawnDay = loadedUserSettings.warfront_preferred_spawn_day;
+          updatePreferredSpawnDay(loadedUserSettings.warfront_preferred_spawn_day);
+        }
         setWarfrontSettingsState(activeWfSettings);
       } catch (wfErr) {
         console.warn('Warfront settings initialization warning:', wfErr);
@@ -908,11 +917,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (settings.workout_keep_screen_awake) {
       activateWorkoutKeepAwake(true);
     }
+    // Strictly isolate Crusade Training: non-raid workouts must never inherit or touch raid cycle IDs
+    const isRaid = mission?.id?.startsWith('raid_');
+    const isDaily = mission?.id?.startsWith('warfront_') || mission?.id?.startsWith('daily_');
+    const effectiveRaidCycleId = isRaid ? activeRaidCycleId : null;
+    const effectiveDailyEncounterId = isDaily ? activeDailyEncounterId : null;
+    if (!isRaid) setActiveRaidCycleId(null);
+    if (!isDaily) setActiveDailyEncounterId(null);
+
     saveWorkoutDraft(
       newSession,
       mission || currentMission,
-      activeDailyEncounterId,
-      activeRaidCycleId
+      effectiveDailyEncounterId,
+      effectiveRaidCycleId
     );
   };
 
@@ -1353,7 +1370,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const battleRecord: BattleRecord = {
         id: battleRecordId,
-        encounterMode: 'solo',
+        encounterMode: mission.id.startsWith('raid_') ? 'weekly_raid' : mission.id.startsWith('coop_') ? 'coop' : 'solo',
         sessionId: completedSession.id,
         missionId: mission.id,
         missionTitle: mission.title,
@@ -1473,8 +1490,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveDailyEncounterId(null);
     }
 
-    // Handle Warfront weekly raid damage application
-    if (activeRaidCycleId && encounterState) {
+    // Handle Warfront weekly raid damage application - only apply if this was an actual raid mission!
+    if (activeRaidCycleId && encounterState && mission?.id?.startsWith('raid_')) {
       try {
         const completedSetsCount = completedSession.exercises.reduce(
           (acc, ex) => acc + ex.sets.filter((s) => s.isCompleted).length,

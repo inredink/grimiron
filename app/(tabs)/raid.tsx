@@ -75,6 +75,15 @@ export default function RaidScreen() {
   const currentTierDef = getRaidTierById(selectedRaidTierId);
   const eligibility = checkRaidEligibility(selectedRaidTierId);
 
+  const isSquadPreview = previewMode === 'squad';
+  // Compute health scaling based on solo vs squad mode
+  const effectiveMaxHp = isSquadPreview
+    ? (currentWeeklyRaid.scope === 'squad' ? maxHp : Math.max(18000, currentTierDef.squadHp))
+    : (currentWeeklyRaid.scope === 'squad' ? Math.max(6500, currentTierDef.soloHp) : maxHp);
+  const hpRatio = maxHp > 0 ? Math.min(1, currentHp / maxHp) : 1;
+  const effectiveCurrentHp = Math.round(effectiveMaxHp * hpRatio);
+  const effectiveHpPercent = Math.max(0, Math.min(100, Math.round(hpRatio * 100)));
+
   const handleDeployStrike = () => {
     triggerHaptic.medium();
     const isSquadMode = previewMode === 'squad';
@@ -429,7 +438,7 @@ export default function RaidScreen() {
                 previewMode === 'individual' && styles.modeTabTextActive,
               ]}
             >
-              SOLO WARFRONT (~2,400 HP)
+              SOLO WARFRONT (~6,500+ HP)
             </Text>
           </TouchableOpacity>
 
@@ -448,7 +457,7 @@ export default function RaidScreen() {
                 previewMode === 'squad' && styles.modeTabTextActive,
               ]}
             >
-              SQUAD CRUSADE (~7,500 HP)
+              SQUAD CRUSADE (~18,000+ HP)
             </Text>
           </TouchableOpacity>
         </View>
@@ -556,9 +565,11 @@ export default function RaidScreen() {
           {/* Health Gauge */}
           <View style={styles.healthBlock}>
             <View style={styles.healthNumbersRow}>
-              <Text style={styles.healthLabel}>SECTOR REINFORCEMENTS</Text>
+              <Text style={styles.healthLabel}>
+                {isSquadPreview ? 'SQUAD CRUSADE REINFORCEMENTS' : 'SECTOR REINFORCEMENTS'}
+              </Text>
               <Text style={styles.healthValue}>
-                {currentHp.toLocaleString()} / {maxHp.toLocaleString()} HP ({hpPercent}%)
+                {effectiveCurrentHp.toLocaleString()} / {effectiveMaxHp.toLocaleString()} HP ({effectiveHpPercent}%)
               </Text>
             </View>
 
@@ -567,11 +578,11 @@ export default function RaidScreen() {
                 style={[
                   styles.hpFill,
                   {
-                    width: `${hpPercent}%`,
+                    width: `${effectiveHpPercent}%`,
                     backgroundColor:
-                      hpPercent > 66
+                      effectiveHpPercent > 66
                         ? '#4CAF50'
-                        : hpPercent > 33
+                        : effectiveHpPercent > 33
                         ? '#FF9800'
                         : '#D32F2F',
                   },

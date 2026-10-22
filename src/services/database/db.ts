@@ -685,19 +685,6 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
     db.execSync('CREATE UNIQUE INDEX IF NOT EXISTS idx_xp_tx_idempotency ON xp_transactions (idempotency_key) WHERE idempotency_key IS NOT NULL;');
   } catch {}
 
-  // Ensure all settings columns exist
-  ensureColumnExists(db, 'app_settings', 'training_preferred_days', "TEXT DEFAULT '[\"monday\",\"wednesday\",\"friday\"]'");
-  ensureColumnExists(db, 'app_settings', 'training_recovery_preference', "TEXT DEFAULT 'active'");
-  ensureColumnExists(db, 'app_settings', 'training_recovery_xp_enabled', 'INTEGER DEFAULT 1');
-  ensureColumnExists(db, 'app_settings', 'training_recovery_xp_amount', 'INTEGER DEFAULT 50');
-  ensureColumnExists(db, 'app_settings', 'notif_recovery_reminders', 'INTEGER DEFAULT 1');
-  ensureColumnExists(db, 'app_settings', 'rpg_daily_xp_cap', 'INTEGER DEFAULT 500');
-  ensureColumnExists(db, 'app_settings', 'unit_system', "TEXT DEFAULT 'lbs'");
-  ensureColumnExists(db, 'app_settings', 'calendar_first_day', "TEXT DEFAULT 'monday'");
-  ensureColumnExists(db, 'app_settings', 'date_display_format', "TEXT DEFAULT 'iso'");
-  ensureColumnExists(db, 'app_settings', 'time_display_format', "TEXT DEFAULT '24h'");
-  ensureColumnExists(db, 'app_settings', 'theme_accent_color', "TEXT DEFAULT 'aquila_gold'");
-
   // Ensure Character Profile columns exist
   ensureColumnExists(db, 'character_profile', 'preferred_title', 'TEXT DEFAULT NULL');
   ensureColumnExists(db, 'character_profile', 'combat_doctrine', "TEXT DEFAULT 'iron_juggernaut'");

@@ -555,14 +555,15 @@ export function getOrCreateWeeklyRaid(options?: {
     );
   }
 
-  // Health scaling: Individual (2,400 HP standard) vs Squad (7,500 HP standard)
+  // Health scaling calibrated for demanding workouts (e.g. 10x10 + 10x5 sets dealing 5,000+ damage):
+  // Individual (6,500 HP standard) vs Squad (18,000 HP standard)
   const tierMultiplier =
     options?.forceDifficulty === 'legendary'
       ? 1.4
       : options?.forceDifficulty === 'challenging'
       ? 1.2
       : 1.0;
-  const baseHp = scope === 'squad' ? 7500 : 2400;
+  const baseHp = scope === 'squad' ? 18000 : 6500;
   const maxHp = Math.round(baseHp * tierMultiplier);
 
   const timezone =
