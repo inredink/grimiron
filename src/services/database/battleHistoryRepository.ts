@@ -117,12 +117,26 @@ export function recordBattleHistory(record: BattleRecord): void {
     }
   }
 
-  // If outcome was victory and enemy is a genuine named enemy or raid boss, permanently record as slain
+  // If outcome was victory and enemy is a genuine named raid boss, permanently record in slain ledger.
+  // Regular workout day hostiles (solo/coop training) are NEVER recorded into slain_named_enemies.
+  const isRaidEncounter =
+    record.encounterMode === 'weekly_raid' ||
+    record.id?.startsWith('bh_raid_') ||
+    Boolean(record.missionId && record.missionId.startsWith('raid_'));
+
   if (
     record.outcome === 'victory' &&
     record.enemyName &&
     record.enemyName.trim().length > 0 &&
-    isNamedEnemy({ id: record.enemyId, name: record.enemyName, difficulty: record.enemyDifficulty })
+    isRaidEncounter &&
+    isNamedEnemy({
+      id: record.enemyId,
+      name: record.enemyName,
+      difficulty: record.enemyDifficulty,
+      isRaidBoss: true,
+      encounterMode: record.encounterMode,
+      missionId: record.missionId,
+    })
   ) {
     try {
       db.runSync(

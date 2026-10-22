@@ -1,6 +1,5 @@
 import { isNamedEnemy, EnemyIdentityInput } from '../combat/namedEnemyClassifier';
 import { RAID_TIERS } from '../../content/raidTiers';
-import { ENEMY_CATALOG } from '../../content/combat/enemies';
 
 declare const require: any;
 
@@ -49,7 +48,7 @@ const inMemorySlainEnemies = new Map<string, DefeatedNamedEnemy>();
 export const inMemoryNamedEnemyStorage: NamedEnemyStorageAdapter = {
   recordDefeat: (enemy) => {
     if (!enemy || !enemy.name || enemy.name.trim().length === 0) return false;
-    if (!isNamedEnemy({ id: enemy.id, name: enemy.name, difficulty: enemy.difficulty })) {
+    if (!isNamedEnemy({ id: enemy.id, name: enemy.name, difficulty: enemy.difficulty, isRaidBoss: true })) {
       return false;
     }
     const record: DefeatedNamedEnemy = {
@@ -73,13 +72,15 @@ export const inMemoryNamedEnemyStorage: NamedEnemyStorageAdapter = {
   getDefeated: () => {
     const unique = new Map<string, DefeatedNamedEnemy>();
     for (const val of inMemorySlainEnemies.values()) {
-      unique.set(val.enemyName.toLowerCase(), val);
+      if (isNamedEnemy({ id: val.enemyId || undefined, name: val.enemyName, difficulty: val.difficulty || undefined, isRaidBoss: true })) {
+        unique.set(val.enemyName.toLowerCase(), val);
+      }
     }
     return Array.from(unique.values());
   },
   cleanErroneous: () => {
     for (const [key, val] of inMemorySlainEnemies.entries()) {
-      if (!isNamedEnemy({ id: val.enemyId || undefined, name: val.enemyName })) {
+      if (!isNamedEnemy({ id: val.enemyId || undefined, name: val.enemyName, difficulty: val.difficulty || undefined, isRaidBoss: true })) {
         inMemorySlainEnemies.delete(key);
       }
     }
@@ -90,7 +91,7 @@ export const inMemoryNamedEnemyStorage: NamedEnemyStorageAdapter = {
 export const sqliteNamedEnemyStorage: NamedEnemyStorageAdapter = {
   recordDefeat: (enemy) => {
     if (!enemy || !enemy.name || enemy.name.trim().length === 0) return false;
-    if (!isNamedEnemy({ id: enemy.id, name: enemy.name, difficulty: enemy.difficulty })) {
+    if (!isNamedEnemy({ id: enemy.id, name: enemy.name, difficulty: enemy.difficulty, isRaidBoss: true })) {
       return false;
     }
     try {
@@ -175,10 +176,10 @@ export const sqliteNamedEnemyStorage: NamedEnemyStorageAdapter = {
       const { getDatabase } = require('./db');
       const db = getDatabase();
       const rows = (db.getAllSync(
-        'SELECT enemy_name, enemy_id FROM slain_named_enemies'
-      ) as Array<{ enemy_name: string; enemy_id: string | null }>) || [];
+        'SELECT enemy_name, enemy_id, difficulty FROM slain_named_enemies'
+      ) as Array<{ enemy_name: string; enemy_id: string | null; difficulty: string | null }>) || [];
       for (const r of rows) {
-        if (!isNamedEnemy({ id: r.enemy_id || undefined, name: r.enemy_name })) {
+        if (!isNamedEnemy({ id: r.enemy_id || undefined, name: r.enemy_name, difficulty: r.difficulty || undefined, isRaidBoss: true })) {
           db.runSync('DELETE FROM slain_named_enemies WHERE enemy_name = ?', [r.enemy_name]);
         }
       }
@@ -235,8 +236,10 @@ export function cleanErroneousRegularEnemiesFromSlainList(): void {
 }
 
 /**
- * Retrieves a catalog of all known named enemies & raid bosses across the game,
+ * Retrieves a catalog of all known unique named raid bosses across the game,
  * annotated with whether this player has defeated them.
+ *
+ * Excludes regular workout day hostiles (which spawn infinitely and belong in Battle History).
  */
 export function getAllKnownNamedBossesWithStatus(): NamedEnemyTarget[] {
   const defeated = getDefeatedNamedEnemies();
@@ -244,35 +247,65 @@ export function getAllKnownNamedBossesWithStatus(): NamedEnemyTarget[] {
   const defeatedById = new Map<string, DefeatedNamedEnemy>();
 
   for (const d of defeated) {
-    defeatedByName.set(d.enemyName.toLowerCase(), d);
-    if (d.enemyId) defeatedById.set(d.enemyId.toLowerCase(), d);
+    if (isNamedEnemy({ id: d.enemyId || undefined, name: d.enemyName, difficulty: d.difficulty || undefined, isRaidBoss: true })) {
+      defeatedByName.set(d.enemyName.toLowerCase(), d);
+      if (d.enemyId) defeatedById.set(d.enemyId.toLowerCase(), d);
+    }
   }
 
   const targets: NamedEnemyTarget[] = [];
 
-  // 1. Core catalog named bosses
-  for (const enemy of ENEMY_CATALOG) {
-    if (isNamedEnemy(enemy)) {
-      const match =
-        defeatedById.get(enemy.id.toLowerCase()) ||
-        defeatedByName.get(enemy.name.toLowerCase());
+  // 1. Procedural Weekly Raid Bosses (from weekly_raids database table)
+  try {
+    const { getDatabase } = require('./db');
+    const db = getDatabase();
+    const raidRows = (db.getAllSync(`
+      SELECT cycle_id, boss_data_json, max_hp, status, updated_at
+      FROM weekly_raids
+      ORDER BY started_at DESC
+    `) as Array<{
+      cycle_id: string;
+      boss_data_json: string;
+      max_hp: number;
+      status: string;
+      updated_at: string;
+    }>) || [];
 
-      targets.push({
-        id: enemy.id,
-        name: enemy.name,
-        title: enemy.title,
-        faction: enemy.faction,
-        baseHealth: enemy.baseHealth,
-        difficulty: enemy.difficulty,
-        loreDescription: enemy.loreDescription,
-        isDefeated: Boolean(match),
-        slainAt: match?.slainAt,
-        battleId: match?.battleId || undefined,
-      });
+    for (const r of raidRows) {
+      try {
+        const bossData = JSON.parse(r.boss_data_json);
+        const bossName = bossData.name;
+        if (!bossName) continue;
+
+        const match =
+          defeatedByName.get(bossName.toLowerCase()) ||
+          (bossData.bossKey ? defeatedById.get(bossData.bossKey.toLowerCase()) : null);
+
+        const isDefeated = r.status === 'defeated' || Boolean(match);
+
+        if (!targets.some((t) => t.name.toLowerCase() === bossName.toLowerCase())) {
+          targets.push({
+            id: bossData.bossKey || r.cycle_id,
+            name: bossName,
+            title: bossData.title ? `${bossData.title} • Weekly Raid Boss` : 'Weekly Raid Boss',
+            faction: bossData.factionName || bossData.factionId || 'Hostile',
+            baseHealth: r.max_hp || bossData.baseHealth || 6500,
+            difficulty: 'boss',
+            loreDescription: bossData.loreDescription || 'Procedurally generated high-value raid commander.',
+            isDefeated,
+            slainAt: match?.slainAt || (isDefeated ? r.updated_at : undefined),
+            battleId: match?.battleId || undefined,
+          });
+        }
+      } catch {
+        // Skip malformed records
+      }
     }
+  } catch {
+    // In-memory or testing environment without SQLite
   }
 
-  // 2. Raid Tiers
+  // 2. Raid Tiers (Tier 1 through Tier 7)
   for (const tier of RAID_TIERS) {
     const tierId = tier.id;
     const tierName = `${tier.name} Commander`;
@@ -296,6 +329,10 @@ export function getAllKnownNamedBossesWithStatus(): NamedEnemyTarget[] {
 
   // 3. Add any dynamically defeated raid bosses that were procedurally generated
   for (const d of defeated) {
+    if (!isNamedEnemy({ id: d.enemyId || undefined, name: d.enemyName, difficulty: d.difficulty || undefined, isRaidBoss: true })) {
+      continue;
+    }
+
     const alreadyIncluded = targets.some(
       (t) =>
         t.name.toLowerCase() === d.enemyName.toLowerCase() ||
@@ -306,11 +343,11 @@ export function getAllKnownNamedBossesWithStatus(): NamedEnemyTarget[] {
       targets.push({
         id: d.enemyId || `slain_${d.enemyName}`,
         name: d.enemyName,
-        title: d.enemyTitle || 'Warlord Nemesis',
+        title: d.enemyTitle || 'Raid Warlord Nemesis',
         faction: d.factionId || 'Hostile',
         baseHealth: d.baseHealth || 0,
         difficulty: d.difficulty || 'boss',
-        loreDescription: 'Vanquished high-value adversary recorded in the imperial kill ledger.',
+        loreDescription: 'Vanquished high-value raid adversary recorded in the imperial kill ledger.',
         isDefeated: true,
         slainAt: d.slainAt,
         battleId: d.battleId || undefined,

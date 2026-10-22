@@ -406,7 +406,7 @@ export function createBattleRecordFromWeeklyRaid(raid: WeeklyRaidCycle): BattleR
 
   return {
     id: `bh_raid_${raid.cycleId}`,
-    encounterMode: raid.scope === 'squad' ? 'coop' : 'solo',
+    encounterMode: 'weekly_raid',
     missionTitle: `Weekly Raid: ${raid.boss.title}`,
     enemyId: raid.boss.bossKey,
     enemyName: raid.boss.name,

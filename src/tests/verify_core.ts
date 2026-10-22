@@ -5300,6 +5300,38 @@ assert(slainNamedBossesLedger.some((d) => d.enemyName.includes('Skullkrakka')), 
 assert(!slainNamedBossesLedger.some((d) => d.enemyName.includes('Cultist')), 'Slain ledger contains 0 regular enemies');
 console.log('  ✓ Named enemies persist permanently across sessions while regular enemies continue spawning infinitely');
 
+// 35.2.1 Codex Mortis Strict Filtering: ONLY Named Raid Bosses, Never Regular Workout Enemies
+console.log('Testing Codex Mortis Raid Boss Isolation & Roster Integrity...');
+// Record procedural weekly raid boss
+const proceduralRaidBossResult = recordNamedEnemyDefeat({
+  id: 'wb_tyranids_primus_01',
+  name: 'Primus Thorne-Brood',
+  title: 'Synaptic Brood Overlord',
+  difficulty: 'boss',
+  baseHealth: 6500,
+  factionId: 'tyranids',
+});
+assert(proceduralRaidBossResult === true, 'Procedural weekly raid boss successfully recorded in Codex Mortis');
+
+const codexMortisRoster = getAllKnownNamedBossesWithStatus();
+assert(codexMortisRoster.length > 0, 'Codex Mortis roster contains known raid bosses');
+assert(codexMortisRoster.some((b) => b.name === 'Primus Thorne-Brood' && b.isDefeated), 'Primus Thorne-Brood is listed as DEFEATED in Codex Mortis');
+assert(codexMortisRoster.some((b) => b.id.startsWith('tier_')), 'Raid Tiers are populated in Codex Mortis targets');
+
+// Rigorously assert that NO regular workout day enemies exist in Codex Mortis
+const regularWorkoutHostileNames = [
+  'Chaos Cultist Coven',
+  "Gorgutz's Boyz Mob",
+  'Tyranid Warrior Brood',
+  'Sautekh Immortal Phalanx',
+  'Iron Warriors Helbrute',
+  'Hive Fleet Behemoth Carnifex',
+];
+for (const mobName of regularWorkoutHostileNames) {
+  assert(!codexMortisRoster.some((b) => b.name === mobName), `Regular hostile ${mobName} must NEVER appear in Codex Mortis`);
+}
+console.log('  ✓ Codex Mortis strictly displays ONLY named raid bosses and NEVER regular workout enemies');
+
 // 35.3 Preferred Title System & Dynamic Auto-Acquisition
 console.log('Testing Preferred Title Acquisition & Persistence...');
 const mockCharProfile: CharacterProfile = {

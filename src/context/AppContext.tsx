@@ -22,6 +22,7 @@ import {
 import {
   getDefeatedNamedEnemies,
   recordNamedEnemyDefeat,
+  cleanErroneousRegularEnemiesFromSlainList,
   DefeatedNamedEnemy,
 } from '../services/database/namedEnemyRepository';
 import {
@@ -558,6 +559,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const prof = getCharacterProfile();
       setCharacter(prof);
+      try {
+        cleanErroneousRegularEnemiesFromSlainList();
+      } catch (cleanErr) {
+        console.warn('Error cleaning regular enemies from slain ledger:', cleanErr);
+      }
       const slain = getDefeatedNamedEnemies();
       setDefeatedNamedEnemies(slain);
       const pledge = getOrCreateActivePledge(prof.activePledgeJson);
@@ -1518,8 +1524,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Error recording battle history:', bhErr);
       }
 
-      // Continuous Crusade: Also record any named enemies slain in previous waves of this workout
-      if (encounterState.slainEnemies && encounterState.slainEnemies.length > 0) {
+      // Continuous Crusade: Only record genuine named raid bosses slain in raid missions.
+      // Regular workout day hostiles (standard training) are never added to slain_named_enemies.
+      if (
+        encounterState.slainEnemies &&
+        encounterState.slainEnemies.length > 0 &&
+        mission.id.startsWith('raid_')
+      ) {
         for (const slain of encounterState.slainEnemies) {
           recordNamedEnemyDefeat({
             name: slain.enemyName,

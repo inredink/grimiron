@@ -1267,13 +1267,16 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
       );
     `);
 
-    // Backfill from previous victories in battle_history safely
+    // Backfill from previous victories in battle_history safely (strictly weekly raids only)
     try {
       db.execSync(`
         INSERT OR IGNORE INTO slain_named_enemies (enemy_name, enemy_id, faction_id, slain_at, battle_id)
         SELECT enemy_name, enemy_id, enemy_faction, completed_at, id
         FROM battle_history
-        WHERE outcome = 'victory' AND enemy_name IS NOT NULL AND TRIM(enemy_name) != '';
+        WHERE outcome = 'victory'
+          AND enemy_name IS NOT NULL
+          AND TRIM(enemy_name) != ''
+          AND (encounter_mode = 'weekly_raid' OR id LIKE 'bh_raid_%');
       `);
     } catch (backfillErr) {
       console.warn('Migration 11 battle_history backfill warning:', backfillErr);
@@ -1671,6 +1674,33 @@ export function initializeDatabase(): SQLite.SQLiteDatabase {
       db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (17, datetime('now'));");
     } catch (mig17Err) {
       console.warn('Migration 17 non-fatal warning:', mig17Err);
+    }
+  }
+
+  // Migration 18: Purge regular workout enemies from slain_named_enemies ledger
+  if (!appliedMigrations.includes(18)) {
+    try {
+      db.execSync(`
+        DELETE FROM slain_named_enemies 
+        WHERE enemy_id LIKE 'enemy_%'
+           OR enemy_id LIKE 'enc_%'
+           OR enemy_id LIKE 'crusade_%'
+           OR LOWER(enemy_name) LIKE '%coven%'
+           OR LOWER(enemy_name) LIKE '%mob%'
+           OR LOWER(enemy_name) LIKE '%brood%'
+           OR LOWER(enemy_name) LIKE '%phalanx%'
+           OR LOWER(enemy_name) LIKE '%squad%'
+           OR LOWER(enemy_name) LIKE '%patrol%'
+           OR LOWER(enemy_name) LIKE '%cultist%'
+           OR LOWER(enemy_name) LIKE '%carnifex%'
+           OR LOWER(enemy_name) LIKE '%helbrute%'
+           OR battle_id IN (
+             SELECT id FROM battle_history WHERE encounter_mode != 'weekly_raid' AND id NOT LIKE 'bh_raid_%'
+           );
+      `);
+      db.execSync("INSERT INTO schema_migrations (version, applied_at) VALUES (18, datetime('now'));");
+    } catch (mig18Err) {
+      console.warn('Migration 18 purge regular enemies warning:', mig18Err);
     }
   }
 
