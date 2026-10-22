@@ -87,7 +87,8 @@ function deterministicPseudoRandom(seedString: string): number {
 export function calculateSetDamage(
   set: ExerciseSet,
   exerciseName?: string,
-  equipmentBonus?: EquipmentCombatBonusInput
+  equipmentBonus?: EquipmentCombatBonusInput,
+  doctrineId?: string
 ): DamageCalculationResult {
   const reps = Math.max(0, set.reps || 0);
   const rawWeight = Math.max(0, set.weight || 0);
@@ -124,10 +125,31 @@ export function calculateSetDamage(
   const classMultiplier =
     DAMAGE_CONFIG.CLASSIFICATION_MULTIPLIERS[classification] ?? 1.0;
 
+  // 5b. Combat Doctrine Multipliers
+  let doctrineMultiplier = 1.0;
+  let doctrineCritBonus = 0;
+  if (doctrineId === 'iron_juggernaut') {
+    // +15% Damage on heavy sets (<= 6 reps)
+    if (reps > 0 && reps <= 6) {
+      doctrineMultiplier += 0.15;
+    }
+  } else if (doctrineId === 'serrated_cadence') {
+    // +4% per consecutive set number (up to +20%)
+    const setNum = Math.max(1, set.setNumber || 1);
+    doctrineMultiplier += Math.min(0.20, (setNum - 1) * 0.04);
+  } else if (doctrineId === 'scout_recon') {
+    // +20% Critical Strike Chance on bodyweight (weight === 0) or high reps (>= 12)
+    if (rawWeight === 0 || reps >= 12) {
+      doctrineCritBonus += 0.20;
+    }
+  }
+
   // 6. Critical Strike Determination (deterministic based on set.id)
   const effectiveCritChance = Math.min(
-    0.60,
-    DAMAGE_CONFIG.CRIT_CHANCE + Math.max(0, equipmentBonus?.critChanceBonus ?? equipmentBonus?.totalCritChanceBonus ?? 0)
+    0.75,
+    DAMAGE_CONFIG.CRIT_CHANCE +
+      Math.max(0, equipmentBonus?.critChanceBonus ?? equipmentBonus?.totalCritChanceBonus ?? 0) +
+      doctrineCritBonus
   );
   const roll = deterministicPseudoRandom(set.id || `set_${Date.now()}`);
   const isCrit = roll < effectiveCritChance;
@@ -136,7 +158,7 @@ export function calculateSetDamage(
     : 1.0;
 
   // Final Damage Computation
-  const subtotal = (baseDamage + repBonus + loadBonus + equipFlatBonus) * classMultiplier * (1 + equipMultiplier);
+  const subtotal = (baseDamage + repBonus + loadBonus + equipFlatBonus) * classMultiplier * (1 + equipMultiplier) * doctrineMultiplier;
   const finalDamage = Math.max(10, Math.round(subtotal * effectiveCritMultiplier));
 
   return {

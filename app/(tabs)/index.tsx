@@ -210,134 +210,70 @@ export default function CharacterScreen() {
           </View>
         </View>
 
-        {/* Character Dossier Hero Card */}
-        <SciFiCard variant="accent" style={styles.heroCard}>
-          <View style={styles.heroContent}>
-            {/* 2D Portrait with reticle */}
-            <PlaceholderPortrait
-              faction={currentFaction}
-              subfaction={currentSubfaction}
-              currentRank={currentRank}
-              level={progression.level}
-              size={120}
-            />
-
-            {/* Profile Info */}
-            <View style={styles.heroDetails}>
-              <View style={styles.badgeRow}>
-                <Badge
-                  label={currentFaction.allegiance}
-                  variant={currentFaction.allegiance as any}
-                />
-                <Badge
-                  label={`TIER ${progression.currentRankTier}`}
-                  variant="primary"
-                  style={{ marginLeft: 6 }}
-                />
-                {(currentSubfaction as any)?.isCustom && (
-                  <Badge
-                    label="CUSTOM SUBFACTION"
-                    variant="secondary"
-                    style={{ marginLeft: 6 }}
-                  />
-                )}
-              </View>
-
-              <Text style={styles.rankTitle} numberOfLines={2}>
-                {progression.currentRankTitle.toUpperCase()}
+        {/* Main Screen Character Summary: Callsign, Faction, Level, Tier/Rank */}
+        <SciFiCard variant="accent" style={styles.identityCard}>
+          <View style={styles.identityHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.callsignLabel}>OPERATIVE CALLSIGN</Text>
+              <Text style={styles.callsignValue} numberOfLines={1}>
+                {character.characterName.toUpperCase()}
               </Text>
+            </View>
 
-              <Text style={styles.factionName} numberOfLines={1}>
+            <View style={styles.identityRankBadges}>
+              <Badge
+                label={`LVL ${progression.level}`}
+                variant="primary"
+                style={{ marginRight: 6 }}
+              />
+              <Badge
+                label={`TIER ${progression.currentRankTier}`}
+                variant="secondary"
+              />
+            </View>
+          </View>
+
+          <View style={styles.identityDivider} />
+
+          <View style={styles.identityDetailRow}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={styles.identityMetaLabel}>PLEDGED FACTION</Text>
+              <Text style={styles.identityFactionText} numberOfLines={1}>
                 {currentFaction.name}
               </Text>
-
-              {currentSubfaction && (
-                <Text style={styles.subfactionName} numberOfLines={1}>
-                  {currentSubfaction.name}
-                </Text>
-              )}
-
-              {Boolean((currentSubfaction as any)?.homeworld?.trim()) ? (
-                <Text style={styles.homeworldDossierText} numberOfLines={1}>
-                  Base: {(currentSubfaction as any).homeworld}
-                </Text>
-              ) : null}
-
-              {Boolean(currentSubfaction?.motto?.trim()) ? (
-                <Text style={styles.mottoText} numberOfLines={1}>
-                  "{currentSubfaction?.motto}"
-                </Text>
-              ) : null}
-            </View>
-          </View>
-
-          {/* Level Progress */}
-          <View style={styles.progressSection}>
-            <ProgressBar
-              progress={progression.progressPercent}
-              label={`Level ${progression.level} Progression`}
-              valueText={`${progression.xpInCurrentLevel} / ${progression.xpNeededForNextLevel + progression.xpInCurrentLevel} XP (${progression.progressPercent}%)`}
-              color={THEME.colors.primary}
-              height={10}
-            />
-            <Text style={styles.xpTotalText}>
-              Cumulative Career Glory: <Text style={styles.xpHighlight}>{character.totalXp.toLocaleString()} XP</Text>
-            </Text>
-          </View>
-        </SciFiCard>
-
-        {/* Equipped Arsenal & Wargear Card */}
-        <EquipmentSlotCard
-          factionId={currentFaction.id}
-          loadout={loadout}
-          equippedItems={equippedItems}
-          equipmentBonuses={equipmentBonuses}
-          gearPower={gearPowerInfo.gearPower}
-          gearTierLabel={gearPowerInfo.primaryTierLabel}
-          onOpenInventory={(slot) => {
-            setSelectedEquipmentSlot(slot);
-            setIsEquipmentModalVisible(true);
-          }}
-        />
-
-        {/* Next Rank Horizon */}
-        {progression.nextRankTitle && (
-          <SciFiCard
-            title="NEXT PROMOTION TARGET"
-            rightAction={
-              <Text style={styles.remainingXpText}>
-                {(progression.xpNeededForNextRank ?? 0).toLocaleString()} XP TO ADVANCE
+              <Text style={styles.identityRankText} numberOfLines={1}>
+                Rank: {progression.currentRankTitle}
               </Text>
-            }
-          >
-            <View style={styles.nextRankRow}>
-              <Ionicons
-                name="chevron-forward-circle-outline"
-                size={22}
-                color={THEME.colors.secondary}
-              />
-              <View style={styles.nextRankInfo}>
-                <Text style={styles.nextRankName}>
-                  {progression.nextRankTitle}
-                </Text>
-                <ProgressBar
-                  progress={progression.rankProgressPercent}
-                  color={THEME.colors.secondary}
-                  height={6}
-                />
-              </View>
             </View>
 
-            {progression.isRankTrialPending && (
-              <View style={styles.trialAlertRow}>
-                <Ionicons name="alert-circle" size={16} color="#FFB800" />
-                <Text style={styles.trialAlertText}>
-                  {progression.pendingMilestoneRequirement}
-                </Text>
-              </View>
-            )}
-          </SciFiCard>
-        )}
+            <TouchableOpacity
+              onPress={() => {
+                triggerHaptic.selection();
+                router.push('/factions');
+              }}
+              style={styles.changeFactionBtn}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="planet-outline" size={14} color={THEME.colors.primary} style={{ marginRight: 4 }} />
+              <Text style={styles.changeFactionBtnText}>CHANGE</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic.selection();
+              router.push('/(tabs)/character');
+            }}
+            style={styles.characterDossierShortcut}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="shield-checkmark" size={15} color={THEME.colors.primary} style={{ marginRight: 6 }} />
+            <Text style={styles.characterDossierShortcutText}>
+              VIEW CHARACTER PROFILE, WARGEAR & PRs
+            </Text>
+            <Ionicons name="chevron-forward" size={15} color={THEME.colors.primary} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+        </SciFiCard>
 
         {/* MMORPG Raid Progression Horizon */}
         <SciFiCard
@@ -515,35 +451,6 @@ export default function CharacterScreen() {
             />
           </SciFiCard>
         )}
-
-        {/* Career Statistics */}
-        <SciFiCard title="CRUSADE COMBAT METRICS">
-          <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <Ionicons name="barbell-outline" size={20} color={THEME.colors.primary} />
-              <Text style={styles.statValue}>{stats.totalWorkouts}</Text>
-              <Text style={styles.statLabel}>MISSIONS</Text>
-            </View>
-
-            <View style={styles.statBox}>
-              <Ionicons name="layers-outline" size={20} color={THEME.colors.secondary} />
-              <Text style={styles.statValue}>{stats.totalSets}</Text>
-              <Text style={styles.statLabel}>SETS LOGGED</Text>
-            </View>
-
-            <View style={styles.statBox}>
-              <Ionicons name="repeat-outline" size={20} color={THEME.colors.success} />
-              <Text style={styles.statValue}>{stats.totalReps.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>TOTAL REPS</Text>
-            </View>
-
-            <View style={styles.statBox}>
-              <Ionicons name="speedometer-outline" size={20} color={THEME.colors.warning} />
-              <Text style={styles.statValue}>{stats.totalVolumeKg.toLocaleString()} kg</Text>
-              <Text style={styles.statLabel}>WEIGHT MOVED</Text>
-            </View>
-          </View>
-        </SciFiCard>
 
         {/* Quick Launch Buttons */}
         <View style={styles.actionButtons}>
@@ -729,7 +636,7 @@ export default function CharacterScreen() {
 
           <TerminalButton
             title="BROWSE FACTION CODEX"
-            onPress={() => router.push('/(tabs)/factions')}
+            onPress={() => router.push('/factions')}
             variant="outline"
             size="md"
             icon={
@@ -936,6 +843,92 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     marginTop: 0,
+  },
+  identityCard: {
+    marginTop: 0,
+    marginBottom: THEME.spacing.md,
+  },
+  identityHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  callsignLabel: {
+    color: THEME.colors.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  callsignValue: {
+    color: THEME.colors.textBright,
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    marginTop: 2,
+  },
+  identityRankBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  identityDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.surfaceBorder,
+    marginVertical: 10,
+  },
+  identityDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  identityMetaLabel: {
+    color: THEME.colors.textMuted,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  identityFactionText: {
+    color: THEME.colors.primary,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  identityRankText: {
+    color: THEME.colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  changeFactionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  changeFactionBtnText: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  characterDossierShortcut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  characterDossierShortcutText: {
+    color: THEME.colors.primary,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   heroContent: {
     flexDirection: 'row',

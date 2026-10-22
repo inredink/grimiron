@@ -1,4 +1,5 @@
 import { getDatabase } from './db';
+import { isNamedEnemy } from '../combat/namedEnemyClassifier';
 import {
   BattleRecord,
   BattleHistoryFilter,
@@ -116,14 +117,27 @@ export function recordBattleHistory(record: BattleRecord): void {
     }
   }
 
-  // If outcome was victory and enemy has a name, permanently record as slain
-  if (record.outcome === 'victory' && record.enemyName && record.enemyName.trim().length > 0) {
+  // If outcome was victory and enemy is a genuine named enemy or raid boss, permanently record as slain
+  if (
+    record.outcome === 'victory' &&
+    record.enemyName &&
+    record.enemyName.trim().length > 0 &&
+    isNamedEnemy({ id: record.enemyId, name: record.enemyName, difficulty: record.enemyDifficulty })
+  ) {
     try {
       db.runSync(
         `INSERT OR REPLACE INTO slain_named_enemies (
-          enemy_name, enemy_id, faction_id, slain_at, battle_id
-        ) VALUES (?, ?, ?, datetime('now'), ?)`,
-        [record.enemyName.trim(), record.enemyId || null, record.enemyFaction || null, record.id]
+          enemy_name, enemy_id, faction_id, enemy_title, difficulty, base_health, slain_at, battle_id
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)`,
+        [
+          record.enemyName.trim(),
+          record.enemyId || null,
+          record.enemyFaction || null,
+          (record.snapshot as any)?.enemyTitle || null,
+          record.enemyDifficulty || null,
+          record.enemyMaxHp || 0,
+          record.id,
+        ]
       );
     } catch {
       // Table may not exist yet in unmigrated test DBs

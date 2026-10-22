@@ -184,7 +184,8 @@ export function createAttackFromSet(
   exerciseRefId?: string,
   factionId?: string,
   subfactionId?: string,
-  equipmentBonus?: EquipmentCombatBonusInput
+  equipmentBonus?: EquipmentCombatBonusInput,
+  doctrineId?: string
 ): AttackEvent {
   const style = getAttackStyleForExercise(
     exerciseName,
@@ -193,7 +194,7 @@ export function createAttackFromSet(
     subfactionId,
     set.id
   );
-  const damageResult = calculateSetDamage(set, exerciseName, equipmentBonus);
+  const damageResult = calculateSetDamage(set, exerciseName, equipmentBonus, doctrineId);
 
   // Format thematic attack name: e.g. "Pulse Rifle Volley [Bench Press]" or "CRITICAL BOLTER BURST [Bench Press]"
   const cleanExercise = exerciseName.replace(/(Barbell|Dumbbell|Resistance Band|Cable|Machine)\s+/i, '');

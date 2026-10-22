@@ -6,6 +6,9 @@ export interface CharacterProfile {
   characterName: string;
   totalXp: number;
   currentLevel: number;
+  preferredTitle?: string;
+  combatDoctrine?: string;
+  activePledgeJson?: string;
   createdAt: string;
   updatedAt: string;
 }

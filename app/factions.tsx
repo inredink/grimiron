@@ -10,22 +10,24 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useApp } from '../../src/context/AppContext';
-import { THEME } from '../../src/constants/theme';
-import { SciFiCard } from '../../src/components/SciFiCard';
-import { Badge } from '../../src/components/Badge';
-import { TerminalButton } from '../../src/components/TerminalButton';
-import { warhammer40kUniverse } from '../../src/content/warhammer40k';
-import { Faction, Subfaction } from '../../src/content/types';
+import { useRouter } from 'expo-router';
+import { useApp } from '../src/context/AppContext';
+import { THEME } from '../src/constants/theme';
+import { SciFiCard } from '../src/components/SciFiCard';
+import { Badge } from '../src/components/Badge';
+import { TerminalButton } from '../src/components/TerminalButton';
+import { warhammer40kUniverse } from '../src/content/warhammer40k';
+import { Faction, Subfaction } from '../src/content/types';
 import { Ionicons } from '@expo/vector-icons';
-import { triggerHaptic } from '../../src/utils/haptics';
-import { getFactionSymbol } from '../../src/assets/factionSymbols';
-import { CustomSubfactionManagerModal } from '../../src/components/CustomSubfactionManagerModal';
-import { toSubfactionView } from '../../src/types/customSubfaction';
+import { triggerHaptic } from '../src/utils/haptics';
+import { getFactionSymbol } from '../src/assets/factionSymbols';
+import { CustomSubfactionManagerModal } from '../src/components/CustomSubfactionManagerModal';
+import { toSubfactionView } from '../src/types/customSubfaction';
 
 type AllegianceFilter = 'all' | 'imperium' | 'chaos' | 'xenos';
 
 export default function FactionsScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { character, changeFaction, customSubfactions } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,8 +115,21 @@ export default function FactionsScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Screen Header */}
+        {/* Screen Header with Back Navigation */}
         <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic.selection();
+              router.back();
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, alignSelf: 'flex-start' }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={20} color={THEME.colors.primary} />
+            <Text style={{ color: THEME.colors.primary, fontSize: 13, fontWeight: '700', marginLeft: 6, letterSpacing: 0.5 }}>
+              RETURN
+            </Text>
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>FACTION CODEX</Text>
           <Text style={styles.headerSubtitle}>
             WARHAMMER 40,000 STRATEGIC ARMIES & SUBFACTIONS

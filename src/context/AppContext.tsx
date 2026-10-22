@@ -11,10 +11,23 @@ import {
   getCharacterProfile,
   updateFactionAllegiance,
   updateCharacterName,
+  updatePreferredTitle,
+  updateCombatDoctrine,
+  updateActivePledge,
   getUserCareerStats,
   addCharacterXp,
   syncCharacterProfileFromCloud,
 } from '../services/database/characterRepository';
+import {
+  getDefeatedNamedEnemies,
+  recordNamedEnemyDefeat,
+  DefeatedNamedEnemy,
+} from '../services/database/namedEnemyRepository';
+import {
+  getOrCreateActivePledge,
+  computePledgeProgress,
+  ActivePledge,
+} from '../services/progression/pledgeService';
 import {
   saveCompletedWorkout,
   getAllWorkouts,
@@ -351,6 +364,12 @@ interface AppContextValue {
   dailyXpCredited: number;
   dailyXpRemaining: number;
   dailyXpCap: number;
+  updatePreferredTitleAction: (title: string | null) => void;
+  updateCombatDoctrineAction: (doctrine: string) => void;
+  activePledge: ActivePledge;
+  claimPledgeRewardAction: () => { success: boolean; xpEarned: number };
+  defeatedNamedEnemies: DefeatedNamedEnemy[];
+  refreshDefeatedNamedEnemies: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -423,6 +442,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
   const [dailyXpCredited, setDailyXpCredited] = useState<number>(0);
   const [dailyXpRemaining, setDailyXpRemaining] = useState<number>(1000);
+  const [defeatedNamedEnemies, setDefeatedNamedEnemies] = useState<DefeatedNamedEnemy[]>([]);
+  const [activePledge, setActivePledge] = useState<ActivePledge>(() => getOrCreateActivePledge());
 
   // Character Equipment & Inventory State
   const [inventory, setInventory] = useState<InventoryItemRecord[]>([]);
@@ -466,6 +487,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const prof = getCharacterProfile();
       setCharacter(prof);
+      const slain = getDefeatedNamedEnemies();
+      setDefeatedNamedEnemies(slain);
+      const pledge = getOrCreateActivePledge(prof.activePledgeJson);
+      setActivePledge(pledge);
       const userStats = getUserCareerStats();
       const history = getAllWorkouts();
       const cachedRaid = getActiveRaid();
@@ -1025,6 +1050,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return res;
   }, [loadData]);
 
+  const updatePreferredTitleAction = useCallback((title: string | null) => {
+    const updated = updatePreferredTitle(title);
+    setCharacter(updated);
+  }, []);
+
+  const updateCombatDoctrineAction = useCallback((doctrine: string) => {
+    const updated = updateCombatDoctrine(doctrine);
+    setCharacter(updated);
+  }, []);
+
+  const claimPledgeRewardAction = useCallback(() => {
+    const progress = computePledgeProgress(activePledge, character.factionId);
+    if (!progress.canClaim) {
+      return { success: false, xpEarned: 0 };
+    }
+    const updatedPledge: ActivePledge = { ...activePledge, isClaimed: true };
+    const pledgeJson = JSON.stringify(updatedPledge);
+    updateActivePledge(pledgeJson);
+    setActivePledge(updatedPledge);
+
+    // Credit Glory XP
+    const award = awardXp({
+      amount: activePledge.rewardGloryXp,
+      sourceType: 'weekly_pledge_reward',
+      reason: `Honored Weekly Pledge: ${progress.skin.pledgeTitle}`,
+      dailyCap: settings.rpg_daily_xp_cap,
+    });
+    const updatedProf = addCharacterXp(award.creditedAmount);
+    setCharacter(updatedProf);
+    loadData();
+    return { success: true, xpEarned: award.creditedAmount };
+  }, [activePledge, character.factionId, settings.rpg_daily_xp_cap, loadData]);
+
+  const refreshDefeatedNamedEnemies = useCallback(() => {
+    const slain = getDefeatedNamedEnemies();
+    setDefeatedNamedEnemies(slain);
+  }, []);
+
   const repeatWorkout = (sessionId: string): boolean => {
     const cloned = cloneWorkoutForRepeat(sessionId);
     if (cloned) {
@@ -1338,6 +1401,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         recordBattleHistory(battleRecord);
       } catch (bhErr) {
         console.warn('Error recording battle history:', bhErr);
+      }
+
+      // Continuous Crusade: Also record any named enemies slain in previous waves of this workout
+      if (encounterState.slainEnemies && encounterState.slainEnemies.length > 0) {
+        for (const slain of encounterState.slainEnemies) {
+          recordNamedEnemyDefeat({
+            name: slain.enemyName,
+            id: slain.enemyId,
+            factionId: slain.faction,
+            title: slain.enemyTitle,
+            difficulty: slain.difficulty,
+            baseHealth: slain.baseHealth,
+            battleId: battleRecordId,
+          });
+        }
       }
     }
 
@@ -2004,6 +2082,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dailyXpCredited,
         dailyXpRemaining,
         dailyXpCap: settings.rpg_daily_xp_cap || XP_ECONOMY_CONFIG.DEFAULT_DAILY_XP_CAP,
+        updatePreferredTitleAction,
+        updateCombatDoctrineAction,
+        activePledge,
+        claimPledgeRewardAction,
+        defeatedNamedEnemies,
+        refreshDefeatedNamedEnemies,
       }}
     >
       {children}

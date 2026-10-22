@@ -14,6 +14,8 @@ import { CombatMission } from '../types/combat';
 import { Ionicons } from '@expo/vector-icons';
 import { TerminalButton } from './TerminalButton';
 import { getSafeIoniconsName } from '../utils/iconHelper';
+import { isNamedEnemyDefeated } from '../services/database/namedEnemyRepository';
+import { triggerHaptic } from '../utils/haptics';
 
 interface MissionSelectorModalProps {
   visible: boolean;
@@ -58,7 +60,7 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
             {MISSION_CATALOG.map((mission) => {
               const enemy = getEnemyById(mission.enemyId);
               const isSelected = mission.id === selectedMissionId;
-
+              const isDefeatedBoss = isNamedEnemyDefeated(enemy.name) || isNamedEnemyDefeated(enemy.id);
               const isExpanded = expandedMissionId === mission.id;
 
               return (
@@ -67,8 +69,9 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
                   style={[
                     styles.missionCard,
                     isSelected && styles.missionCardSelected,
+                    isDefeatedBoss && { opacity: 0.65, borderColor: '#374151' },
                     isExpanded && { borderColor: THEME.colors.primary, backgroundColor: '#0B1322' },
-                    { borderColor: isSelected ? THEME.colors.primary : THEME.colors.surfaceBorder },
+                    { borderColor: isSelected ? THEME.colors.primary : isDefeatedBoss ? '#374151' : THEME.colors.surfaceBorder },
                   ]}
                   onPress={() => setExpandedMissionId(isExpanded ? null : mission.id)}
                   activeOpacity={0.85}
@@ -78,15 +81,15 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
                       style={[
                         styles.enemyBadge,
                         {
-                          borderColor: enemy.visual.primaryColor,
+                          borderColor: isDefeatedBoss ? '#6B7280' : enemy.visual.primaryColor,
                           backgroundColor: '#101726',
                         },
                       ]}
                     >
                       <Ionicons
-                        name={getSafeIoniconsName(enemy.visual.iconName, 'skull')}
+                        name={isDefeatedBoss ? 'skull' : getSafeIoniconsName(enemy.visual.iconName, 'skull')}
                         size={20}
-                        color={enemy.visual.primaryColor}
+                        color={isDefeatedBoss ? '#EF4444' : enemy.visual.primaryColor}
                       />
                     </View>
 
@@ -96,33 +99,33 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
                         <View
                           style={[
                             styles.diffBadge,
-                            { borderColor: enemy.visual.accentColor },
+                            { borderColor: isDefeatedBoss ? '#EF4444' : enemy.visual.accentColor },
                           ]}
                         >
                           <Text
                             style={[
                               styles.diffBadgeText,
-                              { color: enemy.visual.accentColor },
+                              { color: isDefeatedBoss ? '#EF4444' : enemy.visual.accentColor },
                             ]}
                           >
-                            {mission.difficulty.toUpperCase()}
+                            {isDefeatedBoss ? 'NEUTRALIZED' : mission.difficulty.toUpperCase()}
                           </Text>
                         </View>
                       </View>
-                      <Text style={styles.missionTitle}>{mission.title}</Text>
-                      <Text style={styles.enemyName}>Target: {enemy.name}</Text>
+                      <Text style={[styles.missionTitle, isDefeatedBoss && { textDecorationLine: 'line-through', color: THEME.colors.textMuted }]}>{mission.title}</Text>
+                      <Text style={styles.enemyName}>Target: {enemy.name} {isDefeatedBoss ? '(SLAIN)' : ''}</Text>
                     </View>
 
                     <Ionicons
                       name={isExpanded ? 'chevron-up' : isSelected ? 'checkmark-circle' : 'chevron-down'}
                       size={22}
-                      color={isSelected ? THEME.colors.primary : THEME.colors.textMuted}
+                      color={isDefeatedBoss ? '#6B7280' : isSelected ? THEME.colors.primary : THEME.colors.textMuted}
                       style={{ marginLeft: 6 }}
                     />
                   </View>
 
                   <Text style={styles.briefingText} numberOfLines={isExpanded ? undefined : 2}>
-                    {mission.briefing}
+                    {isDefeatedBoss ? 'Adversary has been slain and neutralized in the imperial ledger.' : mission.briefing}
                   </Text>
 
                   {/* Expanded Tactical Intel */}
@@ -130,18 +133,27 @@ export const MissionSelectorModal: React.FC<MissionSelectorModalProps> = ({
                     <View style={styles.expandedIntelBox}>
                       <Text style={styles.intelHeader}>TARGET DOSSIER & COMBAT PROFILE</Text>
                       <Text style={styles.loreText}>{enemy.loreDescription}</Text>
-                      <Text style={styles.tauntText}>"{enemy.tauntQuote}"</Text>
+                      <Text style={styles.tauntText}>"{isDefeatedBoss ? (enemy.defeatQuote || 'Target eradicated.') : enemy.tauntQuote}"</Text>
 
                       <View style={styles.actionRow}>
                         <TerminalButton
-                          title={isSelected ? "CURRENTLY ARMED" : "SELECT & ARM MISSION"}
+                          title={
+                            isDefeatedBoss
+                              ? "WARLORD PERMANENTLY NEUTRALIZED"
+                              : isSelected
+                              ? "CURRENTLY ARMED"
+                              : "SELECT & ARM MISSION"
+                          }
+                          disabled={isDefeatedBoss}
                           onPress={() => {
+                            if (isDefeatedBoss) return;
+                            triggerHaptic.selection();
                             onSelectMission(mission);
-                            onClose();
+                            setExpandedMissionId(null);
                           }}
-                          variant={isSelected ? "secondary" : "primary"}
+                          variant={isDefeatedBoss ? "outline" : isSelected ? "primary" : "secondary"}
                           size="sm"
-                          style={{ flex: 1, marginTop: 8 }}
+                          style={{ flex: 1 }}
                         />
                       </View>
                     </View>

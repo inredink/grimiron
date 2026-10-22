@@ -697,6 +697,16 @@ function ensureAllTablesExist(db: SQLite.SQLiteDatabase): void {
   ensureColumnExists(db, 'app_settings', 'date_display_format', "TEXT DEFAULT 'iso'");
   ensureColumnExists(db, 'app_settings', 'time_display_format', "TEXT DEFAULT '24h'");
   ensureColumnExists(db, 'app_settings', 'theme_accent_color', "TEXT DEFAULT 'aquila_gold'");
+
+  // Ensure Character Profile columns exist
+  ensureColumnExists(db, 'character_profile', 'preferred_title', 'TEXT DEFAULT NULL');
+  ensureColumnExists(db, 'character_profile', 'combat_doctrine', "TEXT DEFAULT 'iron_juggernaut'");
+  ensureColumnExists(db, 'character_profile', 'active_pledge_json', 'TEXT DEFAULT NULL');
+
+  // Ensure Slain Named Enemies columns exist
+  ensureColumnExists(db, 'slain_named_enemies', 'enemy_title', 'TEXT DEFAULT NULL');
+  ensureColumnExists(db, 'slain_named_enemies', 'difficulty', 'TEXT DEFAULT NULL');
+  ensureColumnExists(db, 'slain_named_enemies', 'base_health', 'INTEGER DEFAULT 0');
 }
 
 /**

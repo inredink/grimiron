@@ -31,7 +31,8 @@ export function computeCombatState(
   subfactionId?: string,
   equipmentBonus?: EquipmentCombatBonusInput,
   previousSlainSetIds?: Set<string>,
-  slainEnemies?: SlainEnemyRecord[]
+  slainEnemies?: SlainEnemyRecord[],
+  doctrineId?: string
 ): CombatEncounterState {
   const attacks: AttackEvent[] = [];
   const seenSetIds = new Set<string>();
@@ -47,7 +48,8 @@ export function computeCombatState(
           exercise.exerciseRefId,
           factionId,
           subfactionId,
-          equipmentBonus
+          equipmentBonus,
+          doctrineId
         );
         attacks.push(attack);
       }

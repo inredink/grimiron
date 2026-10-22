@@ -38,6 +38,7 @@ import { calculateWorkoutXp } from '../../src/services/progression/xpCalculator'
 import { WorkoutExercise, ExerciseSet, XpBreakdown, WorkoutSession } from '../../src/types/workout';
 import { ExerciseDefinition } from '../../src/types/exercise';
 import { CombatAfterActionReport, CombatEncounterState, SlainEnemyRecord, CombatMission } from '../../src/types/combat';
+import { isNamedEnemyDefeated } from '../../src/services/database/namedEnemyRepository';
 import { getEnemyById } from '../../src/content/combat/enemies';
 import { computeCombatState } from '../../src/services/combat/combatEngine';
 import { createAttackFromSet } from '../../src/services/combat/attackEngine';
@@ -49,6 +50,7 @@ export default function WorkoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
+    character,
     activeWorkout,
     workoutHistory,
     startNewWorkout,
@@ -159,7 +161,8 @@ export default function WorkoutScreen() {
       currentSubfaction?.id,
       equipmentBonuses,
       slainSetIds,
-      sessionSlainEnemies
+      sessionSlainEnemies,
+      character?.combatDoctrine
     );
   }, [
     activeWorkout,
@@ -171,6 +174,7 @@ export default function WorkoutScreen() {
     equipmentBonuses,
     slainSetIds,
     sessionSlainEnemies,
+    character?.combatDoctrine,
   ]);
 
   // Continuous Crusade: Summon next enemy wave or reinforcements
@@ -209,7 +213,7 @@ export default function WorkoutScreen() {
     };
     setSessionSlainEnemies((prev) => [...prev, slainRecord]);
 
-    // 3. Determine the next enemy in the escalation ladder
+    // 3. Determine the next enemy in the escalation ladder, filtering out any slain named enemies
     const ladder = [
       'enemy_chaos_cultist',
       'enemy_ork_boyz',
@@ -220,11 +224,16 @@ export default function WorkoutScreen() {
       'enemy_ork_warboss',
       'enemy_daemon_prince',
     ];
-    const currentIdx = ladder.indexOf(currentEnemy.id);
+    // Filter out slain named enemies so they never reappear
+    const eligibleLadder = ladder.filter((eid) => {
+      const e = getEnemyById(eid);
+      return !isNamedEnemyDefeated(e.name) && !isNamedEnemyDefeated(eid);
+    });
+    const currentIdx = eligibleLadder.indexOf(currentEnemy.id);
     const nextEnemyId =
-      currentIdx >= 0 && currentIdx + 1 < ladder.length
-        ? ladder[currentIdx + 1]
-        : ladder[(currentIdx + 1) % ladder.length] || 'enemy_helbrute';
+      currentIdx >= 0 && currentIdx + 1 < eligibleLadder.length
+        ? eligibleLadder[currentIdx + 1]
+        : eligibleLadder[(currentIdx + 1) % eligibleLadder.length] || 'enemy_helbrute';
 
     const nextEnemy = getEnemyById(nextEnemyId);
     const nextMission: CombatMission = {

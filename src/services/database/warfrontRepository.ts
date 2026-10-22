@@ -1,4 +1,5 @@
 import { getDatabase } from './db';
+import { recordNamedEnemyDefeat } from './namedEnemyRepository';
 import {
   DailyRotationRecord,
   WeeklyRaidCycle,
@@ -216,13 +217,12 @@ export function recordSlainEnemy(
   factionId?: string,
   battleId?: string
 ): void {
-  const db = getDatabase();
-  db.runSync(
-    `INSERT OR REPLACE INTO slain_named_enemies (
-      enemy_name, enemy_id, faction_id, slain_at, battle_id
-    ) VALUES (?, ?, ?, datetime('now'), ?)`,
-    [enemyName.trim(), enemyId || null, factionId || null, battleId || null]
-  );
+  recordNamedEnemyDefeat({
+    name: enemyName,
+    id: enemyId,
+    factionId,
+    battleId,
+  });
 }
 
 export function getSlainEnemyNames(): string[] {

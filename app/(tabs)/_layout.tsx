@@ -44,9 +44,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'CHARACTER',
+          title: 'HOME',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="shield-outline" size={size} color={color ? (color as string) : THEME.colors.primary} />
+            <Ionicons name="home-outline" size={size} color={color ? (color as string) : THEME.colors.primary} />
           ),
         }}
       />
@@ -78,11 +78,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="factions"
+        name="character"
         options={{
-          title: 'FACTIONS',
+          title: 'CHARACTER',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="planet-outline" size={size} color={color ? (color as string) : THEME.colors.primary} />
+            <Ionicons name="shield-checkmark-outline" size={size} color={color ? (color as string) : THEME.colors.primary} />
           ),
         }}
       />
